@@ -38,10 +38,15 @@ interface RelayAPI {
   stopLoop(): Promise<unknown>
 
   // Git
-  gitDiff(): Promise<string>
-  gitCommit(message: string): Promise<unknown>
-  gitLog(): Promise<unknown[]>
-  gitStatus(): Promise<{ clean: boolean; files: string[] }>
+  gitDiff(projectId: string): Promise<string>
+  gitCommit(projectId: string, message: string): Promise<unknown>
+  gitLog(projectId: string): Promise<unknown[]>
+  gitStatus(projectId: string): Promise<{ clean: boolean; files: Array<{ path: string; insertions: number; deletions: number; status: 'new' | 'modified' | 'deleted' | 'renamed' }> }>
+
+  // Review
+  reviewGetDiff(projectId: string): Promise<string>
+  reviewApprove(projectId: string, taskId: string, commitMessage: string): Promise<unknown>
+  reviewReject(projectId: string, taskId: string, notes: string): Promise<unknown>
 
   // Metrics
   projectMetrics(): Promise<unknown>

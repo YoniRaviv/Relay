@@ -10,9 +10,10 @@ interface KanbanColumnProps {
   tasks: Task[]
   activeTaskId?: string | null
   onTaskClick: (taskId: string) => void
+  onTaskReview?: (taskId: string) => void
 }
 
-export function KanbanColumn({ id, title, tasks, activeTaskId, onTaskClick }: KanbanColumnProps) {
+export function KanbanColumn({ id, title, tasks, activeTaskId, onTaskClick, onTaskReview }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id })
   const taskIds = tasks.map((t) => t.id)
 
@@ -40,6 +41,7 @@ export function KanbanColumn({ id, title, tasks, activeTaskId, onTaskClick }: Ka
                 task={task}
                 isActive={task.id === activeTaskId}
                 onClick={() => onTaskClick(task.id)}
+                onReview={() => onTaskReview?.(task.id)}
               />
             ))
           )}

@@ -31,10 +31,15 @@ const relayAPI = {
   stopLoop: () => ipcRenderer.invoke('loop:stop'),
 
   // Git
-  gitDiff: () => ipcRenderer.invoke('git:diff'),
-  gitCommit: (message: string) => ipcRenderer.invoke('git:commit', message),
-  gitLog: () => ipcRenderer.invoke('git:log'),
-  gitStatus: () => ipcRenderer.invoke('git:status'),
+  gitDiff: (projectId: string) => ipcRenderer.invoke('git:diff', projectId),
+  gitCommit: (projectId: string, message: string) => ipcRenderer.invoke('git:commit', projectId, message),
+  gitLog: (projectId: string) => ipcRenderer.invoke('git:log', projectId),
+  gitStatus: (projectId: string) => ipcRenderer.invoke('git:status', projectId),
+
+  // Review
+  reviewGetDiff: (projectId: string) => ipcRenderer.invoke('review:getDiff', projectId),
+  reviewApprove: (projectId: string, taskId: string, commitMessage: string) => ipcRenderer.invoke('review:approve', projectId, taskId, commitMessage),
+  reviewReject: (projectId: string, taskId: string, notes: string) => ipcRenderer.invoke('review:reject', projectId, taskId, notes),
 
   // Metrics
   projectMetrics: () => ipcRenderer.invoke('metrics:project'),
