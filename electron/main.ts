@@ -23,6 +23,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: 'Relay',
+    icon: path.join(process.env.VITE_PUBLIC!, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
