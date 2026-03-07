@@ -2,11 +2,11 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { startLoop, pauseLoop, resumeLoop, stopLoop, getLoopState } from '../agent/loopController';
 
 export function registerAgentHandlers(): void {
-  ipcMain.handle('loop:start', async (_event, projectId: string) => {
+  ipcMain.handle('loop:start', async (_event, projectId: string, prdId?: string) => {
     const win = BrowserWindow.getFocusedWindow();
     if (!win) throw new Error('No active window');
     // Start loop in background (don't await — it runs until done/stopped)
-    startLoop(projectId, win);
+    startLoop(projectId, win, prdId);
     return { status: 'ok' };
   });
 

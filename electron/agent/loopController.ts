@@ -41,8 +41,15 @@ function rowToTask(row: Record<string, unknown>): Task {
   };
 }
 
-function getNextPendingTask(projectId: string): Task | null {
+function getNextPendingTask(projectId: string, prdId?: string): Task | null {
   const db = getDbForProject(projectId);
+  if (prdId) {
+    const row = db.prepare(
+      `SELECT * FROM tasks WHERE project_id = ? AND prd_id = ? AND status = 'pending' ORDER BY "order" ASC LIMIT 1`
+    ).get(projectId, prdId) as Record<string, unknown> | undefined;
+    if (!row) return null;
+    return rowToTask(row);
+  }
   const row = db.prepare(
     `SELECT * FROM tasks WHERE project_id = ? AND status = 'pending' ORDER BY "order" ASC LIMIT 1`
   ).get(projectId) as Record<string, unknown> | undefined;
@@ -54,7 +61,7 @@ export function getLoopState(): typeof loopState {
   return loopState;
 }
 
-export async function startLoop(projectId: string, win: BrowserWindow): Promise<void> {
+export async function startLoop(projectId: string, win: BrowserWindow, prdId?: string): Promise<void> {
   if (loopState === 'running') return;
 
   loopState = 'running';
@@ -63,7 +70,7 @@ export async function startLoop(projectId: string, win: BrowserWindow): Promise<
 
   try {
     while (loopState as string === 'running') {
-      const task = getNextPendingTask(projectId);
+      const task = getNextPendingTask(projectId, prdId);
       if (!task) {
         win.webContents.send('agent:activity', {
           id: randomUUID(),
@@ -82,9 +89,9 @@ export async function startLoop(projectId: string, win: BrowserWindow): Promise<
 
       // Refresh task list in UI
       const db = getDbForProject(projectId);
-      const allTasks = db.prepare(
-        `SELECT * FROM tasks WHERE project_id = ? ORDER BY "order" ASC`
-      ).all(projectId) as Record<string, unknown>[];
+      const allTasks = prdId
+        ? db.prepare(`SELECT * FROM tasks WHERE project_id = ? AND prd_id = ? ORDER BY "order" ASC`).all(projectId, prdId) as Record<string, unknown>[]
+        : db.prepare(`SELECT * FROM tasks WHERE project_id = ? ORDER BY "order" ASC`).all(projectId) as Record<string, unknown>[];
       win.webContents.send('loop:tasksUpdated', allTasks.map(rowToTask));
 
       // Check if the task is now in review — auto-pause for human review

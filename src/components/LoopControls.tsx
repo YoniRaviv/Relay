@@ -11,7 +11,8 @@ export function LoopControls() {
     clearActivity()
     setLoopState('running')
     try {
-      await window.relayAPI.startLoop(activeProject.id)
+      const prdId = useRelayStore.getState().activePrdId
+      await window.relayAPI.startLoop(activeProject.id, prdId ?? undefined)
     } catch (err) {
       setLoopState('stopped')
       const msg = err instanceof Error ? err.message : 'Failed to start loop'

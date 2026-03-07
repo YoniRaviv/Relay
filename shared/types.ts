@@ -2,7 +2,7 @@
 
 export type ProjectStatus = 'active' | 'archived';
 
-export type PRDStatus = 'draft' | 'approved';
+export type PRDStatus = 'draft' | 'approved' | 'completed';
 
 export type TaskStatus =
   | 'pending'

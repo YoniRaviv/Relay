@@ -38,6 +38,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
   const [saving, setSaving] = useState(false)
   const [tasks, setTasks] = useState<DecomposedTask[]>([])
   const [error, setError] = useState('')
+  const [agentStatus, setAgentStatus] = useState('')
 
   // Listen for PRD stream events
   useEffect(() => {
@@ -50,6 +51,11 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         setStreaming(false)
         setWizardStep(1)
       }
+    })
+
+    const removeStatusStream = window.relayAPI.on('prd:status', (data: unknown) => {
+      const event = data as { status: string }
+      setAgentStatus(event.status)
     })
 
     const removeDecomposeStream = window.relayAPI.on('prd:decomposeStream', (data: unknown) => {
@@ -71,12 +77,14 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
 
     return () => {
       removePrdStream()
+      removeStatusStream()
       removeDecomposeStream()
     }
   }, [setPrdMarkdown, setWizardStep])
 
   const generatePrd = useCallback(async () => {
     setError('')
+    setAgentStatus('')
     setStreaming(true)
     setPrdMarkdown('')
     try {
@@ -89,6 +97,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
 
   const decompose = useCallback(async () => {
     setError('')
+    setAgentStatus('')
     setDecomposing(true)
     try {
       await window.relayAPI.decomposePrd(prdMarkdown)
@@ -150,10 +159,11 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
             />
           )}
 
-          {(wizardStep === 1 || streaming) && (
+          {(wizardStep === 1 || streaming) && !decomposing && (
             <PRDPreview
               markdown={prdMarkdown}
               streaming={streaming}
+              agentStatus={agentStatus}
               onEdit={() => setWizardStep(2)}
               onApprove={decompose}
             />
@@ -171,7 +181,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
             decomposing ? (
               <div className="flex flex-col items-center gap-3 py-8">
                 <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-muted-foreground">Decomposing PRD into tasks...</p>
+                <p className="text-sm text-muted-foreground">{agentStatus || 'Decomposing PRD into tasks...'}</p>
               </div>
             ) : (
               <TaskReview

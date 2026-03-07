@@ -23,17 +23,27 @@ interface ProjectSlice {
   setActiveProject: (project: Project | null) => void;
 }
 
+// ── Feature (PRD) Summary ──
+export interface FeatureSummary extends PRD {
+  taskCount: number;
+  doneCount: number;
+}
+
 // ── PRD Slice ──
 interface PRDSlice {
   wizardStep: number;
   featureDescription: string;
   prdMarkdown: string;
   prd: PRD | null;
+  activePrdId: string | null;
+  features: FeatureSummary[];
   decomposedTasks: Task[];
   setWizardStep: (step: number) => void;
   setFeatureDescription: (desc: string) => void;
   setPrdMarkdown: (md: string | ((prev: string) => string)) => void;
   setPrd: (prd: PRD | null) => void;
+  setActivePrdId: (id: string | null) => void;
+  setFeatures: (features: FeatureSummary[]) => void;
   setDecomposedTasks: (tasks: Task[]) => void;
 }
 
@@ -90,6 +100,8 @@ export const useRelayStore = create<RelayStore>((set) => ({
   featureDescription: '',
   prdMarkdown: '',
   prd: null,
+  activePrdId: null,
+  features: [],
   decomposedTasks: [],
   setWizardStep: (wizardStep) => set({ wizardStep }),
   setFeatureDescription: (featureDescription) => set({ featureDescription }),
@@ -98,6 +110,8 @@ export const useRelayStore = create<RelayStore>((set) => ({
       prdMarkdown: typeof prdMarkdown === 'function' ? prdMarkdown(state.prdMarkdown) : prdMarkdown,
     })),
   setPrd: (prd) => set({ prd }),
+  setActivePrdId: (activePrdId) => set({ activePrdId }),
+  setFeatures: (features) => set({ features }),
   setDecomposedTasks: (decomposedTasks) => set({ decomposedTasks }),
 
   // Tasks

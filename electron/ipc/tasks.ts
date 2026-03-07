@@ -37,8 +37,14 @@ function rowToTask(row: Record<string, unknown>): Task {
 }
 
 export function registerTasksHandlers(): void {
-  ipcMain.handle('tasks:list', async (_event, projectId: string): Promise<Task[]> => {
+  ipcMain.handle('tasks:list', async (_event, projectId: string, prdId?: string): Promise<Task[]> => {
     const db = getDbForProject(projectId);
+    if (prdId) {
+      const rows = db.prepare(
+        `SELECT * FROM tasks WHERE project_id = ? AND prd_id = ? ORDER BY "order" ASC`
+      ).all(projectId, prdId) as Record<string, unknown>[];
+      return rows.map(rowToTask);
+    }
     const rows = db.prepare(
       `SELECT * FROM tasks WHERE project_id = ? ORDER BY "order" ASC`
     ).all(projectId) as Record<string, unknown>[];
