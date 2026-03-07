@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { AppShell } from '@/components/AppShell'
 import { ProjectSidebar, type SidebarView } from '@/components/ProjectSidebar'
 import { KanbanBoard } from '@/components/KanbanBoard'
@@ -7,6 +8,9 @@ import { LoopControls } from '@/components/LoopControls'
 import { AgentActivityFeed } from '@/components/AgentActivityFeed'
 import { ReviewPanel } from '@/components/ReviewPanel'
 import { Summary } from '@/pages/Summary'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { BoardSkeleton } from '@/components/LoadingSkeleton'
+import { useKeyboardShortcuts } from '@/lib/shortcuts'
 import { useRelayStore } from '@/store/useRelayStore'
 import type { Task, TaskLog, LoopState } from '@shared/types'
 
@@ -21,12 +25,42 @@ export function Board({ onSwitchProject }: BoardProps) {
     reviewingTaskId, setReviewingTaskId,
   } = useRelayStore()
   const [sidebarView, setSidebarView] = useState<SidebarView>('board')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (activeProject) {
-      window.relayAPI.listTasks(activeProject.id).then(setTasks)
+      setLoading(true)
+      window.relayAPI.listTasks(activeProject.id)
+        .then(setTasks)
+        .catch(() => toast.error('Failed to load tasks'))
+        .finally(() => setLoading(false))
     }
   }, [activeProject, setTasks])
+
+  // Keyboard shortcuts
+  const toggleLoop = () => {
+    const { loopState } = useRelayStore.getState()
+    if (!activeProject) return
+    if (loopState === 'idle' || loopState === 'stopped') {
+      useRelayStore.getState().clearActivity()
+      useRelayStore.getState().setLoopState('running')
+      window.relayAPI.startLoop(activeProject.id)
+    } else if (loopState === 'running') {
+      useRelayStore.getState().setLoopState('paused')
+      window.relayAPI.pauseLoop()
+    } else if (loopState === 'paused') {
+      useRelayStore.getState().setLoopState('running')
+      window.relayAPI.resumeLoop()
+    }
+  }
+
+  const closePanel = () => {
+    const store = useRelayStore.getState()
+    if (store.reviewingTaskId) store.setReviewingTaskId(null)
+    else if (store.selectedTaskId) store.setSelectedTaskId(null)
+  }
+
+  useKeyboardShortcuts({ onToggleLoop: toggleLoop, onClosePanel: closePanel })
 
   // Listen for agent loop events
   useEffect(() => {
@@ -48,13 +82,34 @@ export function Board({ onSwitchProject }: BoardProps) {
       setTasks(data as Task[])
     })
 
+    const removeError = window.relayAPI.on('agent:error', (data: unknown) => {
+      const { message } = data as { message: string }
+      toast.error('Agent error', { description: message })
+    })
+
+    const removeTaskDone = window.relayAPI.on('loop:taskDone', (data: unknown) => {
+      const { storyId } = data as { storyId: string }
+      toast.success(`${storyId} ready for review`)
+    })
+
     return () => {
       removeActivity()
       removeStateChange()
       removeTaskChange()
       removeTasksUpdated()
+      removeError()
+      removeTaskDone()
     }
   }, [addActivity, setLoopState, setCurrentTaskId, setTasks])
+
+  // Update window title
+  useEffect(() => {
+    const { currentTaskId } = useRelayStore.getState()
+    const task = tasks.find(t => t.id === currentTaskId)
+    const suffix = task ? ` — Building ${task.storyId}` : ''
+    document.title = `Relay — ${activeProject?.name ?? ''}${suffix}`
+    return () => { document.title = 'Relay' }
+  }, [activeProject, tasks])
 
   if (!activeProject) return null
 
@@ -80,20 +135,25 @@ export function Board({ onSwitchProject }: BoardProps) {
         <div className="flex flex-1 overflow-hidden">
           <div className="flex-1 flex flex-col overflow-hidden">
             {sidebarView === 'board' && (
-              <>
-                <div className="flex-1 overflow-hidden">
-                  <KanbanBoard />
-                </div>
-                {/* Activity feed at bottom */}
-                <div className="h-48 border-t bg-muted/20 flex flex-col">
-                  <div className="px-4 py-2 border-b">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Agent Activity
-                    </span>
-                  </div>
-                  <AgentActivityFeed />
-                </div>
-              </>
+              <ErrorBoundary fallbackMessage="The board encountered an error.">
+                {loading ? (
+                  <BoardSkeleton />
+                ) : (
+                  <>
+                    <div className="flex-1 overflow-hidden">
+                      <KanbanBoard />
+                    </div>
+                    <div className="h-48 border-t bg-muted/20 flex flex-col">
+                      <div className="px-4 py-2 border-b">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Agent Activity
+                        </span>
+                      </div>
+                      <AgentActivityFeed />
+                    </div>
+                  </>
+                )}
+              </ErrorBoundary>
             )}
 
             {sidebarView === 'prd' && (
@@ -106,7 +166,9 @@ export function Board({ onSwitchProject }: BoardProps) {
             )}
 
             {sidebarView === 'summary' && (
-              <Summary projectId={activeProject.id} />
+              <ErrorBoundary fallbackMessage="Failed to load summary.">
+                <Summary projectId={activeProject.id} />
+              </ErrorBoundary>
             )}
 
             {sidebarView === 'settings' && (
