@@ -23,7 +23,7 @@
   --radius: 0.5rem;
 }
 
-@media (prefers-color-scheme: dark) {
+.dark {
   @theme {
     --color-background: #0a0a0a;
     --color-foreground: #fafafa;

@@ -3,19 +3,24 @@
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "com.relay.app",
   "asar": true,
+  "asarUnpack": [
+    "node_modules/better-sqlite3/**"
+  ],
   "productName": "Relay",
   "directories": {
     "output": "release/${version}"
   },
   "files": [
     "dist",
-    "dist-electron"
+    "dist-electron",
+    "node_modules/better-sqlite3/**"
   ],
   "mac": {
     "target": [
       "dmg"
     ],
-    "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
+    "artifactName": "${productName}-Mac-${version}-Installer.${ext}",
+    "icon": "public/icon.icns"
   },
   "win": {
     "target": [

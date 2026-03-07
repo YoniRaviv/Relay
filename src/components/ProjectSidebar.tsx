@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { LayoutDashboard, FileText, BarChart3, Settings } from 'lucide-react'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export type SidebarView = 'board' | 'prd' | 'summary' | 'settings'
 
@@ -38,6 +39,11 @@ export function ProjectSidebar({ projectName, activeView, onViewChange }: Projec
           </Button>
         ))}
       </nav>
+
+      <div className="mt-auto pt-4 border-t flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">Theme</span>
+        <ThemeToggle />
+      </div>
     </div>
   )
 }

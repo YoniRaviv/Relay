@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Play, Pause, Square } from 'lucide-react'
+import { toast } from 'sonner'
 import { useRelayStore } from '@/store/useRelayStore'
 
 export function LoopControls() {
@@ -9,7 +10,19 @@ export function LoopControls() {
     if (!activeProject) return
     clearActivity()
     setLoopState('running')
-    await window.relayAPI.startLoop(activeProject.id)
+    try {
+      await window.relayAPI.startLoop(activeProject.id)
+    } catch (err) {
+      setLoopState('stopped')
+      const msg = err instanceof Error ? err.message : 'Failed to start loop'
+      if (msg.includes('401') || msg.toLowerCase().includes('invalid') || msg.toLowerCase().includes('key')) {
+        toast.error('Invalid API key', { description: 'Check your API key in Settings.' })
+      } else if (msg.includes('429') || msg.toLowerCase().includes('rate')) {
+        toast.error('Rate limited', { description: 'Too many requests. Try again shortly.' })
+      } else {
+        toast.error('Agent error', { description: msg })
+      }
+    }
   }
 
   const handlePause = async () => {
@@ -19,7 +32,12 @@ export function LoopControls() {
 
   const handleResume = async () => {
     setLoopState('running')
-    await window.relayAPI.resumeLoop()
+    try {
+      await window.relayAPI.resumeLoop()
+    } catch (err) {
+      setLoopState('paused')
+      toast.error('Failed to resume', { description: err instanceof Error ? err.message : 'Unknown error' })
+    }
   }
 
   const handleStop = async () => {
