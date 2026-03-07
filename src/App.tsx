@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Setup } from '@/pages/Setup'
 import { PRDWizard } from '@/pages/PRDWizard'
-import { AppShell } from '@/components/AppShell'
-import { Button } from '@/components/ui/button'
+import { Board } from '@/pages/Board'
 import { useRelayStore } from '@/store/useRelayStore'
 import type { Project } from '@shared/types'
 
-type AppView = 'loading' | 'setup-key' | 'setup-project' | 'prd-wizard' | 'home'
+type AppView = 'loading' | 'setup-key' | 'setup-project' | 'prd-wizard' | 'board'
 
 function App() {
   const [view, setView] = useState<AppView>('loading')
-  const { setAuthStatus, activeProject, setActiveProject, setRecentProjects, setPrd } = useRelayStore()
+  const { setAuthStatus, setActiveProject, setRecentProjects, setPrd, setPrdMarkdown, setTasks } = useRelayStore()
 
   useEffect(() => {
     init()
@@ -32,22 +31,32 @@ function App() {
   const handleSetupComplete = async (project: Project) => {
     setActiveProject(project)
 
-    // Check if project already has a PRD
     const prd = await window.relayAPI.getPrd(project.id)
     if (prd) {
       setPrd(prd)
-      setView('home')
+      setPrdMarkdown(prd.markdown as string)
+      const tasks = await window.relayAPI.listTasks(project.id)
+      setTasks(tasks)
+      setView('board')
     } else {
       setView('prd-wizard')
     }
   }
 
-  const handlePrdComplete = () => {
-    setView('home')
+  const handlePrdComplete = async () => {
+    const project = useRelayStore.getState().activeProject
+    if (project) {
+      const tasks = await window.relayAPI.listTasks(project.id)
+      setTasks(tasks)
+    }
+    setView('board')
   }
 
-  const handleBackToProjects = () => {
+  const handleSwitchProject = () => {
     setActiveProject(null)
+    setTasks([])
+    setPrd(null)
+    setPrdMarkdown('')
     setView('setup-project')
   }
 
@@ -71,22 +80,7 @@ function App() {
     return <PRDWizard onComplete={handlePrdComplete} />
   }
 
-  // Home — placeholder until Phase 4 Kanban Board
-  return (
-    <AppShell>
-      <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
-        <h1 className="text-2xl font-semibold">
-          {activeProject?.name}
-        </h1>
-        <p className="text-muted-foreground text-center max-w-md">
-          PRD approved and tasks created. The Kanban Board will be available in Phase 4.
-        </p>
-        <Button variant="outline" onClick={handleBackToProjects}>
-          Switch Project
-        </Button>
-      </div>
-    </AppShell>
-  )
+  return <Board onSwitchProject={handleSwitchProject} />
 }
 
 export default App
