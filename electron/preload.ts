@@ -42,9 +42,9 @@ const relayAPI = {
   reviewReject: (projectId: string, taskId: string, notes: string) => ipcRenderer.invoke('review:reject', projectId, taskId, notes),
 
   // Metrics
-  projectMetrics: () => ipcRenderer.invoke('metrics:project'),
-  taskMetrics: (taskId: string) => ipcRenderer.invoke('metrics:task', taskId),
-  exportMetrics: () => ipcRenderer.invoke('metrics:export'),
+  projectMetrics: (projectId: string) => ipcRenderer.invoke('metrics:project', projectId),
+  taskMetrics: (projectId: string) => ipcRenderer.invoke('metrics:tasks', projectId),
+  exportMetrics: (projectId: string) => ipcRenderer.invoke('metrics:export', projectId),
 
   // Event listeners
   on: (channel: string, callback: (...args: unknown[]) => void) => {
