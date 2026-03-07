@@ -32,7 +32,7 @@ interface PRDSlice {
   decomposedTasks: Task[];
   setWizardStep: (step: number) => void;
   setFeatureDescription: (desc: string) => void;
-  setPrdMarkdown: (md: string) => void;
+  setPrdMarkdown: (md: string | ((prev: string) => string)) => void;
   setPrd: (prd: PRD | null) => void;
   setDecomposedTasks: (tasks: Task[]) => void;
 }
@@ -79,7 +79,10 @@ export const useRelayStore = create<RelayStore>((set) => ({
   decomposedTasks: [],
   setWizardStep: (wizardStep) => set({ wizardStep }),
   setFeatureDescription: (featureDescription) => set({ featureDescription }),
-  setPrdMarkdown: (prdMarkdown) => set({ prdMarkdown }),
+  setPrdMarkdown: (prdMarkdown) =>
+    set((state) => ({
+      prdMarkdown: typeof prdMarkdown === 'function' ? prdMarkdown(state.prdMarkdown) : prdMarkdown,
+    })),
   setPrd: (prd) => set({ prd }),
   setDecomposedTasks: (decomposedTasks) => set({ decomposedTasks }),
 

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.71",
+    "@anthropic-ai/sdk": "^0.78.0",
     "@tailwindcss/vite": "^4.2.1",
     "better-sqlite3": "^12.6.2",
     "class-variance-authority": "^0.7.1",

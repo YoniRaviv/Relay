@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Setup } from '@/pages/Setup'
+import { PRDWizard } from '@/pages/PRDWizard'
 import { AppShell } from '@/components/AppShell'
 import { Button } from '@/components/ui/button'
 import { useRelayStore } from '@/store/useRelayStore'
 import type { Project } from '@shared/types'
 
-type AppView = 'loading' | 'setup-key' | 'setup-project' | 'home'
+type AppView = 'loading' | 'setup-key' | 'setup-project' | 'prd-wizard' | 'home'
 
 function App() {
   const [view, setView] = useState<AppView>('loading')
-  const { setAuthStatus, activeProject, setActiveProject, setRecentProjects } = useRelayStore()
+  const { setAuthStatus, activeProject, setActiveProject, setRecentProjects, setPrd } = useRelayStore()
 
   useEffect(() => {
     init()
@@ -28,12 +29,24 @@ function App() {
     }
   }
 
-  const handleSetupComplete = (project: Project) => {
+  const handleSetupComplete = async (project: Project) => {
     setActiveProject(project)
+
+    // Check if project already has a PRD
+    const prd = await window.relayAPI.getPrd(project.id)
+    if (prd) {
+      setPrd(prd)
+      setView('home')
+    } else {
+      setView('prd-wizard')
+    }
+  }
+
+  const handlePrdComplete = () => {
     setView('home')
   }
 
-  const handleBackToProjects = async () => {
+  const handleBackToProjects = () => {
     setActiveProject(null)
     setView('setup-project')
   }
@@ -54,7 +67,11 @@ function App() {
     return <Setup initialStep={1} onComplete={handleSetupComplete} />
   }
 
-  // Home — placeholder until Phase 3/4
+  if (view === 'prd-wizard') {
+    return <PRDWizard onComplete={handlePrdComplete} />
+  }
+
+  // Home — placeholder until Phase 4 Kanban Board
   return (
     <AppShell>
       <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
@@ -62,7 +79,7 @@ function App() {
           {activeProject?.name}
         </h1>
         <p className="text-muted-foreground text-center max-w-md">
-          Project loaded. The PRD Wizard and Kanban Board will be available in upcoming phases.
+          PRD approved and tasks created. The Kanban Board will be available in Phase 4.
         </p>
         <Button variant="outline" onClick={handleBackToProjects}>
           Switch Project
