@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { ArrowUpDown } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 
 interface TaskMetricRow {
   taskId: string
@@ -32,12 +31,21 @@ function formatDuration(ms: number): string {
 }
 
 const statusColors: Record<string, string> = {
-  pending: 'bg-zinc-500/20 text-zinc-400',
-  in_progress: 'bg-blue-500/20 text-blue-400',
-  review: 'bg-amber-500/20 text-amber-400',
-  failed: 'bg-red-500/20 text-red-400',
-  done: 'bg-green-500/20 text-green-400',
-  approved: 'bg-emerald-500/20 text-emerald-400',
+  pending: 'text-muted-foreground',
+  in_progress: 'text-teal-600 dark:text-teal-400',
+  review: 'text-amber-600 dark:text-amber-400',
+  failed: 'text-rose-600 dark:text-rose-400',
+  done: 'text-emerald-600 dark:text-emerald-400',
+  approved: 'text-emerald-600 dark:text-emerald-400',
+}
+
+const statusLabels: Record<string, string> = {
+  pending: 'Pending',
+  in_progress: 'In Progress',
+  review: 'Review',
+  failed: 'Failed',
+  done: 'Done',
+  approved: 'Approved',
 }
 
 const columns: { key: SortKey; label: string; align?: 'right' }[] = [
@@ -48,7 +56,7 @@ const columns: { key: SortKey; label: string; align?: 'right' }[] = [
   { key: 'durationMs', label: 'Duration', align: 'right' },
   { key: 'tokensIn', label: 'Tokens In', align: 'right' },
   { key: 'tokensOut', label: 'Tokens Out', align: 'right' },
-  { key: 'toolCalls', label: 'Tool Calls', align: 'right' },
+  { key: 'toolCalls', label: 'Tools', align: 'right' },
   { key: 'cost', label: 'Cost', align: 'right' },
 ]
 
@@ -74,51 +82,61 @@ export function TaskMetricsTable({ tasks }: TaskMetricsTableProps) {
     return sortDir === 'asc' ? cmp : -cmp
   })
 
+  const SortIcon = ({ col }: { col: SortKey }) => {
+    if (sortKey !== col) return <ArrowUpDown className="ml-1 h-3 w-3 opacity-0 group-hover:opacity-50" />
+    return sortDir === 'asc'
+      ? <ArrowUp className="ml-1 h-3 w-3" />
+      : <ArrowDown className="ml-1 h-3 w-3" />
+  }
+
   return (
-    <div className="rounded-lg border overflow-hidden">
+    <div className="rounded-lg bg-card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-muted/50">
+            <tr>
               {columns.map(col => (
                 <th
                   key={col.key}
-                  className={`px-3 py-2 font-medium text-muted-foreground ${col.align === 'right' ? 'text-right' : 'text-left'}`}
+                  className={`px-4 py-3 font-medium text-xs text-muted-foreground uppercase tracking-wider ${col.align === 'right' ? 'text-right' : 'text-left'}`}
                 >
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto p-0 font-medium text-muted-foreground hover:text-foreground"
+                  <button
+                    className="group inline-flex items-center hover:text-foreground transition-colors"
                     onClick={() => handleSort(col.key)}
                   >
                     {col.label}
-                    <ArrowUpDown className="ml-1 h-3 w-3" />
-                  </Button>
+                    <SortIcon col={col.key} />
+                  </button>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {sorted.map(task => (
-              <tr key={task.taskId} className="border-b last:border-b-0 hover:bg-muted/30">
-                <td className="px-3 py-2 font-mono text-xs">{task.storyId}</td>
-                <td className="px-3 py-2 max-w-[200px] truncate">{task.title}</td>
-                <td className="px-3 py-2">
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[task.status] ?? ''}`}>
-                    {task.status}
+            {sorted.map((task, i) => (
+              <tr
+                key={task.taskId}
+                className={`hover:bg-accent/30 transition-colors ${
+                  i % 2 === 0 ? '' : 'bg-muted/20'
+                }`}
+              >
+                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{task.storyId}</td>
+                <td className="px-4 py-2.5 max-w-[220px] truncate">{task.title}</td>
+                <td className="px-4 py-2.5">
+                  <span className={`text-xs font-medium ${statusColors[task.status] ?? ''}`}>
+                    {statusLabels[task.status] ?? task.status}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">{task.passes}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{formatDuration(task.durationMs)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{task.tokensIn.toLocaleString()}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{task.tokensOut.toLocaleString()}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{task.toolCalls}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{task.cost < 0.01 ? '<$0.01' : `$${task.cost.toFixed(2)}`}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{task.passes}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{formatDuration(task.durationMs)}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{task.tokensIn.toLocaleString()}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{task.tokensOut.toLocaleString()}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{task.toolCalls}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{task.cost < 0.01 ? '<$0.01' : `$${task.cost.toFixed(2)}`}</td>
               </tr>
             ))}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
                   No task metrics available yet.
                 </td>
               </tr>

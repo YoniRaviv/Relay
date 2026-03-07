@@ -2,10 +2,10 @@ import { MessageSquare, Wrench, CheckCircle, AlertCircle } from 'lucide-react'
 import type { TaskLog } from '@shared/types'
 
 const iconMap = {
-  text: <MessageSquare className="h-3.5 w-3.5 text-blue-500" />,
-  tool_use: <Wrench className="h-3.5 w-3.5 text-purple-500" />,
-  tool_result: <CheckCircle className="h-3.5 w-3.5 text-green-500" />,
-  error: <AlertCircle className="h-3.5 w-3.5 text-red-500" />,
+  text: <MessageSquare className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />,
+  tool_use: <Wrench className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />,
+  tool_result: <CheckCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />,
+  error: <AlertCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />,
 }
 
 interface ActivityMessageProps {

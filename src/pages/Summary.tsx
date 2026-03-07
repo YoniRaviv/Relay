@@ -109,7 +109,7 @@ export function Summary({ projectId }: SummaryProps) {
       <ProjectSummary metrics={projectMetrics} />
 
       <div>
-        <h3 className="text-sm font-semibold mb-3">Per-Task Metrics</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Per-Task Metrics</h3>
         <TaskMetricsTable tasks={taskMetrics} />
       </div>
     </div>

@@ -1,8 +1,10 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import {
   DndContext,
   DragEndEvent,
   DragOverEvent,
+  DragStartEvent,
+  DragOverlay,
   PointerSensor,
   useSensor,
   useSensors,
@@ -10,8 +12,9 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import { KanbanColumn } from '@/components/KanbanColumn'
+import { TaskCardOverlay } from '@/components/TaskCard'
 import { useRelayStore } from '@/store/useRelayStore'
-import type { TaskStatus } from '@shared/types'
+import type { Task, TaskStatus } from '@shared/types'
 
 const COLUMNS: { id: string; title: string; statuses: TaskStatus[] }[] = [
   { id: 'pending', title: 'Pending', statuses: ['pending'] },
@@ -36,6 +39,7 @@ function getDefaultStatusForColumn(columnId: string): TaskStatus {
 
 export function KanbanBoard() {
   const { tasks, setTasks, setSelectedTaskId, currentTaskId, setReviewingTaskId } = useRelayStore()
+  const [activeTask, setActiveTask] = useState<Task | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -55,12 +59,21 @@ export function KanbanBoard() {
     return getColumnForStatus(task.status)
   }
 
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const task = tasks.find((t) => t.id === event.active.id)
+      setActiveTask(task ?? null)
+    },
+    [tasks]
+  )
+
   const handleDragOver = useCallback((_event: DragOverEvent) => {
     // Visual feedback is handled by useDroppable isOver
   }, [])
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
+      setActiveTask(null)
       const { active, over } = event
       if (!over) return
 
@@ -69,12 +82,12 @@ export function KanbanBoard() {
 
       const sourceColumn = findTaskColumn(activeId)
       // Determine target column: if we're over a column id directly, use it; otherwise find the task's column
-      let targetColumn = COLUMNS.find((c) => c.id === overId)?.id ?? findTaskColumn(overId)
+      const targetColumn = COLUMNS.find((c) => c.id === overId)?.id ?? findTaskColumn(overId)
 
       if (!sourceColumn || !targetColumn) return
 
-      const activeTask = tasks.find((t) => t.id === activeId)
-      if (!activeTask) return
+      const activeTaskItem = tasks.find((t) => t.id === activeId)
+      if (!activeTaskItem) return
 
       let newTasks = [...tasks]
 
@@ -108,12 +121,18 @@ export function KanbanBoard() {
     [tasks, setTasks]
   )
 
+  const handleDragCancel = useCallback(() => {
+    setActiveTask(null)
+  }, [])
+
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
       <div className="flex gap-4 p-6 h-full overflow-x-auto">
         {COLUMNS.map((col) => (
@@ -128,6 +147,11 @@ export function KanbanBoard() {
           />
         ))}
       </div>
+      <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+        {activeTask ? (
+          <TaskCardOverlay task={activeTask} isActive={activeTask.id === currentTaskId} />
+        ) : null}
+      </DragOverlay>
     </DndContext>
   )
 }

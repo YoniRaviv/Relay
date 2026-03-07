@@ -14,6 +14,12 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
 
+app.setName('Relay')
+
+if (process.platform === 'darwin' && app.dock) {
+  app.dock.setIcon(path.join(process.env.VITE_PUBLIC!, 'icon.png'))
+}
+
 let win: BrowserWindow | null
 
 function createWindow() {

@@ -53,10 +53,10 @@ export function LoopControls() {
   }
 
   const stateColor: Record<string, string> = {
-    idle: 'bg-gray-400',
-    running: 'bg-green-500 animate-pulse',
-    paused: 'bg-yellow-500',
-    stopped: 'bg-red-500',
+    idle: 'bg-stone-400',
+    running: 'bg-emerald-500 animate-pulse',
+    paused: 'bg-amber-500',
+    stopped: 'bg-rose-500',
   }
 
   return (

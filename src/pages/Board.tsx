@@ -10,6 +10,7 @@ import { ReviewPanel } from '@/components/ReviewPanel'
 import { Summary } from '@/pages/Summary'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { BoardSkeleton } from '@/components/LoadingSkeleton'
+import { SettingsView } from '@/components/SettingsView'
 import { useKeyboardShortcuts } from '@/lib/shortcuts'
 import { useRelayStore } from '@/store/useRelayStore'
 import type { Task, TaskLog, LoopState } from '@shared/types'
@@ -126,7 +127,7 @@ export function Board({ onSwitchProject }: BoardProps) {
       <div className="flex flex-col h-full">
         {/* Header with loop controls */}
         {sidebarView === 'board' && (
-          <div className="flex items-center justify-between px-6 py-3 border-b">
+          <div className="flex items-center justify-between px-6 py-3">
             <h2 className="text-sm font-semibold">Kanban Board</h2>
             <LoopControls />
           </div>
@@ -143,8 +144,8 @@ export function Board({ onSwitchProject }: BoardProps) {
                     <div className="flex-1 overflow-hidden">
                       <KanbanBoard />
                     </div>
-                    <div className="h-48 border-t bg-muted/20 flex flex-col">
-                      <div className="px-4 py-2 border-b">
+                    <div className="h-48 bg-[var(--color-sidebar)] flex flex-col">
+                      <div className="px-4 py-2">
                         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                           Agent Activity
                         </span>
@@ -159,7 +160,7 @@ export function Board({ onSwitchProject }: BoardProps) {
             {sidebarView === 'prd' && (
               <div className="p-6 overflow-auto h-full">
                 <h2 className="text-lg font-semibold mb-4">Product Requirements Document</h2>
-                <div className="whitespace-pre-wrap font-mono text-sm bg-muted/30 rounded-lg p-4 border">
+                <div className="whitespace-pre-wrap font-mono text-sm bg-muted/30 rounded-lg p-4">
                   {prdMarkdown || 'No PRD available.'}
                 </div>
               </div>
@@ -172,15 +173,7 @@ export function Board({ onSwitchProject }: BoardProps) {
             )}
 
             {sidebarView === 'settings' && (
-              <div className="p-6 space-y-4">
-                <h2 className="text-lg font-semibold">Settings</h2>
-                <button
-                  onClick={onSwitchProject}
-                  className="text-sm text-primary hover:underline"
-                >
-                  Switch Project
-                </button>
-              </div>
+              <SettingsView onSwitchProject={onSwitchProject} />
             )}
           </div>
 

@@ -1,48 +1,56 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #ffffff;
-  --color-foreground: #0a0a0a;
-  --color-card: #ffffff;
-  --color-card-foreground: #0a0a0a;
-  --color-popover: #ffffff;
-  --color-popover-foreground: #0a0a0a;
-  --color-primary: #171717;
-  --color-primary-foreground: #fafafa;
-  --color-secondary: #f5f5f5;
-  --color-secondary-foreground: #171717;
-  --color-muted: #f5f5f5;
-  --color-muted-foreground: #737373;
-  --color-accent: #f5f5f5;
-  --color-accent-foreground: #171717;
-  --color-destructive: #ef4444;
-  --color-destructive-foreground: #fafafa;
-  --color-border: #e5e5e5;
-  --color-input: #e5e5e5;
-  --color-ring: #0a0a0a;
+  /* Warm Studio — Light Theme
+     Cream/ivory backgrounds with stone-tinted neutrals.
+     Deep teal accent for a distinctive, non-generic identity. */
+  --color-background: #f5f2ed;
+  --color-foreground: #2a2521;
+  --color-card: #faf8f5;
+  --color-card-foreground: #2a2521;
+  --color-popover: #faf8f5;
+  --color-popover-foreground: #2a2521;
+  --color-primary: #167a6f;
+  --color-primary-foreground: #f0fdf8;
+  --color-secondary: #eae5dd;
+  --color-secondary-foreground: #2a2521;
+  --color-muted: #eae5dd;
+  --color-muted-foreground: #7d756a;
+  --color-accent: #e2dcd3;
+  --color-accent-foreground: #2a2521;
+  --color-destructive: #c53030;
+  --color-destructive-foreground: #fef2f2;
+  --color-border: #e2dcd4;
+  --color-input: #d9d2c8;
+  --color-ring: #167a6f;
+  --color-sidebar: #eee9e2;
   --radius: 0.5rem;
 }
 
 .dark {
-  --color-background: #0a0a0a;
-  --color-foreground: #fafafa;
-  --color-card: #0a0a0a;
-  --color-card-foreground: #fafafa;
-  --color-popover: #0a0a0a;
-  --color-popover-foreground: #fafafa;
-  --color-primary: #fafafa;
-  --color-primary-foreground: #0a0a0a;
-  --color-secondary: #262626;
-  --color-secondary-foreground: #fafafa;
-  --color-muted: #262626;
-  --color-muted-foreground: #a3a3a3;
-  --color-accent: #262626;
-  --color-accent-foreground: #fafafa;
-  --color-destructive: #7f1d1d;
-  --color-destructive-foreground: #fafafa;
-  --color-border: #262626;
-  --color-input: #262626;
-  --color-ring: #d4d4d4;
+  /* Warm Studio — Dark Theme
+     Deep warm charcoal, not void-black.
+     Brighter teal accent for legibility on dark surfaces. */
+  --color-background: #1c1a16;
+  --color-foreground: #e5ded4;
+  --color-card: #26231f;
+  --color-card-foreground: #e5ded4;
+  --color-popover: #26231f;
+  --color-popover-foreground: #e5ded4;
+  --color-primary: #2ec4a6;
+  --color-primary-foreground: #0c2920;
+  --color-secondary: #312d28;
+  --color-secondary-foreground: #e5ded4;
+  --color-muted: #312d28;
+  --color-muted-foreground: #9b9289;
+  --color-accent: #3a3530;
+  --color-accent-foreground: #e5ded4;
+  --color-destructive: #e53e3e;
+  --color-destructive-foreground: #fef2f2;
+  --color-border: #332f2b;
+  --color-input: #3d3833;
+  --color-ring: #2ec4a6;
+  --color-sidebar: #211f1b;
 }
 
 body {
@@ -53,6 +61,26 @@ body {
   font-family: Inter, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Themed scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
 }
 
 /* diff2html theme overrides */

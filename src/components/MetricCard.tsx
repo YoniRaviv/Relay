@@ -9,7 +9,7 @@ interface MetricCardProps {
 
 export function MetricCard({ icon, label, value, subtitle }: MetricCardProps) {
   return (
-    <div className="rounded-lg border bg-card p-4 flex items-start gap-3">
+    <div className="rounded-lg bg-card p-4 flex items-start gap-3">
       <div className="rounded-md bg-primary/10 p-2 text-primary">
         {icon}
       </div>
