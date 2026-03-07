@@ -11,18 +11,33 @@ interface TaskCardProps {
 }
 
 const priorityColors = {
-  high: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-  low: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  high: 'text-rose-600 dark:text-rose-400',
+  medium: 'text-amber-600 dark:text-amber-400',
+  low: 'text-emerald-600 dark:text-emerald-400',
 }
 
 const statusDots: Record<string, string> = {
-  pending: 'bg-gray-400',
-  in_progress: 'bg-blue-500 animate-pulse',
+  pending: 'bg-stone-400',
+  in_progress: 'bg-teal-500 animate-pulse',
   review: 'bg-amber-500',
-  failed: 'bg-red-500',
-  done: 'bg-green-500',
-  approved: 'bg-green-600',
+  failed: 'bg-rose-500',
+  done: 'bg-emerald-500',
+  approved: 'bg-emerald-600',
+}
+
+function TaskCardContent({ task }: { task: Task }) {
+  return (
+    <>
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="text-xs font-mono text-muted-foreground">{task.storyId}</span>
+        <span className={`text-[11px] font-medium uppercase tracking-wide ${priorityColors[task.priority]}`}>
+          {task.priority}
+        </span>
+        <div className={`ml-auto w-2 h-2 rounded-full ${statusDots[task.status] || 'bg-stone-400'}`} />
+      </div>
+      <p className="text-sm font-medium leading-tight">{task.title}</p>
+    </>
+  )
 }
 
 export function TaskCard({ task, isActive, onClick, onReview }: TaskCardProps) {
@@ -47,30 +62,36 @@ export function TaskCard({ task, isActive, onClick, onReview }: TaskCardProps) {
       {...attributes}
       {...listeners}
       onClick={onClick}
-      className={`p-3 rounded-lg border bg-card cursor-pointer transition-shadow hover:shadow-md ${
-        isDragging ? 'opacity-50 shadow-lg' : ''
+      className={`p-3 rounded-lg bg-card cursor-pointer transition-all hover:shadow-sm ${
+        isDragging ? 'opacity-0' : ''
       } ${isActive ? 'ring-2 ring-primary' : ''}`}
     >
-      <div className="flex items-center gap-2 mb-1.5">
-        <span className="text-xs font-mono text-muted-foreground">{task.storyId}</span>
-        <span className={`text-xs px-1.5 py-0.5 rounded ${priorityColors[task.priority]}`}>
-          {task.priority}
-        </span>
-        <div className={`ml-auto w-2 h-2 rounded-full ${statusDots[task.status] || 'bg-gray-400'}`} />
-      </div>
-      <p className="text-sm font-medium leading-tight">{task.title}</p>
+      <TaskCardContent task={task} />
       {task.status === 'review' && (
         <button
           onClick={(e) => {
             e.stopPropagation()
             onReview?.()
           }}
-          className="inline-flex items-center gap-1 mt-1.5 text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
+          className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
         >
           <Eye className="h-3 w-3" />
           Review
         </button>
       )}
+    </div>
+  )
+}
+
+export function TaskCardOverlay({ task, isActive }: { task: Task; isActive?: boolean }) {
+  return (
+    <div
+      className={`p-3 rounded-lg bg-card shadow-lg cursor-grabbing ${
+        isActive ? 'ring-2 ring-primary' : ''
+      }`}
+      style={{ width: 'var(--card-width, auto)', rotate: '2deg' }}
+    >
+      <TaskCardContent task={task} />
     </div>
   )
 }

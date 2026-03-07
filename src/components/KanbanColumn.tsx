@@ -21,14 +21,14 @@ export function KanbanColumn({ id, title, tasks, activeTaskId, onTaskClick, onTa
     <div className="flex flex-col flex-1 min-w-[280px] max-w-[400px]">
       <div className="flex items-center gap-2 mb-3 px-1">
         <h3 className="text-sm font-semibold">{title}</h3>
-        <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+        <span className="text-xs text-muted-foreground">
           {tasks.length}
         </span>
       </div>
       <div
         ref={setNodeRef}
-        className={`flex-1 p-2 rounded-lg bg-muted/40 border border-dashed transition-colors space-y-2 min-h-[200px] ${
-          isOver ? 'border-primary bg-primary/5' : 'border-transparent'
+        className={`flex-1 p-2 rounded-lg transition-colors space-y-2 min-h-[200px] ${
+          isOver ? 'bg-primary/5' : ''
         }`}
       >
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>

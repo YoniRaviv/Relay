@@ -40,7 +40,7 @@ export function ProjectSidebar({ projectName, activeView, onViewChange }: Projec
         ))}
       </nav>
 
-      <div className="mt-auto pt-4 border-t flex items-center justify-between">
+      <div className="mt-auto pt-4 flex items-center justify-between">
         <span className="text-xs text-muted-foreground">Theme</span>
         <ThemeToggle />
       </div>

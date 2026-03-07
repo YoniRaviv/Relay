@@ -76,6 +76,16 @@ npm run dev
 
 Opens the app with Vite HMR. The Electron main process and preload script are compiled alongside the renderer.
 
+#### Dev bypass (no API key needed)
+
+In dev mode, enter **`dev-bypass`** as the API key to skip real API validation. You can also seed a demo project with sample data:
+
+```bash
+npx tsx scripts/seed-demo.ts
+```
+
+Then launch the app, enter `dev-bypass` as the key, and select the "Demo Project" to explore the UI with pre-populated tasks.
+
 ### Build
 
 ```bash

@@ -13,12 +13,12 @@ const statusLabels: Record<string, string> = {
 }
 
 const statusColors: Record<string, string> = {
-  pending: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-  in_progress: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  review: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-  failed: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  done: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  approved: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  pending: 'text-muted-foreground',
+  in_progress: 'text-teal-600 dark:text-teal-400',
+  review: 'text-amber-600 dark:text-amber-400',
+  failed: 'text-rose-600 dark:text-rose-400',
+  done: 'text-emerald-600 dark:text-emerald-400',
+  approved: 'text-emerald-600 dark:text-emerald-400',
 }
 
 export function TaskDetail() {
@@ -31,16 +31,16 @@ export function TaskDetail() {
   const taskActivity = activityFeed.filter((a) => a.taskId === task.id)
 
   return (
-    <div className="w-96 border-l bg-card flex flex-col h-full overflow-hidden">
-      <div className="flex items-center justify-between p-4 border-b">
+    <div className="w-96 bg-[var(--color-sidebar)] flex flex-col h-full overflow-hidden">
+      <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-muted-foreground">{task.storyId}</span>
-          <span className={`text-xs px-2 py-0.5 rounded ${statusColors[task.status]}`}>
+          <span className={`text-xs font-medium ${statusColors[task.status]}`}>
             {statusLabels[task.status]}
           </span>
           {isActiveTask && (
-            <span className="flex items-center gap-1 text-xs text-blue-500">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+            <span className="flex items-center gap-1 text-xs text-teal-600 dark:text-teal-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
               Active
             </span>
           )}
