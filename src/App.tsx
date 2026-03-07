@@ -31,14 +31,20 @@ function App() {
   const handleSetupComplete = async (project: Project) => {
     setActiveProject(project)
 
-    const prd = await window.relayAPI.getPrd(project.id)
-    if (prd) {
-      setPrd(prd)
-      setPrdMarkdown(prd.markdown as string)
-      const tasks = await window.relayAPI.listTasks(project.id)
-      setTasks(tasks)
-      setView('board')
-    } else {
+    try {
+      const prd = await window.relayAPI.getPrd(project.id)
+      if (prd) {
+        setPrd(prd)
+        setPrdMarkdown(prd.markdown as string)
+        const tasks = await window.relayAPI.listTasks(project.id)
+        setTasks(tasks)
+        setView('board')
+      } else {
+        setView('prd-wizard')
+      }
+    } catch (err) {
+      console.error('Failed to load project data:', err)
+      // Still proceed to PRD wizard even if loading fails
       setView('prd-wizard')
     }
   }

@@ -40,19 +40,23 @@ export function ProjectSelector({ onProjectSelected }: ProjectSelectorProps) {
     }
   }
 
-  const openProject = async (path: string) => {
+  const openProject = async (projectPath: string) => {
     setError('')
-    const project = await window.relayAPI.openProject(path)
-    if (project) {
-      onProjectSelected(project)
-    } else {
-      setError('Could not open project at ' + path)
+    try {
+      const project = await window.relayAPI.openProject(projectPath)
+      if (project) {
+        onProjectSelected(project)
+      } else {
+        setError('Could not open project at ' + projectPath)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to open project')
     }
   }
 
   const openExisting = async () => {
-    const path = await window.relayAPI.selectFolder()
-    if (path) openProject(path)
+    const folderPath = await window.relayAPI.selectFolder()
+    if (folderPath) await openProject(folderPath)
   }
 
   if (creating) {
