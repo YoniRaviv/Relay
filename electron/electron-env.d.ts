@@ -49,9 +49,9 @@ interface RelayAPI {
   reviewReject(projectId: string, taskId: string, notes: string): Promise<unknown>
 
   // Metrics
-  projectMetrics(): Promise<unknown>
-  taskMetrics(taskId: string): Promise<unknown>
-  exportMetrics(): Promise<unknown>
+  projectMetrics(projectId: string): Promise<unknown>
+  taskMetrics(projectId: string): Promise<unknown>
+  exportMetrics(projectId: string): Promise<unknown>
 
   // Event listeners
   on(channel: string, callback: (...args: unknown[]) => void): () => void

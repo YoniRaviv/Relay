@@ -6,6 +6,7 @@ import { TaskDetail } from '@/components/TaskDetail'
 import { LoopControls } from '@/components/LoopControls'
 import { AgentActivityFeed } from '@/components/AgentActivityFeed'
 import { ReviewPanel } from '@/components/ReviewPanel'
+import { Summary } from '@/pages/Summary'
 import { useRelayStore } from '@/store/useRelayStore'
 import type { Task, TaskLog, LoopState } from '@shared/types'
 
@@ -105,9 +106,7 @@ export function Board({ onSwitchProject }: BoardProps) {
             )}
 
             {sidebarView === 'summary' && (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                Summary dashboard will be available in Phase 7.
-              </div>
+              <Summary projectId={activeProject.id} />
             )}
 
             {sidebarView === 'settings' && (
