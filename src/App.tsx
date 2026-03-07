@@ -83,7 +83,7 @@ function App() {
   }
 
   if (view === 'prd-wizard') {
-    return <PRDWizard onComplete={handlePrdComplete} />
+    return <PRDWizard onComplete={handlePrdComplete} onBack={handleSwitchProject} />
   }
 
   return <Board onSwitchProject={handleSwitchProject} />
