@@ -19,9 +19,10 @@ interface DecomposedTask {
 
 interface PRDWizardProps {
   onComplete: () => void
+  onBack: () => void
 }
 
-export function PRDWizard({ onComplete }: PRDWizardProps) {
+export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
   const {
     activeProject,
     wizardStep,
@@ -124,7 +125,13 @@ export function PRDWizard({ onComplete }: PRDWizardProps) {
   return (
     <div className="flex items-center justify-center min-h-screen p-4">
       <Card className="w-[640px]">
-        <CardHeader className="text-center">
+        <CardHeader className="text-center relative">
+          <button
+            onClick={onBack}
+            className="absolute left-6 top-6 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            &larr; Back
+          </button>
           <CardTitle className="text-xl">PRD Wizard</CardTitle>
         </CardHeader>
         <CardContent>

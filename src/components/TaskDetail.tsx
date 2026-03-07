@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { X } from 'lucide-react'
+import { ActivityMessage } from '@/components/ActivityMessage'
 import { useRelayStore } from '@/store/useRelayStore'
 
 const statusLabels: Record<string, string> = {
@@ -21,10 +22,13 @@ const statusColors: Record<string, string> = {
 }
 
 export function TaskDetail() {
-  const { tasks, selectedTaskId, setSelectedTaskId } = useRelayStore()
+  const { tasks, selectedTaskId, setSelectedTaskId, activityFeed, currentTaskId } = useRelayStore()
   const task = tasks.find((t) => t.id === selectedTaskId)
 
   if (!task) return null
+
+  const isActiveTask = task.id === currentTaskId
+  const taskActivity = activityFeed.filter((a) => a.taskId === task.id)
 
   return (
     <div className="w-96 border-l bg-card flex flex-col h-full overflow-hidden">
@@ -34,6 +38,12 @@ export function TaskDetail() {
           <span className={`text-xs px-2 py-0.5 rounded ${statusColors[task.status]}`}>
             {statusLabels[task.status]}
           </span>
+          {isActiveTask && (
+            <span className="flex items-center gap-1 text-xs text-blue-500">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+              Active
+            </span>
+          )}
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedTaskId(null)}>
           <X className="h-4 w-4" />
@@ -64,7 +74,17 @@ export function TaskDetail() {
         )}
 
         <Section title="Activity">
-          <p className="text-sm text-muted-foreground italic">Activity log will be available when the agent loop is active.</p>
+          {taskActivity.length > 0 ? (
+            <div className="space-y-0.5">
+              {taskActivity.map((log) => (
+                <ActivityMessage key={log.id} log={log} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground italic">
+              {isActiveTask ? 'Waiting for activity...' : 'No activity recorded yet.'}
+            </p>
+          )}
         </Section>
       </div>
     </div>

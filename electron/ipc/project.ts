@@ -28,22 +28,42 @@ export function registerProjectHandlers(): void {
   });
 
   ipcMain.handle('project:open', async (_event, projectPath: string): Promise<Project | null> => {
-    const dbPath = path.join(projectPath, '.relay', 'relay.db');
-    if (!fs.existsSync(dbPath)) return null;
+    const relayDir = path.join(projectPath, '.relay');
+    const dbPath = path.join(relayDir, 'relay.db');
+
+    // If .relay/relay.db exists, open the existing project
+    if (fs.existsSync(dbPath)) {
+      const db = openDb(projectPath);
+      const row = db.prepare(`SELECT * FROM projects WHERE path = ? LIMIT 1`).get(projectPath) as Record<string, unknown> | undefined;
+      if (row) {
+        const project: Project = {
+          id: row.id as string,
+          name: row.name as string,
+          path: row.path as string,
+          status: row.status as Project['status'],
+          createdAt: row.created_at as string,
+          updatedAt: row.updated_at as string,
+        };
+        addToRecent(project);
+        return project;
+      }
+    }
+
+    // Otherwise, initialize as a new Relay project
+    if (!fs.existsSync(relayDir)) {
+      fs.mkdirSync(relayDir, { recursive: true });
+    }
 
     const db = openDb(projectPath);
-    const row = db.prepare(`SELECT * FROM projects WHERE path = ? LIMIT 1`).get(projectPath) as Record<string, unknown> | undefined;
-    if (!row) return null;
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const name = path.basename(projectPath);
 
-    const project: Project = {
-      id: row.id as string,
-      name: row.name as string,
-      path: row.path as string,
-      status: row.status as Project['status'],
-      createdAt: row.created_at as string,
-      updatedAt: row.updated_at as string,
-    };
+    db.prepare(
+      `INSERT INTO projects (id, name, path, status, created_at, updated_at) VALUES (?, ?, ?, 'active', ?, ?)`
+    ).run(id, name, projectPath, now, now);
 
+    const project: Project = { id, name, path: projectPath, status: 'active', createdAt: now, updatedAt: now };
     addToRecent(project);
     return project;
   });
