@@ -7,6 +7,13 @@ const relayAPI = {
   getApiKey: () => ipcRenderer.invoke('cc:getApiKey'),
   getSettings: () => ipcRenderer.invoke('cc:getSettings'),
 
+  // Engine
+  getEngineMode: () => ipcRenderer.invoke('cc:getEngineMode'),
+  setEngineMode: (mode: string) => ipcRenderer.invoke('cc:setEngineMode', mode),
+  getCliToolsPreset: () => ipcRenderer.invoke('cc:getCliToolsPreset'),
+  setCliToolsPreset: (preset: string) => ipcRenderer.invoke('cc:setCliToolsPreset', preset),
+  checkCliAvailable: () => ipcRenderer.invoke('cc:checkCliAvailable'),
+
   // Project
   createProject: (params: { name: string; path: string }) => ipcRenderer.invoke('project:create', params),
   openProject: (path: string) => ipcRenderer.invoke('project:open', path),

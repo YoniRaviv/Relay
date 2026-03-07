@@ -1,0 +1,248 @@
+import { BrowserWindow } from 'electron';
+import { randomUUID } from 'node:crypto';
+import { query } from '@anthropic-ai/claude-agent-sdk';
+import { buildTaskPrompt } from '../promptBuilder';
+import { openDb } from '../../db/connection';
+import { store } from '../../ipc/settings';
+import type { Task, PRD } from '../../../shared/types';
+import type { TaskEngine, TaskRunResult, CliToolsPreset } from './types';
+
+const CONSERVATIVE_TOOLS = ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'MultiEdit'];
+const FULL_TOOLS = [...CONSERVATIVE_TOOLS, 'Bash', 'WebFetch', 'NotebookEdit'];
+
+function getDbForProject(projectId: string) {
+  const projects = store.get('recentProjects', []) as Array<{ path: string }>;
+  for (const p of projects) {
+    try {
+      const db = openDb(p.path);
+      const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
+      if (row) return db;
+    } catch {
+      continue;
+    }
+  }
+  throw new Error('Project not found');
+}
+
+function getProjectPath(projectId: string): string {
+  const projects = store.get('recentProjects', []) as Array<{ path: string }>;
+  for (const p of projects) {
+    try {
+      const db = openDb(p.path);
+      const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
+      if (row) return p.path;
+    } catch {
+      continue;
+    }
+  }
+  throw new Error('Project path not found');
+}
+
+function getPrd(projectId: string): PRD | null {
+  const db = getDbForProject(projectId);
+  const row = db.prepare(
+    'SELECT * FROM prd WHERE project_id = ? ORDER BY created_at DESC LIMIT 1'
+  ).get(projectId) as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return {
+    id: row.id as string,
+    projectId: row.project_id as string,
+    description: row.description as string,
+    markdown: row.markdown as string,
+    status: row.status as PRD['status'],
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  };
+}
+
+function getPresetTools(): string[] {
+  const preset = (store.get('cliToolsPreset') ?? 'conservative') as CliToolsPreset;
+  return preset === 'full' ? FULL_TOOLS : CONSERVATIVE_TOOLS;
+}
+
+export const cliEngine: TaskEngine = {
+  async runTask(
+    task: Task,
+    win: BrowserWindow,
+    abortSignal: { aborted: boolean }
+  ): Promise<TaskRunResult> {
+    const startTime = Date.now();
+    let tokensIn = 0;
+    let tokensOut = 0;
+    let toolCalls = 0;
+
+    try {
+      const projectPath = getProjectPath(task.projectId);
+      const prd = getPrd(task.projectId);
+      const prompt = buildTaskPrompt(task, prd, task.rejectionNotes);
+
+      const db = getDbForProject(task.projectId);
+      db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
+        .run('in_progress', new Date().toISOString(), task.id);
+
+      win.webContents.send('agent:activity', {
+        id: randomUUID(),
+        taskId: task.id,
+        type: 'text',
+        content: `Starting task (Claude Code CLI): ${task.storyId} — ${task.title}`,
+        timestamp: new Date().toISOString(),
+      });
+
+      const ac = new AbortController();
+
+      // Bridge the simple abortSignal to the AbortController
+      const abortCheck = setInterval(() => {
+        if (abortSignal.aborted) {
+          ac.abort();
+          clearInterval(abortCheck);
+        }
+      }, 200);
+
+      try {
+        // Build clean env:
+        // 1. Strip CLAUDECODE to prevent "nested session" detection
+        // 2. Ensure PATH includes common locations (Electron GUI apps get minimal PATH on macOS)
+        const cleanEnv = { ...process.env };
+        delete cleanEnv.CLAUDECODE;
+
+        const os = await import('os');
+        const homedir = os.homedir();
+        const extraPaths = [
+          `${homedir}/.local/bin`,
+          `${homedir}/.nvm/versions/node/current/bin`,
+          '/usr/local/bin',
+          '/opt/homebrew/bin',
+        ];
+        cleanEnv.PATH = [...extraPaths, cleanEnv.PATH ?? ''].join(':');
+
+        const session = query({
+          prompt,
+          options: {
+            cwd: projectPath,
+            abortController: ac,
+            allowedTools: getPresetTools(),
+            permissionMode: 'acceptEdits',
+            maxTurns: 50,
+            systemPrompt: 'You are an expert software engineer completing a coding task. Work methodically through the acceptance criteria. Read existing code before making changes. Follow existing patterns and conventions.',
+            persistSession: false,
+            env: cleanEnv,
+            debug: true,
+            stderr: (data: string) => {
+              console.error('[cliEngine:stderr]', data);
+            },
+          },
+        });
+
+        for await (const message of session) {
+          if (abortSignal.aborted) {
+            ac.abort();
+            throw new Error('Task aborted');
+          }
+
+          if (message.type === 'assistant') {
+            // Process content blocks from the assistant message
+            for (const block of message.message.content) {
+              if (block.type === 'text') {
+                win.webContents.send('agent:activity', {
+                  id: randomUUID(),
+                  taskId: task.id,
+                  type: 'text',
+                  content: block.text,
+                  timestamp: new Date().toISOString(),
+                });
+              } else if (block.type === 'tool_use') {
+                toolCalls++;
+                win.webContents.send('agent:activity', {
+                  id: randomUUID(),
+                  taskId: task.id,
+                  type: 'tool_use',
+                  content: `Tool: ${block.name}${(block.input as Record<string, unknown>).path ? ` — ${(block.input as Record<string, unknown>).path}` : ''}`,
+                  timestamp: new Date().toISOString(),
+                });
+              }
+            }
+
+            // Capture usage from each assistant message
+            if (message.message.usage) {
+              tokensIn += message.message.usage.input_tokens;
+              tokensOut += message.message.usage.output_tokens;
+            }
+          } else if (message.type === 'result') {
+            // Use the result's aggregated usage (more accurate)
+            tokensIn = message.usage.input_tokens;
+            tokensOut = message.usage.output_tokens;
+
+            if (message.subtype !== 'success') {
+              const errorResult = message as { errors?: string[] };
+              const errorMsg = errorResult.errors?.join(', ') ?? 'Task failed';
+              throw new Error(errorMsg);
+            }
+          } else if (message.type === 'system') {
+            const sysMsg = message as { content?: string };
+            if (sysMsg.content) {
+              win.webContents.send('agent:activity', {
+                id: randomUUID(),
+                taskId: task.id,
+                type: 'text',
+                content: `[system] ${sysMsg.content}`,
+                timestamp: new Date().toISOString(),
+              });
+            }
+          }
+        }
+      } finally {
+        clearInterval(abortCheck);
+      }
+
+      // Mark task as review
+      db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
+        .run('review', new Date().toISOString(), task.id);
+
+      const durationMs = Date.now() - startTime;
+
+      db.prepare(
+        `INSERT INTO task_metrics (id, task_id, duration_ms, tokens_in, tokens_out, tool_calls, passes, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(randomUUID(), task.id, durationMs, tokensIn, tokensOut, toolCalls, task.passes + 1, new Date().toISOString());
+
+      db.prepare(
+        `INSERT INTO task_logs (id, task_id, type, content, timestamp)
+         VALUES (?, ?, 'text', ?, ?)`
+      ).run(randomUUID(), task.id, `Completed in ${Math.round(durationMs / 1000)}s — ${toolCalls} tool calls, ${tokensIn + tokensOut} tokens (CLI engine)`, new Date().toISOString());
+
+      win.webContents.send('agent:activity', {
+        id: randomUUID(),
+        taskId: task.id,
+        type: 'text',
+        content: `Task complete. Ready for review.`,
+        timestamp: new Date().toISOString(),
+      });
+
+      return { success: true, tokensIn, tokensOut, toolCalls, durationMs };
+    } catch (err) {
+      const durationMs = Date.now() - startTime;
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+
+      try {
+        const db = getDbForProject(task.projectId);
+        db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
+          .run('failed', new Date().toISOString(), task.id);
+      } catch {
+        // ignore db errors during error handling
+      }
+
+      win.webContents.send('agent:activity', {
+        id: randomUUID(),
+        taskId: task.id,
+        type: 'error',
+        content: `Error: ${errorMsg}`,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Log the full error for debugging
+      console.error('[cliEngine] Task failed:', err);
+
+      return { success: false, tokensIn, tokensOut, toolCalls, durationMs, error: errorMsg };
+    }
+  },
+};

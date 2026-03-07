@@ -4,7 +4,8 @@
   "appId": "com.relay.app",
   "asar": true,
   "asarUnpack": [
-    "node_modules/better-sqlite3/**"
+    "node_modules/better-sqlite3/**",
+    "node_modules/@anthropic-ai/claude-agent-sdk/**"
   ],
   "productName": "Relay",
   "directories": {
@@ -13,7 +14,8 @@
   "files": [
     "dist",
     "dist-electron",
-    "node_modules/better-sqlite3/**"
+    "node_modules/better-sqlite3/**",
+    "node_modules/@anthropic-ai/claude-agent-sdk/**"
   ],
   "mac": {
     "target": [

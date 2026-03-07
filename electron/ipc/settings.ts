@@ -1,13 +1,24 @@
 import { ipcMain, safeStorage, app } from 'electron';
 import Store from 'electron-store';
-import type { AuthStatus } from '../../shared/types';
+import type { AuthStatus, EngineMode, CliToolsPreset } from '../../shared/types';
 
-const store = new Store<{ apiKey?: string; recentProjects?: Array<{ name: string; path: string; lastOpened: string }> }>();
+const store = new Store<{
+  apiKey?: string;
+  recentProjects?: Array<{ name: string; path: string; lastOpened: string }>;
+  engineMode?: EngineMode;
+  cliToolsPreset?: CliToolsPreset;
+}>();
 
 const isDev = !app.isPackaged;
 
 export function registerSettingsHandlers(): void {
   ipcMain.handle('cc:checkAuth', async (): Promise<AuthStatus> => {
+    // In CLI engine mode, no API key needed
+    const engineMode = (store.get('engineMode') ?? 'api-key') as EngineMode;
+    if (engineMode === 'claude-code') {
+      return { valid: true };
+    }
+
     // In dev mode, allow a dummy key for testing without a real API key
     if (isDev && store.get('apiKey') === 'dev-bypass') {
       return { valid: true };
@@ -68,6 +79,34 @@ export function registerSettingsHandlers(): void {
       hasApiKey: !!store.get('apiKey'),
       recentProjects: store.get('recentProjects', []),
     };
+  });
+
+  // Engine mode
+  ipcMain.handle('cc:getEngineMode', async (): Promise<EngineMode> => {
+    return (store.get('engineMode') ?? 'api-key') as EngineMode;
+  });
+
+  ipcMain.handle('cc:setEngineMode', async (_event, mode: EngineMode): Promise<void> => {
+    store.set('engineMode', mode);
+  });
+
+  // CLI tools preset
+  ipcMain.handle('cc:getCliToolsPreset', async (): Promise<CliToolsPreset> => {
+    return (store.get('cliToolsPreset') ?? 'conservative') as CliToolsPreset;
+  });
+
+  ipcMain.handle('cc:setCliToolsPreset', async (_event, preset: CliToolsPreset): Promise<void> => {
+    store.set('cliToolsPreset', preset);
+  });
+
+  // Check if Claude Code CLI SDK is available
+  ipcMain.handle('cc:checkCliAvailable', async (): Promise<{ available: boolean; error?: string }> => {
+    try {
+      await import('@anthropic-ai/claude-agent-sdk');
+      return { available: true };
+    } catch {
+      return { available: false, error: 'Claude Code SDK not available. Run `claude login` in your terminal first.' };
+    }
   });
 }
 

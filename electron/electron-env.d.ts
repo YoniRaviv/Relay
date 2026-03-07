@@ -14,6 +14,13 @@ interface RelayAPI {
   getApiKey(): Promise<string | null>
   getSettings(): Promise<{ hasApiKey: boolean; recentProjects: import('../shared/types').RecentProject[] }>
 
+  // Engine
+  getEngineMode(): Promise<import('../shared/types').EngineMode>
+  setEngineMode(mode: import('../shared/types').EngineMode): Promise<void>
+  getCliToolsPreset(): Promise<import('../shared/types').CliToolsPreset>
+  setCliToolsPreset(preset: import('../shared/types').CliToolsPreset): Promise<void>
+  checkCliAvailable(): Promise<{ available: boolean; error?: string }>
+
   // Project
   createProject(params: { name: string; path: string }): Promise<import('../shared/types').Project>
   openProject(path: string): Promise<import('../shared/types').Project | null>
