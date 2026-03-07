@@ -7,6 +7,7 @@ export interface TaskRunResult {
   tokensOut: number;
   toolCalls: number;
   durationMs: number;
+  model?: string;
   error?: string;
 }
 

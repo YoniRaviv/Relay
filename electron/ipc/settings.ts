@@ -7,6 +7,7 @@ const store = new Store<{
   recentProjects?: Array<{ name: string; path: string; lastOpened: string }>;
   engineMode?: EngineMode;
   cliToolsPreset?: CliToolsPreset;
+  selectedModel?: string;
 }>();
 
 const isDev = !app.isPackaged;
@@ -97,6 +98,15 @@ export function registerSettingsHandlers(): void {
 
   ipcMain.handle('cc:setCliToolsPreset', async (_event, preset: CliToolsPreset): Promise<void> => {
     store.set('cliToolsPreset', preset);
+  });
+
+  // Model selection
+  ipcMain.handle('cc:getSelectedModel', async (): Promise<string> => {
+    return (store.get('selectedModel') ?? 'claude-sonnet-4-20250514') as string;
+  });
+
+  ipcMain.handle('cc:setSelectedModel', async (_event, model: string): Promise<void> => {
+    store.set('selectedModel', model);
   });
 
   // Check if Claude Code CLI SDK is available

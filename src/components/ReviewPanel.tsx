@@ -83,16 +83,17 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
 
   return (
     <div className="fixed inset-0 z-40 flex bg-background/80 backdrop-blur-sm">
-      <div className="flex flex-col w-full h-full bg-card border rounded-lg m-4 shadow-xl overflow-hidden">
+      <div className="flex flex-col w-full h-full bg-card border border-border rounded-lg m-4 shadow-xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
-          <div className="flex items-center gap-3">
-            <h2 className="font-semibold text-sm">Review: {task.storyId} — {task.title}</h2>
-            <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-[var(--color-sidebar)]">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="text-xs font-mono text-muted-foreground shrink-0">{task.storyId}</span>
+            <h2 className="font-semibold text-sm truncate">{task.title}</h2>
+            <span className="text-[11px] font-medium uppercase tracking-wide text-amber-600 dark:text-amber-400 shrink-0">
               Review
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {!showRejectInput && (
               <>
                 <Button
@@ -100,6 +101,7 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
                   size="sm"
                   onClick={() => setShowRejectInput(true)}
                   disabled={submitting}
+                  className="text-destructive border-destructive/30 hover:bg-destructive/10"
                 >
                   <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
                   Reject
@@ -108,10 +110,9 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
                   size="sm"
                   onClick={() => setShowCommitDialog(true)}
                   disabled={submitting}
-                  className="bg-green-600 hover:bg-green-700 text-white"
                 >
                   <Check className="h-3.5 w-3.5 mr-1.5" />
-                  Approve
+                  Approve & Commit
                 </Button>
               </>
             )}
@@ -123,15 +124,15 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
 
         {/* Reject input bar */}
         {showRejectInput && (
-          <div className="flex items-start gap-2 px-4 py-3 border-b bg-red-50 dark:bg-red-950/20">
+          <div className="flex items-start gap-3 px-5 py-3 border-b border-border bg-destructive/5">
             <textarea
               value={rejectionNotes}
               onChange={(e) => setRejectionNotes(e.target.value)}
               placeholder="Describe what needs to change..."
-              className="flex-1 px-3 py-2 text-sm rounded-md border bg-background resize-none h-20 focus:outline-none focus:ring-2 focus:ring-ring"
+              className="flex-1 px-3 py-2 text-sm rounded-md border border-border bg-background resize-none h-20 focus:outline-none focus:ring-2 focus:ring-ring"
               autoFocus
             />
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1.5">
               <Button
                 size="sm"
                 variant="destructive"
@@ -150,17 +151,17 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
         {/* Content */}
         <div className="flex flex-1 overflow-hidden">
           {/* File list sidebar */}
-          <div className="w-64 border-r overflow-auto bg-muted/10">
-            <div className="px-3 py-2 border-b">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="w-64 border-r border-border overflow-auto bg-[var(--color-sidebar)]">
+            <div className="px-3 py-2.5 border-b border-border">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Changed Files
-              </span>
+              </h3>
             </div>
             <FileChangeList files={files} />
           </div>
 
           {/* Diff viewer */}
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-auto bg-card">
             {loading ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

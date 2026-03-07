@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { FolderSync, ChevronRight, Cpu, Terminal, Shield, Zap } from 'lucide-react'
+import { FolderSync, ChevronRight, Cpu, Terminal, Shield, Zap, Sparkles } from 'lucide-react'
+import { AVAILABLE_MODELS } from '../../shared/pricing'
 import type { EngineMode, CliToolsPreset } from '../../shared/types'
 
 interface SettingsViewProps {
@@ -36,7 +37,7 @@ function SettingsRow({ icon, label, description, onClick, children }: SettingsRo
         isClickable ? 'hover:bg-accent/50 transition-colors cursor-pointer' : ''
       }`}
     >
-      <div className="flex-shrink-0 text-muted-foreground">
+      <div className="shrink-0 text-muted-foreground">
         {icon}
       </div>
       <div className="flex-1 min-w-0">
@@ -47,7 +48,7 @@ function SettingsRow({ icon, label, description, onClick, children }: SettingsRo
       </div>
       {children}
       {isClickable && !children && (
-        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
       )}
     </Tag>
   )
@@ -59,12 +60,14 @@ function EngineOption({
   icon,
   label,
   description,
+  children,
 }: {
   selected: boolean
   onSelect: () => void
   icon: React.ReactNode
   label: string
   description: string
+  children?: React.ReactNode
 }) {
   return (
     <button
@@ -73,14 +76,15 @@ function EngineOption({
         selected ? 'bg-accent/60' : 'hover:bg-accent/30'
       }`}
     >
-      <div className={`flex-shrink-0 ${selected ? 'text-foreground' : 'text-muted-foreground'}`}>
+      <div className={`shrink-0 ${selected ? 'text-foreground' : 'text-muted-foreground'}`}>
         {icon}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium">{label}</p>
         <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
       </div>
-      <div className={`h-4 w-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+      {children}
+      <div className={`h-4 w-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
         selected ? 'border-foreground' : 'border-muted-foreground/40'
       }`}>
         {selected && <div className="h-2 w-2 rounded-full bg-foreground" />}
@@ -89,14 +93,22 @@ function EngineOption({
   )
 }
 
+const tierColors: Record<string, string> = {
+  fast: 'text-emerald-600 dark:text-emerald-400',
+  balanced: 'text-amber-600 dark:text-amber-400',
+  powerful: 'text-purple-600 dark:text-purple-400',
+}
+
 export function SettingsView({ onSwitchProject }: SettingsViewProps) {
   const [engineMode, setEngineMode] = useState<EngineMode>('api-key')
   const [toolsPreset, setToolsPreset] = useState<CliToolsPreset>('conservative')
+  const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-20250514')
   const [cliAvailable, setCliAvailable] = useState<{ available: boolean; error?: string } | null>(null)
 
   useEffect(() => {
     window.relayAPI.getEngineMode().then(setEngineMode)
     window.relayAPI.getCliToolsPreset().then(setToolsPreset)
+    window.relayAPI.getSelectedModel().then(setSelectedModel)
     window.relayAPI.checkCliAvailable().then(setCliAvailable)
   }, [])
 
@@ -108,6 +120,11 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
   const handlePresetChange = async (preset: CliToolsPreset) => {
     setToolsPreset(preset)
     await window.relayAPI.setCliToolsPreset(preset)
+  }
+
+  const handleModelChange = async (model: string) => {
+    setSelectedModel(model)
+    await window.relayAPI.setSelectedModel(model)
   }
 
   return (
@@ -132,6 +149,23 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
           />
         </SettingsSection>
 
+        <SettingsSection title="Model">
+          {AVAILABLE_MODELS.map((m) => (
+            <EngineOption
+              key={m.id}
+              selected={selectedModel === m.id}
+              onSelect={() => handleModelChange(m.id)}
+              icon={<Sparkles className="h-4 w-4" />}
+              label={m.label}
+              description={m.costLabel}
+            >
+              <span className={`text-[11px] font-medium uppercase tracking-wide ${tierColors[m.tier]}`}>
+                {m.tier}
+              </span>
+            </EngineOption>
+          ))}
+        </SettingsSection>
+
         {engineMode === 'claude-code' && (
           <>
             <SettingsSection title="CLI Status">
@@ -144,7 +178,7 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
                     : cliAvailable?.error ?? 'Checking...'
                 }
               >
-                <div className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${
+                <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${
                   cliAvailable === null ? 'bg-muted-foreground/40' : cliAvailable.available ? 'bg-green-500' : 'bg-red-500'
                 }`} />
               </SettingsRow>

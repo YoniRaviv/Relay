@@ -7,6 +7,7 @@ import { store } from '../../ipc/settings';
 import { safeStorage } from 'electron';
 import type { Task, PRD } from '../../../shared/types';
 import type Anthropic from '@anthropic-ai/sdk';
+import { DEFAULT_MODEL } from '../../../shared/pricing';
 import type { TaskEngine, TaskRunResult } from './types';
 
 function getApiKey(): string {
@@ -143,6 +144,7 @@ export const sdkEngine: TaskEngine = {
         timestamp: new Date().toISOString(),
       });
 
+      const modelId = (store.get('selectedModel') ?? DEFAULT_MODEL) as string;
       const messages: Anthropic.MessageParam[] = [{ role: 'user', content: prompt }];
       let continueLoop = true;
 
@@ -152,7 +154,7 @@ export const sdkEngine: TaskEngine = {
         }
 
         const response = await anthropic.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: modelId,
           max_tokens: 16384,
           system: 'You are an expert software engineer completing a coding task. Use the provided tools to read, edit, and create files as needed. Work methodically through the acceptance criteria.',
           messages,
@@ -276,9 +278,9 @@ export const sdkEngine: TaskEngine = {
       const durationMs = Date.now() - startTime;
 
       db.prepare(
-        `INSERT INTO task_metrics (id, task_id, duration_ms, tokens_in, tokens_out, tool_calls, passes, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(randomUUID(), task.id, durationMs, tokensIn, tokensOut, toolCalls, task.passes + 1, new Date().toISOString());
+        `INSERT INTO task_metrics (id, task_id, duration_ms, tokens_in, tokens_out, tool_calls, passes, model, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(randomUUID(), task.id, durationMs, tokensIn, tokensOut, toolCalls, task.passes + 1, modelId, new Date().toISOString());
 
       db.prepare(
         `INSERT INTO task_logs (id, task_id, type, content, timestamp)
@@ -293,7 +295,7 @@ export const sdkEngine: TaskEngine = {
         timestamp: new Date().toISOString(),
       });
 
-      return { success: true, tokensIn, tokensOut, toolCalls, durationMs };
+      return { success: true, tokensIn, tokensOut, toolCalls, durationMs, model: modelId };
     } catch (err) {
       const durationMs = Date.now() - startTime;
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
@@ -314,7 +316,7 @@ export const sdkEngine: TaskEngine = {
         timestamp: new Date().toISOString(),
       });
 
-      return { success: false, tokensIn, tokensOut, toolCalls, durationMs, error: errorMsg };
+      return { success: false, tokensIn, tokensOut, toolCalls, durationMs, model: (store.get('selectedModel') ?? DEFAULT_MODEL) as string, error: errorMsg };
     }
   },
 };

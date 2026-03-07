@@ -5,6 +5,7 @@ import { buildTaskPrompt } from '../promptBuilder';
 import { openDb } from '../../db/connection';
 import { store } from '../../ipc/settings';
 import type { Task, PRD } from '../../../shared/types';
+import { DEFAULT_MODEL } from '../../../shared/pricing';
 import type { TaskEngine, TaskRunResult, CliToolsPreset } from './types';
 
 const CONSERVATIVE_TOOLS = ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'MultiEdit'];
@@ -67,9 +68,11 @@ export const cliEngine: TaskEngine = {
     abortSignal: { aborted: boolean }
   ): Promise<TaskRunResult> {
     const startTime = Date.now();
+    const selectedModel = (store.get('selectedModel') ?? DEFAULT_MODEL) as string;
     let tokensIn = 0;
     let tokensOut = 0;
     let toolCalls = 0;
+    let detectedModel: string | undefined = selectedModel;
 
     try {
       const projectPath = getProjectPath(task.projectId);
@@ -118,6 +121,7 @@ export const cliEngine: TaskEngine = {
         const session = query({
           prompt,
           options: {
+            model: selectedModel,
             cwd: projectPath,
             abortController: ac,
             allowedTools: getPresetTools(),
@@ -140,6 +144,10 @@ export const cliEngine: TaskEngine = {
           }
 
           if (message.type === 'assistant') {
+            // Capture model from the first assistant message
+            if (!detectedModel && (message.message as { model?: string }).model) {
+              detectedModel = (message.message as { model?: string }).model;
+            }
             // Process content blocks from the assistant message
             for (const block of message.message.content) {
               if (block.type === 'text') {
@@ -171,6 +179,9 @@ export const cliEngine: TaskEngine = {
             // Use the result's aggregated usage (more accurate)
             tokensIn = message.usage.input_tokens;
             tokensOut = message.usage.output_tokens;
+            if ((message as { model?: string }).model) {
+              detectedModel = (message as { model?: string }).model;
+            }
 
             if (message.subtype !== 'success') {
               const errorResult = message as { errors?: string[] };
@@ -201,9 +212,9 @@ export const cliEngine: TaskEngine = {
       const durationMs = Date.now() - startTime;
 
       db.prepare(
-        `INSERT INTO task_metrics (id, task_id, duration_ms, tokens_in, tokens_out, tool_calls, passes, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(randomUUID(), task.id, durationMs, tokensIn, tokensOut, toolCalls, task.passes + 1, new Date().toISOString());
+        `INSERT INTO task_metrics (id, task_id, duration_ms, tokens_in, tokens_out, tool_calls, passes, model, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(randomUUID(), task.id, durationMs, tokensIn, tokensOut, toolCalls, task.passes + 1, detectedModel ?? null, new Date().toISOString());
 
       db.prepare(
         `INSERT INTO task_logs (id, task_id, type, content, timestamp)
@@ -218,7 +229,7 @@ export const cliEngine: TaskEngine = {
         timestamp: new Date().toISOString(),
       });
 
-      return { success: true, tokensIn, tokensOut, toolCalls, durationMs };
+      return { success: true, tokensIn, tokensOut, toolCalls, durationMs, model: detectedModel };
     } catch (err) {
       const durationMs = Date.now() - startTime;
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
@@ -242,7 +253,7 @@ export const cliEngine: TaskEngine = {
       // Log the full error for debugging
       console.error('[cliEngine] Task failed:', err);
 
-      return { success: false, tokensIn, tokensOut, toolCalls, durationMs, error: errorMsg };
+      return { success: false, tokensIn, tokensOut, toolCalls, durationMs, model: detectedModel, error: errorMsg };
     }
   },
 };

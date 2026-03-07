@@ -7,6 +7,8 @@ import { TaskDetail } from '@/components/TaskDetail'
 import { LoopControls } from '@/components/LoopControls'
 import { AgentActivityFeed } from '@/components/AgentActivityFeed'
 import { ReviewPanel } from '@/components/ReviewPanel'
+import { BranchIndicator } from '@/components/BranchIndicator'
+import { ModelPicker } from '@/components/ModelPicker'
 import { Summary } from '@/pages/Summary'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { BoardSkeleton } from '@/components/LoadingSkeleton'
@@ -128,7 +130,11 @@ export function Board({ onSwitchProject }: BoardProps) {
         {/* Header with loop controls */}
         {sidebarView === 'board' && (
           <div className="flex items-center justify-between px-6 py-3">
-            <h2 className="text-sm font-semibold">Kanban Board</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-sm font-semibold">Kanban Board</h2>
+              <BranchIndicator />
+              <ModelPicker />
+            </div>
             <LoopControls />
           </div>
         )}

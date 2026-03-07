@@ -12,11 +12,11 @@ export function CommitDialog({ defaultMessage, onConfirm, onCancel }: CommitDial
   const [message, setMessage] = useState(defaultMessage)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-card border rounded-lg shadow-lg w-full max-w-md mx-4">
-        <div className="flex items-center justify-between p-4 border-b">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+      <div className="bg-card border border-border rounded-lg shadow-xl w-full max-w-md mx-4">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-[var(--color-sidebar)]">
           <div className="flex items-center gap-2">
-            <GitCommit className="h-4 w-4" />
+            <GitCommit className="h-4 w-4 text-muted-foreground" />
             <h3 className="font-semibold text-sm">Commit Changes</h3>
           </div>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onCancel}>
@@ -24,17 +24,17 @@ export function CommitDialog({ defaultMessage, onConfirm, onCancel }: CommitDial
           </Button>
         </div>
 
-        <div className="p-4 space-y-3">
-          <label className="text-xs font-medium text-muted-foreground">Commit message</label>
+        <div className="p-5 space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Commit message</label>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            className="w-full h-24 px-3 py-2 text-sm rounded-md border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full h-24 px-3 py-2 text-sm font-mono rounded-md border border-border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
             autoFocus
           />
         </div>
 
-        <div className="flex justify-end gap-2 p-4 border-t">
+        <div className="flex justify-end gap-2 px-5 py-3 border-t border-border">
           <Button variant="outline" size="sm" onClick={onCancel}>
             Cancel
           </Button>

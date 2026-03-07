@@ -12,6 +12,8 @@ interface TaskMetricRow {
   tokensOut: number
   toolCalls: number
   cost: number
+  model: string | null
+  modelLabel: string
 }
 
 interface TaskMetricsTableProps {
@@ -52,6 +54,7 @@ const columns: { key: SortKey; label: string; align?: 'right' }[] = [
   { key: 'storyId', label: 'Story' },
   { key: 'title', label: 'Title' },
   { key: 'status', label: 'Status' },
+  { key: 'modelLabel', label: 'Model' },
   { key: 'passes', label: 'Passes', align: 'right' },
   { key: 'durationMs', label: 'Duration', align: 'right' },
   { key: 'tokensIn', label: 'Tokens In', align: 'right' },
@@ -126,6 +129,7 @@ export function TaskMetricsTable({ tasks }: TaskMetricsTableProps) {
                     {statusLabels[task.status] ?? task.status}
                   </span>
                 </td>
+                <td className="px-4 py-2.5 text-xs text-muted-foreground">{task.modelLabel}</td>
                 <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{task.passes}</td>
                 <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{formatDuration(task.durationMs)}</td>
                 <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{task.tokensIn.toLocaleString()}</td>
@@ -136,7 +140,7 @@ export function TaskMetricsTable({ tasks }: TaskMetricsTableProps) {
             ))}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
+                <td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">
                   No task metrics available yet.
                 </td>
               </tr>
