@@ -95,9 +95,93 @@ body {
 .diff-viewer .d2h-file-name {
   color: var(--color-foreground);
 }
-.diff-viewer .d2h-code-linenumber {
+.diff-viewer .d2h-code-linenumber,
+.diff-viewer .d2h-code-side-linenumber {
   color: var(--color-muted-foreground);
+  background: var(--color-muted);
+  border-color: var(--color-border);
+  position: sticky;
+  left: 0;
+  z-index: 1;
 }
 .diff-viewer .d2h-code-line {
   color: var(--color-foreground);
+}
+.diff-viewer .d2h-emptyplaceholder,
+.diff-viewer .d2h-code-side-emptyplaceholder {
+  background: var(--color-muted);
+  border-color: var(--color-border);
+}
+.diff-viewer .d2h-info {
+  background: var(--color-muted);
+  color: var(--color-muted-foreground);
+  border-color: var(--color-border);
+}
+
+/* ── Light mode diff highlights ── */
+.diff-viewer .d2h-ins {
+  background: #e6f9f0;
+}
+.diff-viewer .d2h-del {
+  background: #fde8e8;
+}
+.diff-viewer .d2h-ins .d2h-code-line-ctn {
+  background: #d1f5e4;
+}
+.diff-viewer .d2h-del .d2h-code-line-ctn {
+  background: #fbd5d5;
+}
+/* Inline word-level highlights */
+.diff-viewer .d2h-ins .d2h-code-line-ctn ins,
+.diff-viewer .d2h-ins ins {
+  background: #a7e8c8;
+  color: #1a3a2a;
+  text-decoration: none;
+}
+.diff-viewer .d2h-del .d2h-code-line-ctn del,
+.diff-viewer .d2h-del del {
+  background: #f5a8a8;
+  color: #3a1a1a;
+  text-decoration: none;
+}
+
+/* ── Dark mode diff highlights ── */
+.dark .diff-viewer .d2h-file-diff .d2h-code-line {
+  background: var(--color-card);
+}
+.dark .diff-viewer .d2h-ins {
+  background: rgba(46, 196, 166, 0.10);
+}
+.dark .diff-viewer .d2h-del {
+  background: rgba(229, 62, 62, 0.10);
+}
+.dark .diff-viewer .d2h-ins .d2h-code-line-ctn {
+  background: rgba(46, 196, 166, 0.15);
+}
+.dark .diff-viewer .d2h-del .d2h-code-line-ctn {
+  background: rgba(229, 62, 62, 0.15);
+}
+/* Dark mode inline word-level highlights */
+.dark .diff-viewer .d2h-ins .d2h-code-line-ctn ins,
+.dark .diff-viewer .d2h-ins ins {
+  background: rgba(46, 196, 166, 0.30);
+  color: #b8f0de;
+  text-decoration: none;
+}
+.dark .diff-viewer .d2h-del .d2h-code-line-ctn del,
+.dark .diff-viewer .d2h-del del {
+  background: rgba(229, 62, 62, 0.30);
+  color: #f5b8b8;
+  text-decoration: none;
+}
+/* Dark mode line numbers for ins/del rows */
+.dark .diff-viewer .d2h-ins .d2h-code-linenumber,
+.dark .diff-viewer .d2h-ins .d2h-code-side-linenumber {
+  background: rgba(46, 196, 166, 0.08);
+  color: var(--color-muted-foreground);
+}
+.dark .diff-viewer .d2h-del .d2h-code-linenumber,
+.dark .diff-viewer .d2h-del .d2h-code-side-linenumber {
+  background: rgba(229, 62, 62, 0.08);
+  color: var(--color-muted-foreground);
 }

@@ -12,10 +12,10 @@ interface FileChangeListProps {
 }
 
 const statusConfig = {
-  new: { icon: FilePlus, color: 'text-green-500', label: 'A' },
-  modified: { icon: FileEdit, color: 'text-yellow-500', label: 'M' },
-  deleted: { icon: FileX, color: 'text-red-500', label: 'D' },
-  renamed: { icon: FileText, color: 'text-blue-500', label: 'R' },
+  new: { icon: FilePlus, color: 'text-emerald-600 dark:text-emerald-400', label: 'A' },
+  modified: { icon: FileEdit, color: 'text-amber-600 dark:text-amber-400', label: 'M' },
+  deleted: { icon: FileX, color: 'text-rose-600 dark:text-rose-400', label: 'D' },
+  renamed: { icon: FileText, color: 'text-sky-600 dark:text-sky-400', label: 'R' },
 }
 
 export function FileChangeList({ files }: FileChangeListProps) {
@@ -30,9 +30,9 @@ export function FileChangeList({ files }: FileChangeListProps) {
         const Icon = config.icon
         return (
           <div key={file.path} className="flex items-center gap-2 px-3 py-1.5 rounded hover:bg-muted/50 text-sm">
-            <Icon className={`h-4 w-4 shrink-0 ${config.color}`} />
-            <span className="truncate flex-1 font-mono text-xs">{file.path}</span>
-            <span className={`text-xs font-mono font-semibold ${config.color}`}>{config.label}</span>
+            <Icon className={`h-3.5 w-3.5 shrink-0 ${config.color}`} />
+            <span className="truncate flex-1 font-mono text-xs text-foreground">{file.path}</span>
+            <span className={`text-[11px] font-mono font-semibold ${config.color}`}>{config.label}</span>
           </div>
         )
       })}

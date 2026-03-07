@@ -17,6 +17,7 @@ interface ProjectMetrics {
   avgPasses: number
   firstPassSuccessRate: number
   totalCost: number
+  modelBreakdown: Array<{ model: string; label: string; tokensIn: number; tokensOut: number; cost: number }>
 }
 
 interface TaskMetricRow {
@@ -30,6 +31,8 @@ interface TaskMetricRow {
   tokensOut: number
   toolCalls: number
   cost: number
+  model: string | null
+  modelLabel: string
 }
 
 interface SummaryProps {

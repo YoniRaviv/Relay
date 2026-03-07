@@ -14,6 +14,15 @@ interface RelayAPI {
   getApiKey(): Promise<string | null>
   getSettings(): Promise<{ hasApiKey: boolean; recentProjects: import('../shared/types').RecentProject[] }>
 
+  // Engine
+  getEngineMode(): Promise<import('../shared/types').EngineMode>
+  setEngineMode(mode: import('../shared/types').EngineMode): Promise<void>
+  getCliToolsPreset(): Promise<import('../shared/types').CliToolsPreset>
+  setCliToolsPreset(preset: import('../shared/types').CliToolsPreset): Promise<void>
+  checkCliAvailable(): Promise<{ available: boolean; error?: string }>
+  getSelectedModel(): Promise<string>
+  setSelectedModel(model: string): Promise<void>
+
   // Project
   createProject(params: { name: string; path: string }): Promise<import('../shared/types').Project>
   openProject(path: string): Promise<import('../shared/types').Project | null>
@@ -42,6 +51,7 @@ interface RelayAPI {
   gitCommit(projectId: string, message: string): Promise<unknown>
   gitLog(projectId: string): Promise<unknown[]>
   gitStatus(projectId: string): Promise<{ clean: boolean; files: Array<{ path: string; insertions: number; deletions: number; status: 'new' | 'modified' | 'deleted' | 'renamed' }> }>
+  gitBranch(projectId: string): Promise<{ current: string; branches: string[] }>
 
   // Review
   reviewGetDiff(projectId: string): Promise<string>

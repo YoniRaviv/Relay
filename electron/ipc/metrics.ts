@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron';
 import { openDb } from '../db/connection';
 import { store } from './settings';
-import { calculateCost } from '../../shared/pricing';
+import { calculateCost, getModelLabel } from '../../shared/pricing';
 
 export interface ProjectMetricsData {
   totalTasks: number;
@@ -16,6 +16,7 @@ export interface ProjectMetricsData {
   avgPasses: number;
   firstPassSuccessRate: number;
   totalCost: number;
+  modelBreakdown: Array<{ model: string; label: string; tokensIn: number; tokensOut: number; cost: number }>;
 }
 
 export interface TaskMetricRow {
@@ -29,6 +30,8 @@ export interface TaskMetricRow {
   tokensOut: number;
   toolCalls: number;
   cost: number;
+  model: string | null;
+  modelLabel: string;
 }
 
 function getDbForProject(projectId: string) {
@@ -83,6 +86,28 @@ export function registerMetricsHandlers(): void {
 
     const completedCount = taskCounts.completed || 0;
 
+    // Calculate cost per model for accurate pricing
+    const modelGroups = db.prepare(`
+      SELECT
+        COALESCE(m.model, 'claude-sonnet-4-20250514') as model,
+        COALESCE(SUM(m.tokens_in), 0) as tokens_in,
+        COALESCE(SUM(m.tokens_out), 0) as tokens_out
+      FROM task_metrics m
+      JOIN tasks t ON m.task_id = t.id
+      WHERE t.project_id = ?
+      GROUP BY COALESCE(m.model, 'claude-sonnet-4-20250514')
+    `).all(projectId) as Array<{ model: string; tokens_in: number; tokens_out: number }>;
+
+    const modelBreakdown = modelGroups.map(g => ({
+      model: g.model,
+      label: getModelLabel(g.model),
+      tokensIn: g.tokens_in,
+      tokensOut: g.tokens_out,
+      cost: calculateCost(g.tokens_in, g.tokens_out, g.model),
+    }));
+
+    const totalCost = modelBreakdown.reduce((sum, g) => sum + g.cost, 0);
+
     return {
       totalTasks: taskCounts.total,
       completedTasks: completedCount,
@@ -95,7 +120,8 @@ export function registerMetricsHandlers(): void {
       totalToolCalls: metricAggs.total_tool_calls,
       avgPasses: Math.round(metricAggs.avg_passes * 10) / 10,
       firstPassSuccessRate: completedCount > 0 ? firstPassCount.count / completedCount : 0,
-      totalCost: calculateCost(metricAggs.total_tokens_in, metricAggs.total_tokens_out),
+      totalCost,
+      modelBreakdown,
     };
   });
 
@@ -112,7 +138,8 @@ export function registerMetricsHandlers(): void {
         COALESCE(m.duration_ms, 0) as duration_ms,
         COALESCE(m.tokens_in, 0) as tokens_in,
         COALESCE(m.tokens_out, 0) as tokens_out,
-        COALESCE(m.tool_calls, 0) as tool_calls
+        COALESCE(m.tool_calls, 0) as tool_calls,
+        m.model
       FROM tasks t
       LEFT JOIN task_metrics m ON m.task_id = t.id
       WHERE t.project_id = ?
@@ -129,7 +156,9 @@ export function registerMetricsHandlers(): void {
       tokensIn: r.tokens_in as number,
       tokensOut: r.tokens_out as number,
       toolCalls: r.tool_calls as number,
-      cost: calculateCost(r.tokens_in as number, r.tokens_out as number),
+      cost: calculateCost(r.tokens_in as number, r.tokens_out as number, r.model as string | null),
+      model: (r.model as string | null) ?? null,
+      modelLabel: getModelLabel(r.model as string | null),
     }));
   });
 

@@ -17,13 +17,13 @@ export function ActivityMessage({ log }: ActivityMessageProps) {
 
   return (
     <div className="flex gap-2 py-1.5 px-2 text-xs hover:bg-muted/50 rounded">
-      <div className="mt-0.5 flex-shrink-0">{iconMap[log.type]}</div>
+      <div className="mt-0.5 shrink-0">{iconMap[log.type]}</div>
       <div className="flex-1 min-w-0">
         <p className={`whitespace-pre-wrap break-words ${log.type === 'error' ? 'text-destructive' : 'text-foreground'}`}>
           {log.content}
         </p>
       </div>
-      <span className="text-muted-foreground flex-shrink-0 mt-0.5">{time}</span>
+      <span className="text-muted-foreground shrink-0 mt-0.5">{time}</span>
     </div>
   )
 }

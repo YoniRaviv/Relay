@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, name TEXT NOT NULL, pa
 CREATE TABLE IF NOT EXISTS prd (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', markdown TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'draft', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS tasks (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, prd_id TEXT NOT NULL, story_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', acceptance_criteria TEXT NOT NULL DEFAULT '', priority TEXT NOT NULL DEFAULT 'medium', status TEXT NOT NULL DEFAULT 'pending', "order" INTEGER NOT NULL DEFAULT 0, passes INTEGER NOT NULL DEFAULT 0, rejection_notes TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS task_logs (id TEXT PRIMARY KEY, task_id TEXT NOT NULL, type TEXT NOT NULL, content TEXT NOT NULL, timestamp TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS task_metrics (id TEXT PRIMARY KEY, task_id TEXT NOT NULL, duration_ms INTEGER NOT NULL DEFAULT 0, tokens_in INTEGER NOT NULL DEFAULT 0, tokens_out INTEGER NOT NULL DEFAULT 0, tool_calls INTEGER NOT NULL DEFAULT 0, passes INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS task_metrics (id TEXT PRIMARY KEY, task_id TEXT NOT NULL, duration_ms INTEGER NOT NULL DEFAULT 0, tokens_in INTEGER NOT NULL DEFAULT 0, tokens_out INTEGER NOT NULL DEFAULT 0, tool_calls INTEGER NOT NULL DEFAULT 0, passes INTEGER NOT NULL DEFAULT 0, model TEXT, created_at TEXT NOT NULL);
 
 INSERT INTO projects VALUES ('${projectId}', 'Demo Project', '${esc(DEMO_DIR)}', 'active', '${now}', '${now}');
 INSERT INTO prd VALUES ('${prdId}', '${projectId}', 'Weather dashboard application', '${esc(prdMarkdown)}', 'approved', '${now}', '${now}');
@@ -91,7 +91,7 @@ for (const t of taskDefs) {
 }
 
 // Metrics for approved task
-statements += `INSERT INTO task_metrics VALUES ('${randomUUID()}', '${taskIds[0]}', 45000, 12400, 8200, 15, 1, '${now}');\n`;
+statements += `INSERT INTO task_metrics VALUES ('${randomUUID()}', '${taskIds[0]}', 45000, 12400, 8200, 15, 1, 'claude-sonnet-4-20250514', '${now}');\n`;
 
 sqlMulti(statements);
 

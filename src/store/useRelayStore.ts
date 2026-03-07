@@ -57,6 +57,14 @@ interface AgentSlice {
   clearActivity: () => void;
 }
 
+// ── Git Slice ──
+interface GitSlice {
+  currentBranch: string | null;
+  branches: string[];
+  setCurrentBranch: (branch: string | null) => void;
+  setBranches: (branches: string[]) => void;
+}
+
 // ── Review Slice ──
 interface ReviewSlice {
   reviewingTaskId: string | null;
@@ -64,7 +72,7 @@ interface ReviewSlice {
 }
 
 // ── Combined Store ──
-export type RelayStore = SettingsSlice & ProjectSlice & PRDSlice & TasksSlice & AgentSlice & ReviewSlice;
+export type RelayStore = SettingsSlice & ProjectSlice & PRDSlice & TasksSlice & AgentSlice & GitSlice & ReviewSlice;
 
 export const useRelayStore = create<RelayStore>((set) => ({
   // Settings
@@ -111,6 +119,12 @@ export const useRelayStore = create<RelayStore>((set) => ({
   addActivity: (log) =>
     set((state) => ({ activityFeed: [...state.activityFeed, log] })),
   clearActivity: () => set({ activityFeed: [] }),
+
+  // Git
+  currentBranch: null,
+  branches: [],
+  setCurrentBranch: (currentBranch) => set({ currentBranch }),
+  setBranches: (branches) => set({ branches }),
 
   // Review
   reviewingTaskId: null,

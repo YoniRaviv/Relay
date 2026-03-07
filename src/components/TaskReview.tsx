@@ -31,7 +31,7 @@ export function TaskReview({ tasks, onRemove, onConfirm, loading }: TaskReviewPr
             key={`${task.storyId}-${i}`}
             className="flex items-start gap-2 p-3 border rounded-md bg-card"
           >
-            <GripVertical className="h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
+            <GripVertical className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-mono text-muted-foreground">{task.storyId}</span>
@@ -45,7 +45,7 @@ export function TaskReview({ tasks, onRemove, onConfirm, loading }: TaskReviewPr
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 flex-shrink-0"
+              className="h-7 w-7 shrink-0"
               onClick={() => onRemove(i)}
             >
               <Trash2 className="h-3.5 w-3.5" />

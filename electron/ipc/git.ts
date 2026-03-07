@@ -87,6 +87,16 @@ export function registerGitHandlers(): void {
     return { clean: status.isClean(), files: unique };
   });
 
+  ipcMain.handle('git:branch', async (_event, projectId: string) => {
+    const projectPath = getProjectPath(projectId);
+    const git = simpleGit(projectPath);
+    const branchSummary = await git.branch();
+    return {
+      current: branchSummary.current,
+      branches: branchSummary.all.filter(b => !b.startsWith('remotes/')),
+    };
+  });
+
   ipcMain.handle('git:discardAll', async (_event, projectId: string) => {
     const projectPath = getProjectPath(projectId);
     const git = simpleGit(projectPath);

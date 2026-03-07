@@ -7,6 +7,15 @@ const relayAPI = {
   getApiKey: () => ipcRenderer.invoke('cc:getApiKey'),
   getSettings: () => ipcRenderer.invoke('cc:getSettings'),
 
+  // Engine
+  getEngineMode: () => ipcRenderer.invoke('cc:getEngineMode'),
+  setEngineMode: (mode: string) => ipcRenderer.invoke('cc:setEngineMode', mode),
+  getCliToolsPreset: () => ipcRenderer.invoke('cc:getCliToolsPreset'),
+  setCliToolsPreset: (preset: string) => ipcRenderer.invoke('cc:setCliToolsPreset', preset),
+  checkCliAvailable: () => ipcRenderer.invoke('cc:checkCliAvailable'),
+  getSelectedModel: () => ipcRenderer.invoke('cc:getSelectedModel'),
+  setSelectedModel: (model: string) => ipcRenderer.invoke('cc:setSelectedModel', model),
+
   // Project
   createProject: (params: { name: string; path: string }) => ipcRenderer.invoke('project:create', params),
   openProject: (path: string) => ipcRenderer.invoke('project:open', path),
@@ -35,6 +44,7 @@ const relayAPI = {
   gitCommit: (projectId: string, message: string) => ipcRenderer.invoke('git:commit', projectId, message),
   gitLog: (projectId: string) => ipcRenderer.invoke('git:log', projectId),
   gitStatus: (projectId: string) => ipcRenderer.invoke('git:status', projectId),
+  gitBranch: (projectId: string) => ipcRenderer.invoke('git:branch', projectId),
 
   // Review
   reviewGetDiff: (projectId: string) => ipcRenderer.invoke('review:getDiff', projectId),

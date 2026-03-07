@@ -1,6 +1,6 @@
 import { BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
-import { runTask } from './taskRunner';
+import { getEngine } from './engines';
 import { openDb } from '../db/connection';
 import { store } from '../ipc/settings';
 import type { Task } from '../../shared/types';
@@ -78,7 +78,7 @@ export async function startLoop(projectId: string, win: BrowserWindow): Promise<
       // Notify UI of current task
       win.webContents.send('loop:taskChange', { taskId: task.id });
 
-      await runTask(task, win, abortSignal);
+      await getEngine().runTask(task, win, abortSignal);
 
       // Refresh task list in UI
       const db = getDbForProject(projectId);

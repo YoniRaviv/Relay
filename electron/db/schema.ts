@@ -54,7 +54,14 @@ export function initializeDatabase(db: Database.Database): void {
       tokens_out INTEGER NOT NULL DEFAULT 0,
       tool_calls INTEGER NOT NULL DEFAULT 0,
       passes INTEGER NOT NULL DEFAULT 0,
+      model TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+
+  // Migration: add model column to existing databases
+  const columns = db.pragma('table_info(task_metrics)') as Array<{ name: string }>;
+  if (!columns.some(c => c.name === 'model')) {
+    db.exec(`ALTER TABLE task_metrics ADD COLUMN model TEXT`);
+  }
 }
