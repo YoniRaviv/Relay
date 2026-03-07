@@ -57,8 +57,14 @@ interface AgentSlice {
   clearActivity: () => void;
 }
 
+// ── Review Slice ──
+interface ReviewSlice {
+  reviewingTaskId: string | null;
+  setReviewingTaskId: (id: string | null) => void;
+}
+
 // ── Combined Store ──
-export type RelayStore = SettingsSlice & ProjectSlice & PRDSlice & TasksSlice & AgentSlice;
+export type RelayStore = SettingsSlice & ProjectSlice & PRDSlice & TasksSlice & AgentSlice & ReviewSlice;
 
 export const useRelayStore = create<RelayStore>((set) => ({
   // Settings
@@ -105,4 +111,8 @@ export const useRelayStore = create<RelayStore>((set) => ({
   addActivity: (log) =>
     set((state) => ({ activityFeed: [...state.activityFeed, log] })),
   clearActivity: () => set({ activityFeed: [] }),
+
+  // Review
+  reviewingTaskId: null,
+  setReviewingTaskId: (reviewingTaskId) => set({ reviewingTaskId }),
 }));

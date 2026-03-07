@@ -87,7 +87,31 @@ export async function startLoop(projectId: string, win: BrowserWindow): Promise<
       ).all(projectId) as Record<string, unknown>[];
       win.webContents.send('loop:tasksUpdated', allTasks.map(rowToTask));
 
-      // Check if paused
+      // Check if the task is now in review — auto-pause for human review
+      const updatedTask = db.prepare('SELECT status FROM tasks WHERE id = ?').get(task.id) as Record<string, unknown> | undefined;
+      if (updatedTask && updatedTask.status === 'review') {
+        loopState = 'paused';
+        win.webContents.send('loop:stateChange', { state: 'paused' });
+        win.webContents.send('agent:activity', {
+          id: randomUUID(),
+          taskId: task.id,
+          type: 'text',
+          content: 'Paused: waiting for human review before continuing.',
+          timestamp: new Date().toISOString(),
+        });
+        // Wait for resume or stop
+        await new Promise<void>((resolve) => {
+          const check = setInterval(() => {
+            if (loopState !== 'paused') {
+              clearInterval(check);
+              resolve();
+            }
+          }, 200);
+        });
+        if (loopState as string === 'stopped') break;
+      }
+
+      // Check if paused (manual pause)
       if (loopState as string === 'paused') {
         win.webContents.send('loop:stateChange', { state: 'paused' });
         // Wait for resume or stop

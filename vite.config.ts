@@ -14,7 +14,7 @@ export default defineConfig({
         vite: {
           build: {
             rollupOptions: {
-              external: ['better-sqlite3', 'electron-store', '@anthropic-ai/sdk'],
+              external: ['better-sqlite3', 'electron-store', '@anthropic-ai/sdk', 'simple-git'],
             },
           },
         },

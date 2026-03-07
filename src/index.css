@@ -56,3 +56,22 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* diff2html theme overrides */
+.diff-viewer .d2h-wrapper {
+  font-size: 12px;
+}
+.diff-viewer .d2h-file-header {
+  background: var(--color-muted);
+  border-color: var(--color-border);
+  color: var(--color-foreground);
+}
+.diff-viewer .d2h-file-name {
+  color: var(--color-foreground);
+}
+.diff-viewer .d2h-code-linenumber {
+  color: var(--color-muted-foreground);
+}
+.diff-viewer .d2h-code-line {
+  color: var(--color-foreground);
+}

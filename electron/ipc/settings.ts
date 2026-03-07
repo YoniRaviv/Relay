@@ -1,11 +1,18 @@
-import { ipcMain, safeStorage } from 'electron';
+import { ipcMain, safeStorage, app } from 'electron';
 import Store from 'electron-store';
 import type { AuthStatus } from '../../shared/types';
 
 const store = new Store<{ apiKey?: string; recentProjects?: Array<{ name: string; path: string; lastOpened: string }> }>();
 
+const isDev = !app.isPackaged;
+
 export function registerSettingsHandlers(): void {
   ipcMain.handle('cc:checkAuth', async (): Promise<AuthStatus> => {
+    // In dev mode, allow a dummy key for testing without a real API key
+    if (isDev && store.get('apiKey') === 'dev-bypass') {
+      return { valid: true };
+    }
+
     const encrypted = store.get('apiKey');
     if (!encrypted) return { valid: false };
 
@@ -20,6 +27,12 @@ export function registerSettingsHandlers(): void {
   });
 
   ipcMain.handle('cc:setApiKey', async (_event, apiKey: string): Promise<AuthStatus> => {
+    // Dev bypass: accept 'dev-bypass' as a valid key in dev mode
+    if (isDev && apiKey === 'dev-bypass') {
+      store.set('apiKey', 'dev-bypass');
+      return { valid: true };
+    }
+
     if (!apiKey || !apiKey.startsWith('sk-ant-')) {
       return { valid: false, error: 'Invalid API key format' };
     }

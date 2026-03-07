@@ -4,6 +4,7 @@ import { registerPrdHandlers } from './prd';
 import { registerTasksHandlers } from './tasks';
 import { registerAgentHandlers } from './agent';
 import { registerGitHandlers } from './git';
+import { registerReviewHandlers } from './review';
 import { registerMetricsHandlers } from './metrics';
 
 export function registerAllHandlers(): void {
@@ -13,5 +14,6 @@ export function registerAllHandlers(): void {
   registerTasksHandlers();
   registerAgentHandlers();
   registerGitHandlers();
+  registerReviewHandlers();
   registerMetricsHandlers();
 }

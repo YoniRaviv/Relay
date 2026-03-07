@@ -5,6 +5,7 @@ import { KanbanBoard } from '@/components/KanbanBoard'
 import { TaskDetail } from '@/components/TaskDetail'
 import { LoopControls } from '@/components/LoopControls'
 import { AgentActivityFeed } from '@/components/AgentActivityFeed'
+import { ReviewPanel } from '@/components/ReviewPanel'
 import { useRelayStore } from '@/store/useRelayStore'
 import type { Task, TaskLog, LoopState } from '@shared/types'
 
@@ -14,8 +15,9 @@ interface BoardProps {
 
 export function Board({ onSwitchProject }: BoardProps) {
   const {
-    activeProject, setTasks, selectedTaskId, prdMarkdown,
+    activeProject, tasks, setTasks, selectedTaskId, prdMarkdown,
     setLoopState, setCurrentTaskId, addActivity,
+    reviewingTaskId, setReviewingTaskId,
   } = useRelayStore()
   const [sidebarView, setSidebarView] = useState<SidebarView>('board')
 
@@ -124,6 +126,17 @@ export function Board({ onSwitchProject }: BoardProps) {
           {selectedTaskId && <TaskDetail />}
         </div>
       </div>
+
+      {reviewingTaskId && (() => {
+        const reviewTask = tasks.find(t => t.id === reviewingTaskId)
+        if (!reviewTask) return null
+        return (
+          <ReviewPanel
+            task={reviewTask}
+            onClose={() => setReviewingTaskId(null)}
+          />
+        )
+      })()}
     </AppShell>
   )
 }

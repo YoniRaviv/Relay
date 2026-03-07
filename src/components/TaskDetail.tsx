@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { X } from 'lucide-react'
+import { X, Eye } from 'lucide-react'
 import { ActivityMessage } from '@/components/ActivityMessage'
 import { useRelayStore } from '@/store/useRelayStore'
 
@@ -22,7 +22,7 @@ const statusColors: Record<string, string> = {
 }
 
 export function TaskDetail() {
-  const { tasks, selectedTaskId, setSelectedTaskId, activityFeed, currentTaskId } = useRelayStore()
+  const { tasks, selectedTaskId, setSelectedTaskId, activityFeed, currentTaskId, setReviewingTaskId } = useRelayStore()
   const task = tasks.find((t) => t.id === selectedTaskId)
 
   if (!task) return null
@@ -57,6 +57,16 @@ export function TaskDetail() {
             Priority: <span className="capitalize">{task.priority}</span>
             {task.passes > 0 && <> &middot; Passes: {task.passes}</>}
           </p>
+          {task.status === 'review' && (
+            <Button
+              size="sm"
+              className="mt-2 bg-amber-600 hover:bg-amber-700 text-white"
+              onClick={() => setReviewingTaskId(task.id)}
+            >
+              <Eye className="h-3.5 w-3.5 mr-1.5" />
+              Review Changes
+            </Button>
+          )}
         </div>
 
         <Section title="Description">

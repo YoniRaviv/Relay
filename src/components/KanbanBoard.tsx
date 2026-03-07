@@ -35,7 +35,7 @@ function getDefaultStatusForColumn(columnId: string): TaskStatus {
 }
 
 export function KanbanBoard() {
-  const { tasks, setTasks, setSelectedTaskId, currentTaskId } = useRelayStore()
+  const { tasks, setTasks, setSelectedTaskId, currentTaskId, setReviewingTaskId } = useRelayStore()
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -124,6 +124,7 @@ export function KanbanBoard() {
             tasks={columnTasks(col.id)}
             activeTaskId={currentTaskId}
             onTaskClick={setSelectedTaskId}
+            onTaskReview={setReviewingTaskId}
           />
         ))}
       </div>

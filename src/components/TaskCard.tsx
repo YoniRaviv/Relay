@@ -1,11 +1,13 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { Eye } from 'lucide-react'
 import type { Task } from '@shared/types'
 
 interface TaskCardProps {
   task: Task
   isActive?: boolean
   onClick: () => void
+  onReview?: () => void
 }
 
 const priorityColors = {
@@ -23,7 +25,7 @@ const statusDots: Record<string, string> = {
   approved: 'bg-green-600',
 }
 
-export function TaskCard({ task, isActive, onClick }: TaskCardProps) {
+export function TaskCard({ task, isActive, onClick, onReview }: TaskCardProps) {
   const {
     attributes,
     listeners,
@@ -58,9 +60,16 @@ export function TaskCard({ task, isActive, onClick }: TaskCardProps) {
       </div>
       <p className="text-sm font-medium leading-tight">{task.title}</p>
       {task.status === 'review' && (
-        <span className="inline-block mt-1.5 text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onReview?.()
+          }}
+          className="inline-flex items-center gap-1 mt-1.5 text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
+        >
+          <Eye className="h-3 w-3" />
           Review
-        </span>
+        </button>
       )}
     </div>
   )
