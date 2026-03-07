@@ -127,6 +127,15 @@ src/
 | `Space` | Play / Pause the agent loop |
 | `Esc` | Close the active panel (review or task detail) |
 
+## Roadmap
+
+Planned features and improvements:
+
+- [ ] **Summary PDF Export** — Export project summaries (PRD, tasks, metrics) as a downloadable PDF
+- [ ] **Project Map** — Visual graph of file links, dependencies, and data flows across the codebase
+- [ ] **App Observability** — Built-in error tracking, diagnostics, and logging dashboard for debugging issues
+- [ ] **Cleanup** — Split big components into smaller files, check for warnings and errors, check repeated code
+
 ## License
 
 MIT

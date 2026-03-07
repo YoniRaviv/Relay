@@ -19,11 +19,13 @@ import type { Task, TaskLog, LoopState } from '@shared/types'
 
 interface BoardProps {
   onSwitchProject: () => void
+  onNewFeature: () => void
+  onSelectFeature: (prdId: string) => void
 }
 
-export function Board({ onSwitchProject }: BoardProps) {
+export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardProps) {
   const {
-    activeProject, tasks, setTasks, selectedTaskId, prdMarkdown,
+    activeProject, tasks, setTasks, selectedTaskId, prdMarkdown, activePrdId,
     setLoopState, setCurrentTaskId, addActivity,
     reviewingTaskId, setReviewingTaskId,
   } = useRelayStore()
@@ -33,12 +35,12 @@ export function Board({ onSwitchProject }: BoardProps) {
   useEffect(() => {
     if (activeProject) {
       setLoading(true)
-      window.relayAPI.listTasks(activeProject.id)
+      window.relayAPI.listTasks(activeProject.id, activePrdId ?? undefined)
         .then(setTasks)
         .catch(() => toast.error('Failed to load tasks'))
         .finally(() => setLoading(false))
     }
-  }, [activeProject, setTasks])
+  }, [activeProject, activePrdId, setTasks])
 
   // Keyboard shortcuts
   const toggleLoop = () => {
@@ -47,7 +49,8 @@ export function Board({ onSwitchProject }: BoardProps) {
     if (loopState === 'idle' || loopState === 'stopped') {
       useRelayStore.getState().clearActivity()
       useRelayStore.getState().setLoopState('running')
-      window.relayAPI.startLoop(activeProject.id)
+      const prdId = useRelayStore.getState().activePrdId
+      window.relayAPI.startLoop(activeProject.id, prdId ?? undefined)
     } else if (loopState === 'running') {
       useRelayStore.getState().setLoopState('paused')
       window.relayAPI.pauseLoop()
@@ -123,6 +126,8 @@ export function Board({ onSwitchProject }: BoardProps) {
           projectName={activeProject.name}
           activeView={sidebarView}
           onViewChange={setSidebarView}
+          onNewFeature={onNewFeature}
+          onSelectFeature={onSelectFeature}
         />
       }
     >

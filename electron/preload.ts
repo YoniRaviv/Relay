@@ -27,14 +27,16 @@ const relayAPI = {
   decomposePrd: (prdId: string) => ipcRenderer.invoke('prd:decompose', prdId),
   savePrd: (prd: unknown) => ipcRenderer.invoke('prd:save', prd),
   getPrd: (projectId: string) => ipcRenderer.invoke('prd:get', projectId),
+  listPrds: (projectId: string) => ipcRenderer.invoke('prd:list', projectId),
+  deletePrd: (prdId: string) => ipcRenderer.invoke('prd:delete', prdId),
 
   // Tasks
-  listTasks: (projectId: string) => ipcRenderer.invoke('tasks:list', projectId),
+  listTasks: (projectId: string, prdId?: string) => ipcRenderer.invoke('tasks:list', projectId, prdId),
   updateTask: (taskId: string, updates: unknown) => ipcRenderer.invoke('tasks:update', taskId, updates),
   reorderTasks: (tasks: unknown) => ipcRenderer.invoke('tasks:reorder', tasks),
 
   // Agent Loop
-  startLoop: (projectId?: string) => ipcRenderer.invoke('loop:start', projectId),
+  startLoop: (projectId?: string, prdId?: string) => ipcRenderer.invoke('loop:start', projectId, prdId),
   pauseLoop: () => ipcRenderer.invoke('loop:pause'),
   resumeLoop: () => ipcRenderer.invoke('loop:resume'),
   stopLoop: () => ipcRenderer.invoke('loop:stop'),

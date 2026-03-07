@@ -1,5 +1,7 @@
 import { BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import os from 'node:os';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { buildTaskPrompt } from '../promptBuilder';
 import { openDb } from '../../db/connection';
@@ -7,6 +9,18 @@ import { store } from '../../ipc/settings';
 import type { Task, PRD } from '../../../shared/types';
 import { DEFAULT_MODEL } from '../../../shared/pricing';
 import type { TaskEngine, TaskRunResult, CliToolsPreset } from './types';
+
+let _claudePath: string | undefined;
+function getClaudePath(): string {
+  if (!_claudePath) {
+    try {
+      _claudePath = execFileSync('which', ['claude'], { encoding: 'utf-8' }).trim();
+    } catch {
+      _claudePath = `${os.homedir()}/.local/bin/claude`;
+    }
+  }
+  return _claudePath;
+}
 
 const CONSERVATIVE_TOOLS = ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'MultiEdit'];
 const FULL_TOOLS = [...CONSERVATIVE_TOOLS, 'Bash', 'WebFetch', 'NotebookEdit'];
@@ -129,6 +143,7 @@ export const cliEngine: TaskEngine = {
             maxTurns: 50,
             systemPrompt: 'You are an expert software engineer completing a coding task. Work methodically through the acceptance criteria. Read existing code before making changes. Follow existing patterns and conventions.',
             persistSession: false,
+            pathToClaudeCodeExecutable: getClaudePath(),
             env: cleanEnv,
             debug: true,
             stderr: (data: string) => {

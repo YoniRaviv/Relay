@@ -9,7 +9,10 @@ type AppView = 'loading' | 'setup-key' | 'setup-project' | 'prd-wizard' | 'board
 
 function App() {
   const [view, setView] = useState<AppView>('loading')
-  const { setAuthStatus, setActiveProject, setRecentProjects, setPrd, setPrdMarkdown, setTasks } = useRelayStore()
+  const {
+    setAuthStatus, setActiveProject, setRecentProjects,
+    setPrd, setPrdMarkdown, setTasks, setActivePrdId, setFeatures,
+  } = useRelayStore()
 
   useEffect(() => {
     init()
@@ -28,23 +31,38 @@ function App() {
     }
   }
 
+  const loadFeatures = async (projectId: string) => {
+    const features = await window.relayAPI.listPrds(projectId)
+    setFeatures(features)
+    return features
+  }
+
+  const selectFeature = async (projectId: string, prdId: string) => {
+    setActivePrdId(prdId)
+    const features = useRelayStore.getState().features
+    const feature = features.find(f => f.id === prdId)
+    if (feature) {
+      setPrd(feature)
+      setPrdMarkdown(feature.markdown)
+    }
+    const tasks = await window.relayAPI.listTasks(projectId, prdId)
+    setTasks(tasks)
+  }
+
   const handleSetupComplete = async (project: Project) => {
     setActiveProject(project)
 
     try {
-      const prd = await window.relayAPI.getPrd(project.id)
-      if (prd) {
-        setPrd(prd)
-        setPrdMarkdown(prd.markdown as string)
-        const tasks = await window.relayAPI.listTasks(project.id)
-        setTasks(tasks)
+      const features = await loadFeatures(project.id)
+      if (features.length > 0) {
+        // Select the most recent feature
+        await selectFeature(project.id, features[0].id)
         setView('board')
       } else {
         setView('prd-wizard')
       }
     } catch (err) {
       console.error('Failed to load project data:', err)
-      // Still proceed to PRD wizard even if loading fails
       setView('prd-wizard')
     }
   }
@@ -52,8 +70,10 @@ function App() {
   const handlePrdComplete = async () => {
     const project = useRelayStore.getState().activeProject
     if (project) {
-      const tasks = await window.relayAPI.listTasks(project.id)
-      setTasks(tasks)
+      const features = await loadFeatures(project.id)
+      if (features.length > 0) {
+        await selectFeature(project.id, features[0].id)
+      }
     }
     setView('board')
   }
@@ -63,7 +83,25 @@ function App() {
     setTasks([])
     setPrd(null)
     setPrdMarkdown('')
+    setActivePrdId(null)
+    setFeatures([])
     setView('setup-project')
+  }
+
+  const handleNewFeature = () => {
+    setTasks([])
+    setPrd(null)
+    setPrdMarkdown('')
+    setActivePrdId(null)
+    useRelayStore.getState().setWizardStep(0)
+    useRelayStore.getState().setFeatureDescription('')
+    setView('prd-wizard')
+  }
+
+  const handleSelectFeature = async (prdId: string) => {
+    const project = useRelayStore.getState().activeProject
+    if (!project) return
+    await selectFeature(project.id, prdId)
   }
 
   if (view === 'loading') {
@@ -83,10 +121,22 @@ function App() {
   }
 
   if (view === 'prd-wizard') {
-    return <PRDWizard onComplete={handlePrdComplete} onBack={handleSwitchProject} />
+    const hasFeatures = useRelayStore.getState().features.length > 0
+    const handleWizardBack = hasFeatures
+      ? () => {
+          // Go back to board with the previously active feature
+          const project = useRelayStore.getState().activeProject
+          const features = useRelayStore.getState().features
+          if (project && features.length > 0) {
+            selectFeature(project.id, features[0].id)
+          }
+          setView('board')
+        }
+      : handleSwitchProject
+    return <PRDWizard onComplete={handlePrdComplete} onBack={handleWizardBack} />
   }
 
-  return <Board onSwitchProject={handleSwitchProject} />
+  return <Board onSwitchProject={handleSwitchProject} onNewFeature={handleNewFeature} onSelectFeature={handleSelectFeature} />
 }
 
 export default App
