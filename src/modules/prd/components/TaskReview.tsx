@@ -13,7 +13,7 @@ interface TaskReviewProps {
 export function TaskReview({ tasks, onRemove, onConfirm, loading }: TaskReviewProps) {
     return (
         <div className="space-y-4">
-            <div className="space-y-2 max-h-[400px] overflow-auto">
+            <div className="space-y-2 max-h-[55vh] overflow-auto">
                 {tasks.map((task, i) => (
                     <div
                         key={`${task.storyId}-${i}`}

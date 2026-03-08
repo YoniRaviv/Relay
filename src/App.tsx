@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, type ReactNode } from 'react'
 import { Setup } from '@/pages/Setup'
 import { PRDWizard } from '@/pages/PRDWizard'
 import { Board } from '@/pages/Board'
@@ -7,11 +7,60 @@ import type { Project } from '@shared/types'
 
 type AppView = 'loading' | 'setup-key' | 'setup-project' | 'prd-wizard' | 'board'
 
+function ViewTransition({ viewKey, children }: { viewKey: string; children: ReactNode }) {
+  const [displayed, setDisplayed] = useState({ key: viewKey, children })
+  const [animating, setAnimating] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (viewKey === displayed.key) return
+
+    setAnimating(true)
+    const el = containerRef.current
+    if (el) {
+      el.style.opacity = '0'
+      el.style.transform = 'translateY(-3px)'
+    }
+
+    const timeout = setTimeout(() => {
+      setDisplayed({ key: viewKey, children })
+      setAnimating(false)
+      if (el) {
+        el.style.opacity = ''
+        el.style.transform = ''
+      }
+    }, 80)
+
+    return () => clearTimeout(timeout)
+  }, [viewKey, children]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Update children without transition when key hasn't changed
+  useEffect(() => {
+    if (viewKey === displayed.key) {
+      setDisplayed(prev => ({ ...prev, children }))
+    }
+  }, [children, viewKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div
+      ref={containerRef}
+      key={displayed.key}
+      className={`h-full w-full ${!animating ? 'view-transition-enter' : ''}`}
+      style={{
+        transition: 'opacity 80ms ease-out, transform 80ms ease-out',
+      }}
+    >
+      {displayed.children}
+    </div>
+  )
+}
+
 function App() {
   const [view, setView] = useState<AppView>('loading')
   const {
     setAuthStatus, setActiveProject, setRecentProjects,
     setPrd, setPrdMarkdown, setTasks, setActivePrdId, setFeatures,
+    setProjectContext, setScanningProject,
   } = useRelayStore()
 
   useEffect(() => {
@@ -52,19 +101,31 @@ function App() {
   const handleSetupComplete = async (project: Project) => {
     setActiveProject(project)
 
+    // Load or scan project context (non-blocking for cached, blocking for first scan)
+    const existingContext = await window.relayAPI.getProjectContext(project.id)
+    if (existingContext) {
+      setProjectContext(existingContext)
+    } else {
+      // First time — scan in background, don't block navigation
+      setScanningProject(true)
+      window.relayAPI.scanProject(project.id).then(({ context }) => {
+        setProjectContext(context)
+      }).catch(err => {
+        console.error('Project scan failed:', err)
+      }).finally(() => {
+        setScanningProject(false)
+      })
+    }
+
     try {
       const features = await loadFeatures(project.id)
       if (features.length > 0) {
-        // Select the most recent feature
         await selectFeature(project.id, features[0].id)
-        setView('board')
-      } else {
-        setView('prd-wizard')
       }
     } catch (err) {
       console.error('Failed to load project data:', err)
-      setView('prd-wizard')
     }
+    setView('board')
   }
 
   const handlePrdComplete = async () => {
@@ -80,6 +141,7 @@ function App() {
 
   const handleSwitchProject = () => {
     setActiveProject(null)
+    setProjectContext(null)
     setTasks([])
     setPrd(null)
     setPrdMarkdown('')
@@ -104,39 +166,39 @@ function App() {
     await selectFeature(project.id, prdId)
   }
 
-  if (view === 'loading') {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    )
+  const handleWizardBack = () => {
+    const project = useRelayStore.getState().activeProject
+    const features = useRelayStore.getState().features
+    if (project && features.length > 0) {
+      selectFeature(project.id, features[0].id)
+    }
+    setView('board')
   }
 
-  if (view === 'setup-key') {
-    return <Setup initialStep={0} onComplete={handleSetupComplete} />
+  const renderView = () => {
+    switch (view) {
+      case 'loading':
+        return (
+          <div className="flex items-center justify-center min-h-screen">
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        )
+      case 'setup-key':
+        return <Setup initialStep={0} onComplete={handleSetupComplete} />
+      case 'setup-project':
+        return <Setup initialStep={1} onComplete={handleSetupComplete} />
+      case 'prd-wizard':
+        return <PRDWizard onComplete={handlePrdComplete} onBack={handleWizardBack} />
+      case 'board':
+        return <Board onSwitchProject={handleSwitchProject} onNewFeature={handleNewFeature} onSelectFeature={handleSelectFeature} />
+    }
   }
 
-  if (view === 'setup-project') {
-    return <Setup initialStep={1} onComplete={handleSetupComplete} />
-  }
-
-  if (view === 'prd-wizard') {
-    const hasFeatures = useRelayStore.getState().features.length > 0
-    const handleWizardBack = hasFeatures
-      ? () => {
-          // Go back to board with the previously active feature
-          const project = useRelayStore.getState().activeProject
-          const features = useRelayStore.getState().features
-          if (project && features.length > 0) {
-            selectFeature(project.id, features[0].id)
-          }
-          setView('board')
-        }
-      : handleSwitchProject
-    return <PRDWizard onComplete={handlePrdComplete} onBack={handleWizardBack} />
-  }
-
-  return <Board onSwitchProject={handleSwitchProject} onNewFeature={handleNewFeature} onSelectFeature={handleSelectFeature} />
+  return (
+    <ViewTransition viewKey={view}>
+      {renderView()}
+    </ViewTransition>
+  )
 }
 
 export default App

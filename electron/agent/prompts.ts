@@ -1,8 +1,53 @@
-export function buildPrdPrompt(featureDescription: string): string {
+export interface ClarifyQuestion {
+  id: string;
+  question: string;
+  options?: string[];
+}
+
+function projectContextBlock(projectContext?: string): string {
+  if (!projectContext) return '';
+  return `\n\n## Project Context\nThe following is known about the project where this feature will be built:\n${projectContext}`;
+}
+
+export function buildClarifyPrompt(featureDescription: string, projectContext?: string): string {
+  return `You are a senior product manager. A user wants to build the following feature. Before writing a PRD, ask 3-5 essential clarifying questions to fill in gaps.
+
+## Feature Request
+${featureDescription}${projectContextBlock(projectContext)}
+
+## Instructions
+Identify what's unclear or underspecified. Focus on:
+- Problem definition and target users
+- Core functionality and scope boundaries
+- Success criteria and key constraints
+- Integration points or dependencies
+
+For each question, provide 2-4 suggested answer options when applicable (to help the user respond quickly).
+
+## Output Format
+Return ONLY a JSON array, no other text:
+\`\`\`json
+[
+  {
+    "id": "q1",
+    "question": "The clarifying question?",
+    "options": ["Option A", "Option B", "Option C"]
+  }
+]
+\`\`\`
+
+If the feature description is already very detailed and clear, return fewer questions. Never ask more than 5.`;
+}
+
+export function buildPrdPrompt(featureDescription: string, clarifications?: string, projectContext?: string): string {
+  const clarificationBlock = clarifications
+    ? `\n\n## Clarifications\nThe following questions were answered to refine the requirements:\n${clarifications}`
+    : '';
+
   return `You are a senior product manager. Generate a detailed Product Requirements Document (PRD) for the following feature request.
 
 ## Feature Request
-${featureDescription}
+${featureDescription}${clarificationBlock}${projectContextBlock(projectContext)}
 
 ## Output Format
 Write the PRD in markdown with the following sections:
@@ -39,11 +84,11 @@ How to measure if the feature is successful.
 Be thorough but practical. Focus on what needs to be built, not how to build it.`
 }
 
-export function buildDecomposePrompt(prdMarkdown: string): string {
+export function buildDecomposePrompt(prdMarkdown: string, projectContext?: string): string {
   return `You are a senior software architect. Decompose the following PRD into implementation tasks.
 
 ## PRD
-${prdMarkdown}
+${prdMarkdown}${projectContextBlock(projectContext)}
 
 ## Instructions
 Break this PRD into sequential implementation tasks. Each task should be:

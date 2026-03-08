@@ -28,10 +28,13 @@ interface RelayAPI {
   openProject(path: string): Promise<import('../shared/types').Project | null>
   listProjects(): Promise<import('../shared/types').RecentProject[]>
   selectFolder(): Promise<string | null>
+  scanProject(projectId: string): Promise<{ status: string; context: string }>
+  getProjectContext(projectId: string): Promise<string | null>
 
   // PRD
-  generatePrd(description: string): Promise<unknown>
-  decomposePrd(prdId: string): Promise<unknown>
+  clarifyPrd(description: string, projectContext?: string): Promise<{ status: string; text: string }>
+  generatePrd(description: string, clarifications?: string, projectContext?: string): Promise<unknown>
+  decomposePrd(prdMarkdown: string, projectContext?: string): Promise<unknown>
   savePrd(prd: unknown): Promise<unknown>
   getPrd(projectId: string): Promise<import('../shared/types').PRD | null>
   listPrds(projectId: string): Promise<Array<import('../shared/types').PRD & { taskCount: number; doneCount: number }>>

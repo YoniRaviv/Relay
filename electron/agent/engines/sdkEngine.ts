@@ -33,6 +33,16 @@ function getDbForProject(projectId: string) {
   throw new Error('Project not found');
 }
 
+function getProjectContext(projectId: string): string | null {
+  try {
+    const db = getDbForProject(projectId);
+    const row = db.prepare('SELECT context FROM projects WHERE id = ?').get(projectId) as Record<string, unknown> | undefined;
+    return (row?.context as string) || null;
+  } catch {
+    return null;
+  }
+}
+
 function getPrd(projectId: string): PRD | null {
   const db = getDbForProject(projectId);
   const row = db.prepare(
@@ -130,7 +140,8 @@ export const sdkEngine: TaskEngine = {
       const apiKey = getApiKey();
       const anthropic = getClient(apiKey);
       const prd = getPrd(task.projectId);
-      const prompt = buildTaskPrompt(task, prd, task.rejectionNotes);
+      const projectContext = getProjectContext(task.projectId);
+      const prompt = buildTaskPrompt(task, prd, task.rejectionNotes, projectContext);
 
       const db = getDbForProject(task.projectId);
       db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')

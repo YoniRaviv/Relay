@@ -64,4 +64,10 @@ export function initializeDatabase(db: Database.Database): void {
   if (!columns.some(c => c.name === 'model')) {
     db.exec(`ALTER TABLE task_metrics ADD COLUMN model TEXT`);
   }
+
+  // Migration: add context column to projects table
+  const projectColumns = db.pragma('table_info(projects)') as Array<{ name: string }>;
+  if (!projectColumns.some(c => c.name === 'context')) {
+    db.exec(`ALTER TABLE projects ADD COLUMN context TEXT`);
+  }
 }

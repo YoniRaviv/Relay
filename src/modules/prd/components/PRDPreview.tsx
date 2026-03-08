@@ -1,5 +1,7 @@
+import { useEffect, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { Button } from '@/components/ui/button'
-import { StreamingText } from '@/shared/components/StreamingText'
 
 interface PRDPreviewProps {
     markdown: string
@@ -10,22 +12,38 @@ interface PRDPreviewProps {
 }
 
 export function PRDPreview({ markdown, streaming, agentStatus, onEdit, onApprove }: PRDPreviewProps) {
+    const containerRef = useRef<HTMLDivElement>(null)
+
+    // Auto-scroll to bottom while streaming
+    useEffect(() => {
+        if (streaming && containerRef.current) {
+            containerRef.current.scrollTop = containerRef.current.scrollHeight
+        }
+    }, [markdown, streaming])
+
     return (
         <div className="space-y-4">
-            {streaming && agentStatus && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <div className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    <span>{agentStatus}</span>
-                </div>
-            )}
-            <div className="border rounded-md p-4 max-h-[400px] overflow-auto bg-muted/30">
-                {streaming ? (
-                    <StreamingText text={markdown} />
-                ) : (
-                    <div className="whitespace-pre-wrap font-mono text-sm">{markdown}</div>
-                )}
+            <div
+                ref={containerRef}
+                className="border rounded-md p-6 max-h-[65vh] overflow-auto bg-muted/30"
+            >
+                {markdown ? (
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {markdown}
+                        </ReactMarkdown>
+                        {streaming && (
+                            <span className="inline-block w-1.5 h-4 bg-primary animate-pulse ml-0.5 align-middle rounded-sm" />
+                        )}
+                    </div>
+                ) : streaming ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-1">
+                        <span className="inline-block w-1.5 h-4 bg-primary animate-pulse rounded-sm" />
+                        <span>{agentStatus || 'Generating PRD...'}</span>
+                    </div>
+                ) : null}
             </div>
-            {!streaming && (
+            {!streaming && markdown && (
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={onEdit} className="flex-1">
                         Edit PRD

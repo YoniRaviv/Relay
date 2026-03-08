@@ -13,7 +13,7 @@ export function PRDEditor({ markdown, onChange, onSave }: PRDEditorProps) {
             <div className="space-y-2">
                 <Label>Edit PRD</Label>
                 <textarea
-                    className="flex min-h-[400px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm font-mono placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                    className="flex min-h-[55vh] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm font-mono placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
                     value={markdown}
                     onChange={(e) => onChange(e.target.value)}
                 />

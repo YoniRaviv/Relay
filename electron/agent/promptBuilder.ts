@@ -1,6 +1,6 @@
 import type { Task, PRD } from '../../shared/types';
 
-export function buildTaskPrompt(task: Task, prd: PRD | null, rejectionNotes: string | null): string {
+export function buildTaskPrompt(task: Task, prd: PRD | null, rejectionNotes: string | null, projectContext?: string | null): string {
   let prompt = `You are an expert software engineer. Complete the following task autonomously.
 
 ## Task: ${task.storyId} — ${task.title}
@@ -11,6 +11,13 @@ ${task.description}
 ### Acceptance Criteria
 ${task.acceptanceCriteria}
 `;
+
+  if (projectContext) {
+    prompt += `
+### Project Context
+${projectContext}
+`;
+  }
 
   if (prd) {
     prompt += `

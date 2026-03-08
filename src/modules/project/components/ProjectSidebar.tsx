@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, FileText, BarChart3, Settings, Plus, Check } from 'lucide-react'
+import { LayoutDashboard, FileText, BarChart3, Settings, Plus, Check, FolderOpen } from 'lucide-react'
 import { ThemeToggle } from '@/modules/settings'
 import { useRelayStore } from '@/store/useRelayStore'
 
@@ -11,6 +11,7 @@ interface ProjectSidebarProps {
     onViewChange: (view: SidebarView) => void
     onNewFeature?: () => void
     onSelectFeature?: (prdId: string) => void
+    onSwitchProject?: () => void
 }
 
 const navItems: { id: SidebarView; label: string; icon: React.ReactNode }[] = [
@@ -26,14 +27,25 @@ function extractTitle(description: string): string {
     return first || 'Untitled Feature'
 }
 
-export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFeature, onSelectFeature }: ProjectSidebarProps) {
+export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFeature, onSelectFeature, onSwitchProject }: ProjectSidebarProps) {
     const { features, activePrdId } = useRelayStore()
 
     return (
         <div className="flex flex-col h-full p-4">
             <div className="mb-6">
                 <h1 className="text-lg font-bold tracking-tight">Relay</h1>
-                <p className="text-xs text-muted-foreground truncate mt-0.5">{projectName}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                    <p className="text-xs text-muted-foreground truncate">{projectName}</p>
+                    {onSwitchProject && (
+                        <button
+                            onClick={onSwitchProject}
+                            title="Switch project"
+                            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            <FolderOpen className="h-3.5 w-3.5" />
+                        </button>
+                    )}
+                </div>
             </div>
 
             {onNewFeature && (
