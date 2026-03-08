@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StepIndicator, FeatureInput, PRDPreview, PRDEditor, TaskReview } from '@/modules/prd'
 import { useRelayStore } from '@/store/useRelayStore'
 import { useIpcListener } from '@/shared/hooks/useIpcListener'
+import { ArrowLeft } from 'lucide-react'
 import type { DecomposedTask } from '@/shared/types/prd'
 
 const STEPS = ['Describe', 'Review PRD', 'Edit', 'Tasks', 'Confirm']
@@ -189,10 +189,11 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         setTasks((prev) => prev.filter((_, i) => i !== index))
     }
 
-    const effectiveStep = streaming ? 1 : decomposing ? 3 : wizardStep
+    const updateTask = (index: number, updated: DecomposedTask) => {
+        setTasks((prev) => prev.map((t, i) => i === index ? updated : t))
+    }
 
-    // Wider layout for content-heavy steps (PRD review, edit, tasks)
-    const isWideStep = effectiveStep >= 1
+    const effectiveStep = streaming ? 1 : decomposing ? 3 : wizardStep
 
     const handleBack = () => {
         // Don't allow back while streaming/decomposing
@@ -214,23 +215,75 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
     }
 
     return (
-        <div className="flex items-center justify-center min-h-screen p-6">
-            <Card className={`w-full transition-all duration-300 ${isWideStep ? 'max-w-4xl' : 'max-w-2xl'}`}>
-                <CardHeader className="text-center relative">
+        <div className="flex h-screen">
+            {/* ── Step Rail ── */}
+            <aside className="w-56 bg-sidebar border-r border-border flex flex-col shrink-0">
+                {/* Back / header */}
+                <div className="p-5 pb-3">
                     <button
                         onClick={handleBack}
                         disabled={streaming || decomposing}
-                        className="absolute left-6 top-6 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                        className="flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none mb-6"
                     >
-                        &larr; Back
+                        <ArrowLeft className="h-3.5 w-3.5" />
+                        Back
                     </button>
-                    <CardTitle className="text-xl">Create A New Feature</CardTitle>
-                </CardHeader>
-                <CardContent>
+                    <h2 className="text-sm font-semibold text-foreground tracking-tight">
+                        New Feature
+                    </h2>
+                    {activeProject && (
+                        <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                            {activeProject.name}
+                        </p>
+                    )}
+                </div>
+
+                {/* Steps */}
+                <div className="px-5 py-2 flex-1">
                     <StepIndicator steps={STEPS} currentStep={effectiveStep} />
+                </div>
+
+                {/* Feature description context */}
+                {featureDescription && effectiveStep > 0 && (
+                    <div className="px-5 pb-5 mt-auto">
+                        <div className="border-t border-border pt-4">
+                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium mb-1.5">
+                                Feature
+                            </p>
+                            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4">
+                                {featureDescription}
+                            </p>
+                        </div>
+                    </div>
+                )}
+            </aside>
+
+            {/* ── Content Area ── */}
+            <main className="flex-1 overflow-auto">
+                <div className={`mx-auto px-10 py-10 transition-all duration-300 ${
+                    effectiveStep === 3 && !decomposing ? 'max-w-6xl' : 'max-w-3xl'
+                }`}>
+                    {/* Step title */}
+                    <div className="mb-8">
+                        <h1 className="text-lg font-semibold text-foreground">
+                            {effectiveStep === 0 && 'Describe your feature'}
+                            {effectiveStep === 1 && (streaming ? 'Generating PRD...' : 'Review your PRD')}
+                            {effectiveStep === 2 && 'Edit PRD'}
+                            {effectiveStep === 3 && (decomposing ? 'Decomposing into tasks...' : 'Review tasks')}
+                            {effectiveStep === 4 && 'Confirm'}
+                        </h1>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            {effectiveStep === 0 && 'What are you building? Be as detailed as you like.'}
+                            {effectiveStep === 1 && (streaming ? 'Claude is writing the product requirements.' : 'Make sure this captures what you want to build.')}
+                            {effectiveStep === 2 && 'Refine the markdown directly, then save.'}
+                            {effectiveStep === 3 && (decomposing ? 'Breaking the PRD into buildable tasks.' : 'Remove any tasks that aren\'t needed, then start building.')}
+                        </p>
+                    </div>
 
                     {error && (
-                        <p className="text-sm text-destructive mb-4 text-center">{error}</p>
+                        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 mb-6">
+                            <p className="text-sm text-destructive">{error}</p>
+                        </div>
                     )}
 
                     <div key={effectiveStep} className="view-transition-enter">
@@ -265,7 +318,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
 
                         {(wizardStep === 3 || decomposing) && (
                             decomposing ? (
-                                <div className="flex flex-col items-center gap-3 py-8">
+                                <div className="flex flex-col items-center gap-3 py-16">
                                     <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                                     <p className="text-sm text-muted-foreground">{agentStatus || 'Decomposing PRD into tasks...'}</p>
                                 </div>
@@ -273,14 +326,15 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                                 <TaskReview
                                     tasks={tasks}
                                     onRemove={removeTasks}
+                                    onUpdate={updateTask}
                                     onConfirm={confirmTasks}
                                     loading={saving}
                                 />
                             )
                         )}
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </main>
         </div>
     )
 }

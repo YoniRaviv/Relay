@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 
 interface PRDEditorProps {
     markdown: string
@@ -9,15 +8,12 @@ interface PRDEditorProps {
 
 export function PRDEditor({ markdown, onChange, onSave }: PRDEditorProps) {
     return (
-        <div className="space-y-4">
-            <div className="space-y-2">
-                <Label>Edit PRD</Label>
-                <textarea
-                    className="flex min-h-[55vh] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm font-mono placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
-                    value={markdown}
-                    onChange={(e) => onChange(e.target.value)}
-                />
-            </div>
+        <div className="space-y-6">
+            <textarea
+                className="flex min-h-[60vh] w-full rounded-md border border-input bg-transparent px-4 py-3 text-sm shadow-sm font-mono leading-relaxed placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                value={markdown}
+                onChange={(e) => onChange(e.target.value)}
+            />
             <Button onClick={onSave} className="w-full">
                 Save & Continue
             </Button>

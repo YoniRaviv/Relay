@@ -22,10 +22,10 @@ export function PRDPreview({ markdown, streaming, agentStatus, onEdit, onApprove
     }, [markdown, streaming])
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
             <div
                 ref={containerRef}
-                className="border rounded-md p-6 max-h-[65vh] overflow-auto bg-muted/30"
+                className="overflow-auto"
             >
                 {markdown ? (
                     <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -44,7 +44,7 @@ export function PRDPreview({ markdown, streaming, agentStatus, onEdit, onApprove
                 ) : null}
             </div>
             {!streaming && markdown && (
-                <div className="flex gap-2">
+                <div className="flex gap-3 pt-2 border-t border-border">
                     <Button variant="outline" onClick={onEdit} className="flex-1">
                         Edit PRD
                     </Button>
