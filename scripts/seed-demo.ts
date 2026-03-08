@@ -22,10 +22,6 @@ fs.mkdirSync(path.join(DEMO_DIR, 'src', 'utils'), { recursive: true });
 // ── Init DB with sqlite3 CLI ──
 if (fs.existsSync(DB_PATH)) fs.unlinkSync(DB_PATH);
 
-function sql(query: string) {
-  execSync(`sqlite3 "${DB_PATH}" "${query.replace(/"/g, '\\"')}"`, { stdio: 'pipe' });
-}
-
 function sqlMulti(queries: string) {
   execSync(`sqlite3 "${DB_PATH}"`, { input: queries, stdio: ['pipe', 'pipe', 'pipe'] });
 }
