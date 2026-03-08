@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { Plus } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { AppShell } from '@/shared/components/AppShell'
 import { ProjectSidebar, type SidebarView } from '@/modules/project'
 import { KanbanBoard, TaskDetail } from '@/modules/board'
 import { LoopControls, AgentActivityFeed } from '@/modules/agent'
 import { ReviewPanel } from '@/modules/review'
 import { BranchIndicator } from '@/shared/components/BranchIndicator'
+import { ProjectContextBadge } from '@/shared/components/ProjectContextBadge'
 import { ModelPicker, SettingsView } from '@/modules/settings'
 import { Summary } from '@/pages/Summary'
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
@@ -13,6 +17,7 @@ import { BoardSkeleton } from '@/shared/components/LoadingSkeleton'
 import { useKeyboardShortcuts } from '@/lib/shortcuts'
 import { useRelayStore } from '@/store/useRelayStore'
 import { useIpcListener } from '@/shared/hooks/useIpcListener'
+import { Button } from '@/components/ui/button'
 import type { Task, TaskLog, LoopState } from '@shared/types'
 
 interface BoardProps {
@@ -26,6 +31,7 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
         activeProject, tasks, setTasks, selectedTaskId, prdMarkdown, activePrdId,
         setLoopState, setCurrentTaskId, addActivity,
         reviewingTaskId, setReviewingTaskId,
+        projectContext, scanningProject,
     } = useRelayStore()
     const [sidebarView, setSidebarView] = useState<SidebarView>('board')
     const [loading, setLoading] = useState(true)
@@ -115,6 +121,7 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                     onViewChange={setSidebarView}
                     onNewFeature={onNewFeature}
                     onSelectFeature={onSelectFeature}
+                    onSwitchProject={onSwitchProject}
                 />
             }
         >
@@ -126,6 +133,7 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                             <h2 className="text-sm font-semibold">Kanban Board</h2>
                             <BranchIndicator />
                             <ModelPicker />
+                            <ProjectContextBadge projectContext={projectContext} scanning={scanningProject} />
                         </div>
                         <LoopControls />
                     </div>
@@ -137,6 +145,22 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                             <ErrorBoundary fallbackMessage="The board encountered an error.">
                                 {loading ? (
                                     <BoardSkeleton />
+                                ) : !activePrdId ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-6">
+                                        <div className="rounded-full bg-muted p-4">
+                                            <Plus className="h-8 w-8 text-muted-foreground" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-semibold mb-1">No features yet</h3>
+                                            <p className="text-sm text-muted-foreground max-w-sm">
+                                                Create your first feature to generate a PRD and start building with the AI agent loop.
+                                            </p>
+                                        </div>
+                                        <Button onClick={onNewFeature} className="gap-2">
+                                            <Plus className="h-4 w-4" />
+                                            Create Feature
+                                        </Button>
+                                    </div>
                                 ) : (
                                     <>
                                         <div className="flex-1 overflow-hidden">
@@ -158,9 +182,15 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                         {sidebarView === 'prd' && (
                             <div className="p-6 overflow-auto h-full">
                                 <h2 className="text-lg font-semibold mb-4">Product Requirements Document</h2>
-                                <div className="whitespace-pre-wrap font-mono text-sm bg-muted/30 rounded-lg p-4">
-                                    {prdMarkdown || 'No PRD available.'}
-                                </div>
+                                {prdMarkdown ? (
+                                    <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-lg p-4">
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            {prdMarkdown}
+                                        </ReactMarkdown>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">No PRD available.</p>
+                                )}
                             </div>
                         )}
 

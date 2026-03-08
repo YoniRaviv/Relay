@@ -1,4 +1,43 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* View transition animations */
+@keyframes view-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.view-transition-enter {
+  animation: view-fade-in 120ms ease-out both;
+}
+
+/* Dialog animations */
+@keyframes dialog-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes dialog-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.dialog-fade-in {
+  animation: dialog-fade 120ms ease-out both;
+}
+.dialog-pop-in {
+  animation: dialog-pop 150ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 
 @theme {
   /* Warm Studio — Light Theme

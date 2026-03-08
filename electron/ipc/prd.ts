@@ -1,6 +1,6 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
-import { buildPrdPrompt, buildDecomposePrompt } from '../agent/prompts';
+import { buildPrdPrompt, buildDecomposePrompt, buildClarifyPrompt } from '../agent/prompts';
 import { streamText, generateText } from '../agent/runner';
 import { openDb } from '../db/connection';
 import { store } from './settings';
@@ -174,11 +174,28 @@ async function cliGenerateText(
 }
 
 export function registerPrdHandlers(): void {
-  ipcMain.handle('prd:generate', async (_event, description: string) => {
+  ipcMain.handle('prd:clarify', async (_event, description: string, projectContext?: string) => {
     const win = BrowserWindow.getFocusedWindow();
     if (!win) throw new Error('No active window');
 
-    const prompt = buildPrdPrompt(description);
+    const prompt = buildClarifyPrompt(description, projectContext ?? undefined);
+    const systemPrompt = 'You are a senior product manager. Return only valid JSON.';
+
+    let result: string;
+    if (getEngineMode() === 'claude-code') {
+      result = await cliGenerateText(systemPrompt, prompt, win);
+    } else {
+      const apiKey = getApiKey();
+      result = await generateText(apiKey, systemPrompt, prompt);
+    }
+    return { status: 'ok', text: result };
+  });
+
+  ipcMain.handle('prd:generate', async (_event, description: string, clarifications?: string, projectContext?: string) => {
+    const win = BrowserWindow.getFocusedWindow();
+    if (!win) throw new Error('No active window');
+
+    const prompt = buildPrdPrompt(description, clarifications, projectContext ?? undefined);
 
     if (getEngineMode() === 'claude-code') {
       await cliStreamText('You are a senior product manager.', prompt, win, 'prd:stream');
@@ -189,11 +206,11 @@ export function registerPrdHandlers(): void {
     return { status: 'ok' };
   });
 
-  ipcMain.handle('prd:decompose', async (_event, prdMarkdown: string) => {
+  ipcMain.handle('prd:decompose', async (_event, prdMarkdown: string, projectContext?: string) => {
     const win = BrowserWindow.getFocusedWindow();
     if (!win) throw new Error('No active window');
 
-    const prompt = buildDecomposePrompt(prdMarkdown);
+    const prompt = buildDecomposePrompt(prdMarkdown, projectContext ?? undefined);
 
     if (getEngineMode() === 'claude-code') {
       const result = await cliGenerateText('You are a senior software architect. Return only valid JSON.', prompt, win);

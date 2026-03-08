@@ -20,7 +20,11 @@ interface SettingsSlice {
 // ── Project Slice ──
 interface ProjectSlice {
   activeProject: Project | null;
+  projectContext: string | null;
+  scanningProject: boolean;
   setActiveProject: (project: Project | null) => void;
+  setProjectContext: (context: string | null) => void;
+  setScanningProject: (scanning: boolean) => void;
 }
 
 // ── Feature (PRD) Summary ──
@@ -93,7 +97,11 @@ export const useRelayStore = create<RelayStore>((set) => ({
 
   // Project
   activeProject: null,
+  projectContext: null,
+  scanningProject: false,
   setActiveProject: (activeProject) => set({ activeProject }),
+  setProjectContext: (projectContext) => set({ projectContext }),
+  setScanningProject: (scanningProject) => set({ scanningProject }),
 
   // PRD
   wizardStep: 0,
