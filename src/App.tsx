@@ -16,7 +16,7 @@ function App() {
 
   useEffect(() => {
     init()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const init = async () => {
     const settings = await window.relayAPI.getSettings()

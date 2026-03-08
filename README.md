@@ -114,7 +114,20 @@ shared/
   pricing.ts           # Model pricing table for cost calculation
 src/
   pages/               # Board, PRDWizard, Setup, Summary
-  components/          # UI components (Kanban, TaskCard, ReviewPanel, etc.)
+  modules/             # Feature-based component modules
+    board/             # KanbanBoard, KanbanColumn, TaskCard, TaskDetail
+    agent/             # LoopControls, AgentActivityFeed, ActivityMessage
+    review/            # ReviewPanel, DiffViewer, FileChangeList, CommitDialog
+    prd/               # PRDPreview, PRDEditor, FeatureInput, StepIndicator, TaskReview
+    settings/          # SettingsView, ModelPicker, ApiKeyInput, ThemeToggle
+    project/           # ProjectSelector, ProjectSummary, ProjectSidebar
+    metrics/           # TaskMetricsTable, MetricCard
+  shared/              # Reusable utilities, hooks, types, and components
+    formatters/        # formatDuration, formatNumber, formatCost
+    constants/         # Status color maps, priority colors, tier colors
+    hooks/             # useClickOutside, useIpcListener
+    types/             # Renderer-only shared types (metrics, review, prd)
+    components/        # AppShell, ErrorBoundary, LoadingSkeleton, EmptyState, etc.
   components/ui/       # shadcn/ui primitives
   store/               # Zustand store
   lib/                 # Utilities (theme, keyboard shortcuts)
@@ -134,7 +147,7 @@ Planned features and improvements:
 - [ ] **Summary PDF Export** — Export project summaries (PRD, tasks, metrics) as a downloadable PDF
 - [ ] **Project Map** — Visual graph of file links, dependencies, and data flows across the codebase
 - [ ] **App Observability** — Built-in error tracking, diagnostics, and logging dashboard for debugging issues
-- [ ] **Cleanup** — Split big components into smaller files, check for warnings and errors, check repeated code
+- [x] **Cleanup** — Split big components into smaller files, check for warnings and errors, check repeated code
 
 ## License
 
