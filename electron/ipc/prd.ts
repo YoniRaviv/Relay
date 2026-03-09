@@ -25,11 +25,16 @@ function getClaudePath(): string {
 
 function getApiKey(): string {
   const encrypted = store.get('apiKey');
-  if (!encrypted) throw new Error('No API key configured');
-  if (safeStorage.isEncryptionAvailable()) {
-    return safeStorage.decryptString(Buffer.from(encrypted as string, 'base64'));
+  if (!encrypted) throw new Error('No API key configured. Go to Settings and enter your Anthropic API key.');
+  try {
+    if (safeStorage.isEncryptionAvailable()) {
+      return safeStorage.decryptString(Buffer.from(encrypted as string, 'base64'));
+    }
+    return encrypted as string;
+  } catch {
+    store.delete('apiKey');
+    throw new Error('Stored API key was corrupted and has been cleared. Please re-enter your API key in Settings.');
   }
-  return encrypted as string;
 }
 
 function getEngineMode(): EngineMode {

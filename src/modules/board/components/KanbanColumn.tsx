@@ -17,13 +17,19 @@ export function KanbanColumn({ id, title, tasks, activeTaskId, onTaskClick, onTa
     const { setNodeRef, isOver } = useDroppable({ id })
     const taskIds = tasks.map((t) => t.id)
 
+    const isReview = id === 'review'
+
     return (
-        <div className="flex flex-col flex-1 min-w-[280px] max-w-[400px]">
+        <div className="flex flex-col flex-1 min-w-[260px] max-w-[380px]">
             <div className="flex items-center gap-2 mb-3 px-1">
                 <h3 className="text-sm font-semibold">{title}</h3>
-                <span className="text-xs text-muted-foreground">
-                    {tasks.length}
-                </span>
+                {tasks.length > 0 && (
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                        isReview ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 font-medium' : 'text-muted-foreground'
+                    }`}>
+                        {tasks.length}
+                    </span>
+                )}
             </div>
             <div
                 ref={setNodeRef}

@@ -52,9 +52,18 @@ export function registerReviewHandlers(): void {
     await git.add('.');
     const result = await git.commit(commitMessage);
 
-    // Update task status to approved
-    db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
-      .run('approved', new Date().toISOString(), taskId);
+    // Push to remote
+    try {
+      const branchSummary = await git.branch();
+      await git.push('origin', branchSummary.current, ['--set-upstream']);
+    } catch {
+      // Push may fail if no remote configured — continue anyway
+    }
+
+    // Update task status to approved with commit hash
+    const commitHash = result.commit || null;
+    db.prepare('UPDATE tasks SET status = ?, commit_hash = ?, updated_at = ? WHERE id = ?')
+      .run('approved', commitHash, new Date().toISOString(), taskId);
 
     // Notify UI
     const win = BrowserWindow.getFocusedWindow();
@@ -133,6 +142,7 @@ function rowToTask(row: Record<string, unknown>) {
     order: row.order as number,
     passes: row.passes as number,
     rejectionNotes: row.rejection_notes as string | null,
+    commitHash: (row.commit_hash as string | null) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FolderSync, ChevronRight, Cpu, Terminal, Shield, Zap, Sparkles } from 'lucide-react'
+import { FolderSync, ChevronRight, Cpu, Terminal, Shield, Zap, Sparkles, Key, CheckCircle, Loader2 } from 'lucide-react'
 import { AVAILABLE_MODELS } from '@shared/pricing'
 import { tierColors } from '@/shared/constants/statusMaps'
 import type { EngineMode, CliToolsPreset } from '@shared/types'
@@ -99,12 +99,16 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
     const [toolsPreset, setToolsPreset] = useState<CliToolsPreset>('conservative')
     const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-20250514')
     const [cliAvailable, setCliAvailable] = useState<{ available: boolean; error?: string } | null>(null)
+    const [apiKeyInput, setApiKeyInput] = useState('')
+    const [apiKeyStatus, setApiKeyStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+    const [hasApiKey, setHasApiKey] = useState(false)
 
     useEffect(() => {
         window.relayAPI.getEngineMode().then(setEngineMode)
         window.relayAPI.getCliToolsPreset().then(setToolsPreset)
         window.relayAPI.getSelectedModel().then(setSelectedModel)
         window.relayAPI.checkCliAvailable().then(setCliAvailable)
+        window.relayAPI.getSettings().then(s => setHasApiKey(s.hasApiKey))
     }, [])
 
     const handleEngineChange = async (mode: EngineMode) => {
@@ -120,6 +124,21 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
     const handleModelChange = async (model: string) => {
         setSelectedModel(model)
         await window.relayAPI.setSelectedModel(model)
+    }
+
+    const handleSaveApiKey = async () => {
+        if (!apiKeyInput.trim()) return
+        setApiKeyStatus('saving')
+        const result = await window.relayAPI.setApiKey(apiKeyInput.trim())
+        if (result.valid) {
+            setApiKeyStatus('saved')
+            setHasApiKey(true)
+            setApiKeyInput('')
+            setTimeout(() => setApiKeyStatus('idle'), 2000)
+        } else {
+            setApiKeyStatus('error')
+            setTimeout(() => setApiKeyStatus('idle'), 2000)
+        }
     }
 
     return (
@@ -143,6 +162,41 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
                         description="Uses your existing Claude Code authentication"
                     />
                 </SettingsSection>
+
+                {engineMode === 'api-key' && (
+                    <SettingsSection title="API Key">
+                        <div className="px-4 py-3 space-y-3">
+                            <div className="flex items-center gap-2">
+                                <Key className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <p className="text-sm font-medium">
+                                    {hasApiKey ? 'API Key Configured' : 'No API Key Set'}
+                                </p>
+                                {hasApiKey && <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />}
+                            </div>
+                            <div className="flex gap-2">
+                                <input
+                                    type="password"
+                                    placeholder="sk-ant-..."
+                                    value={apiKeyInput}
+                                    onChange={(e) => setApiKeyInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSaveApiKey()}
+                                    className="flex-1 h-8 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                />
+                                <button
+                                    onClick={handleSaveApiKey}
+                                    disabled={!apiKeyInput.trim() || apiKeyStatus === 'saving'}
+                                    className="h-8 px-3 rounded-md bg-foreground text-background text-sm font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1.5"
+                                >
+                                    {apiKeyStatus === 'saving' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                                    {apiKeyStatus === 'saved' ? 'Saved' : hasApiKey ? 'Update' : 'Save'}
+                                </button>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Encrypted and stored locally. Never leaves your machine except for API calls.
+                            </p>
+                        </div>
+                    </SettingsSection>
+                )}
 
                 <SettingsSection title="Model">
                     {AVAILABLE_MODELS.map((m) => (

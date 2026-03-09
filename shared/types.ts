@@ -54,6 +54,7 @@ export interface Task {
   order: number;
   passes: number;
   rejectionNotes: string | null;
+  commitHash: string | null;
   createdAt: string;
   updatedAt: string;
 }

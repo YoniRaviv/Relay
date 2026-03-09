@@ -7,7 +7,7 @@ import { AppShell } from '@/shared/components/AppShell'
 import { ProjectSidebar, type SidebarView } from '@/modules/project'
 import { KanbanBoard, TaskDetail } from '@/modules/board'
 import { LoopControls, AgentActivityFeed } from '@/modules/agent'
-import { ReviewPanel } from '@/modules/review'
+import { ReviewPanel, PrCreationDialog } from '@/modules/review'
 import { BranchIndicator } from '@/shared/components/BranchIndicator'
 import { ProjectContextBadge } from '@/shared/components/ProjectContextBadge'
 import { ModelPicker, SettingsView } from '@/modules/settings'
@@ -28,13 +28,19 @@ interface BoardProps {
 
 export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardProps) {
     const {
-        activeProject, tasks, setTasks, selectedTaskId, prdMarkdown, activePrdId,
+        activeProject, tasks, setTasks, selectedTaskId, prdMarkdown, activePrdId, features,
         setLoopState, setCurrentTaskId, addActivity,
         reviewingTaskId, setReviewingTaskId,
         projectContext, scanningProject,
     } = useRelayStore()
+
+    const activeFeature = features.find(f => f.id === activePrdId)
+    const activeFeatureTitle = activeFeature
+        ? (activeFeature.description.split('\n')[0].trim().slice(0, 40) || 'Untitled Feature')
+        : null
     const [sidebarView, setSidebarView] = useState<SidebarView>('board')
     const [loading, setLoading] = useState(true)
+    const [showPrDialog, setShowPrDialog] = useState(false)
 
     useEffect(() => {
         if (activeProject) {
@@ -46,16 +52,11 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
         }
     }, [activeProject, activePrdId, setTasks])
 
-    // Keyboard shortcuts
+    // Keyboard shortcuts — Space toggles pause/resume only (Start requires the branch setup dialog via LoopControls)
     const toggleLoop = () => {
         const { loopState } = useRelayStore.getState()
         if (!activeProject) return
-        if (loopState === 'idle' || loopState === 'stopped') {
-            useRelayStore.getState().clearActivity()
-            useRelayStore.getState().setLoopState('running')
-            const prdId = useRelayStore.getState().activePrdId
-            window.relayAPI.startLoop(activeProject.id, prdId ?? undefined)
-        } else if (loopState === 'running') {
+        if (loopState === 'running') {
             useRelayStore.getState().setLoopState('paused')
             window.relayAPI.pauseLoop()
         } else if (loopState === 'paused') {
@@ -101,6 +102,13 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
         toast.success(`${storyId} ready for review`)
     })
 
+    useIpcListener('loop:allTasksComplete', () => {
+        const { featureBranch } = useRelayStore.getState()
+        if (featureBranch) {
+            setShowPrDialog(true)
+        }
+    })
+
     // Update window title
     useEffect(() => {
         const { currentTaskId } = useRelayStore.getState()
@@ -129,8 +137,19 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                 {/* Header with loop controls */}
                 {sidebarView === 'board' && (
                     <div className="flex items-center justify-between px-6 py-3">
-                        <div className="flex items-center gap-3">
-                            <h2 className="text-sm font-semibold">Kanban Board</h2>
+                        <div className="flex items-center gap-3 min-w-0">
+                            {activeFeatureTitle ? (
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <h2 className="text-sm font-semibold truncate max-w-[260px]">{activeFeatureTitle}</h2>
+                                    {activeFeature && (
+                                        <span className="text-[10px] font-medium text-muted-foreground shrink-0">
+                                            {activeFeature.doneCount}/{activeFeature.taskCount} tasks
+                                        </span>
+                                    )}
+                                </div>
+                            ) : (
+                                <h2 className="text-sm font-semibold">Kanban Board</h2>
+                            )}
                             <BranchIndicator />
                             <ModelPicker />
                             <ProjectContextBadge projectContext={projectContext} scanning={scanningProject} />
@@ -219,6 +238,10 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                     />
                 )
             })()}
+
+            {showPrDialog && (
+                <PrCreationDialog onClose={() => setShowPrDialog(false)} />
+            )}
         </AppShell>
     )
 }

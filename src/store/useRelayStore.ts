@@ -75,8 +75,12 @@ interface AgentSlice {
 interface GitSlice {
   currentBranch: string | null;
   branches: string[];
+  featureBranch: string | null;
+  baseBranch: string | null;
   setCurrentBranch: (branch: string | null) => void;
   setBranches: (branches: string[]) => void;
+  setFeatureBranch: (branch: string | null) => void;
+  setBaseBranch: (branch: string | null) => void;
 }
 
 // ── Review Slice ──
@@ -145,8 +149,12 @@ export const useRelayStore = create<RelayStore>((set) => ({
   // Git
   currentBranch: null,
   branches: [],
+  featureBranch: null,
+  baseBranch: null,
   setCurrentBranch: (currentBranch) => set({ currentBranch }),
   setBranches: (branches) => set({ branches }),
+  setFeatureBranch: (featureBranch) => set({ featureBranch }),
+  setBaseBranch: (baseBranch) => set({ baseBranch }),
 
   // Review
   reviewingTaskId: null,

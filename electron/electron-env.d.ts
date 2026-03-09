@@ -57,6 +57,12 @@ interface RelayAPI {
   gitLog(projectId: string): Promise<unknown[]>
   gitStatus(projectId: string): Promise<{ clean: boolean; files: Array<{ path: string; insertions: number; deletions: number; status: 'new' | 'modified' | 'deleted' | 'renamed' }> }>
   gitBranch(projectId: string): Promise<{ current: string; branches: string[] }>
+  gitCheckout(projectId: string, branch: string): Promise<{ status: string }>
+  gitPull(projectId: string): Promise<{ summary: unknown }>
+  gitCreateBranch(projectId: string, branchName: string, baseBranch: string): Promise<{ status: string; branch: string }>
+  gitPush(projectId: string): Promise<{ status: string }>
+  gitStash(projectId: string): Promise<{ status: string }>
+  gitCreatePr(projectId: string, title: string, body: string, baseBranch: string): Promise<{ url: string }>
 
   // Review
   reviewGetDiff(projectId: string): Promise<string>
@@ -64,8 +70,8 @@ interface RelayAPI {
   reviewReject(projectId: string, taskId: string, notes: string): Promise<unknown>
 
   // Metrics
-  projectMetrics(projectId: string): Promise<unknown>
-  taskMetrics(projectId: string): Promise<unknown>
+  projectMetrics(projectId: string, prdId?: string): Promise<unknown>
+  taskMetrics(projectId: string, prdId?: string): Promise<unknown>
   exportMetrics(projectId: string): Promise<unknown>
 
   // Event listeners

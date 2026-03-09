@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { X, Eye } from 'lucide-react'
+import { X, Eye, GitCommit } from 'lucide-react'
 import { ActivityMessage } from '@/modules/agent'
 import { useRelayStore } from '@/store/useRelayStore'
 import { statusColors, statusLabels } from '@/shared/constants/statusMaps'
@@ -63,6 +63,20 @@ export function TaskDetail() {
                 {task.rejectionNotes && (
                     <Section title="Rejection Notes">
                         <p className="text-sm text-destructive whitespace-pre-wrap">{task.rejectionNotes}</p>
+                    </Section>
+                )}
+
+                {(task.status === 'approved' || task.status === 'done') && task.commitHash && (
+                    <Section title="Git">
+                        <div className="flex items-center gap-2 p-2.5 rounded-md bg-muted/40 border border-border">
+                            <GitCommit className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <div className="min-w-0">
+                                <span className="text-xs font-mono text-foreground">{task.commitHash.slice(0, 7)}</span>
+                                <span className="text-xs text-muted-foreground ml-2">
+                                    feat({task.storyId}): {task.title}
+                                </span>
+                            </div>
+                        </div>
                     </Section>
                 )}
 
