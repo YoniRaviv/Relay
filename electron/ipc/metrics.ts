@@ -49,8 +49,11 @@ function getDbForProject(projectId: string) {
 }
 
 export function registerMetricsHandlers(): void {
-  ipcMain.handle('metrics:project', async (_event, projectId: string): Promise<ProjectMetricsData> => {
+  ipcMain.handle('metrics:project', async (_event, projectId: string, prdId?: string): Promise<ProjectMetricsData> => {
     const db = getDbForProject(projectId);
+
+    const prdFilter = prdId ? ' AND prd_id = ?' : '';
+    const prdParams = prdId ? [projectId, prdId] : [projectId];
 
     const taskCounts = db.prepare(`
       SELECT
@@ -58,8 +61,8 @@ export function registerMetricsHandlers(): void {
         SUM(CASE WHEN status IN ('done', 'approved') THEN 1 ELSE 0 END) as completed,
         SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
         SUM(CASE WHEN status IN ('in_progress', 'review', 'failed') THEN 1 ELSE 0 END) as in_progress
-      FROM tasks WHERE project_id = ?
-    `).get(projectId) as { total: number; completed: number; pending: number; in_progress: number };
+      FROM tasks WHERE project_id = ?${prdFilter}
+    `).get(...prdParams) as { total: number; completed: number; pending: number; in_progress: number };
 
     const metricAggs = db.prepare(`
       SELECT
@@ -70,8 +73,8 @@ export function registerMetricsHandlers(): void {
         COALESCE(AVG(t.passes), 0) as avg_passes
       FROM tasks t
       LEFT JOIN task_metrics m ON m.task_id = t.id
-      WHERE t.project_id = ?
-    `).get(projectId) as {
+      WHERE t.project_id = ?${prdFilter}
+    `).get(...prdParams) as {
       total_duration: number;
       total_tokens_in: number;
       total_tokens_out: number;
@@ -81,8 +84,8 @@ export function registerMetricsHandlers(): void {
 
     const firstPassCount = db.prepare(`
       SELECT COUNT(*) as count FROM tasks
-      WHERE project_id = ? AND status IN ('done', 'approved') AND passes <= 1
-    `).get(projectId) as { count: number };
+      WHERE project_id = ? AND status IN ('done', 'approved') AND passes <= 1${prdFilter.replace('AND prd_id', 'AND prd_id')}
+    `).get(...prdParams) as { count: number };
 
     const completedCount = taskCounts.completed || 0;
 
@@ -94,9 +97,9 @@ export function registerMetricsHandlers(): void {
         COALESCE(SUM(m.tokens_out), 0) as tokens_out
       FROM task_metrics m
       JOIN tasks t ON m.task_id = t.id
-      WHERE t.project_id = ?
+      WHERE t.project_id = ?${prdFilter}
       GROUP BY COALESCE(m.model, 'claude-sonnet-4-20250514')
-    `).all(projectId) as Array<{ model: string; tokens_in: number; tokens_out: number }>;
+    `).all(...prdParams) as Array<{ model: string; tokens_in: number; tokens_out: number }>;
 
     const modelBreakdown = modelGroups.map(g => ({
       model: g.model,
@@ -125,8 +128,11 @@ export function registerMetricsHandlers(): void {
     };
   });
 
-  ipcMain.handle('metrics:tasks', async (_event, projectId: string): Promise<TaskMetricRow[]> => {
+  ipcMain.handle('metrics:tasks', async (_event, projectId: string, prdId?: string): Promise<TaskMetricRow[]> => {
     const db = getDbForProject(projectId);
+
+    const prdFilter = prdId ? ' AND t.prd_id = ?' : '';
+    const prdParams = prdId ? [projectId, prdId] : [projectId];
 
     const rows = db.prepare(`
       SELECT
@@ -142,9 +148,9 @@ export function registerMetricsHandlers(): void {
         m.model
       FROM tasks t
       LEFT JOIN task_metrics m ON m.task_id = t.id
-      WHERE t.project_id = ?
+      WHERE t.project_id = ?${prdFilter}
       ORDER BY t."order" ASC
-    `).all(projectId) as Array<Record<string, unknown>>;
+    `).all(...prdParams) as Array<Record<string, unknown>>;
 
     return rows.map(r => ({
       taskId: r.task_id as string,

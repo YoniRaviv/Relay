@@ -50,6 +50,12 @@ const relayAPI = {
   gitLog: (projectId: string) => ipcRenderer.invoke('git:log', projectId),
   gitStatus: (projectId: string) => ipcRenderer.invoke('git:status', projectId),
   gitBranch: (projectId: string) => ipcRenderer.invoke('git:branch', projectId),
+  gitCheckout: (projectId: string, branch: string) => ipcRenderer.invoke('git:checkout', projectId, branch),
+  gitPull: (projectId: string) => ipcRenderer.invoke('git:pull', projectId),
+  gitCreateBranch: (projectId: string, branchName: string, baseBranch: string) => ipcRenderer.invoke('git:createBranch', projectId, branchName, baseBranch),
+  gitPush: (projectId: string) => ipcRenderer.invoke('git:push', projectId),
+  gitStash: (projectId: string) => ipcRenderer.invoke('git:stash', projectId),
+  gitCreatePr: (projectId: string, title: string, body: string, baseBranch: string) => ipcRenderer.invoke('git:createPr', projectId, title, body, baseBranch),
 
   // Review
   reviewGetDiff: (projectId: string) => ipcRenderer.invoke('review:getDiff', projectId),
@@ -57,8 +63,8 @@ const relayAPI = {
   reviewReject: (projectId: string, taskId: string, notes: string) => ipcRenderer.invoke('review:reject', projectId, taskId, notes),
 
   // Metrics
-  projectMetrics: (projectId: string) => ipcRenderer.invoke('metrics:project', projectId),
-  taskMetrics: (projectId: string) => ipcRenderer.invoke('metrics:tasks', projectId),
+  projectMetrics: (projectId: string, prdId?: string) => ipcRenderer.invoke('metrics:project', projectId, prdId),
+  taskMetrics: (projectId: string, prdId?: string) => ipcRenderer.invoke('metrics:tasks', projectId, prdId),
   exportMetrics: (projectId: string) => ipcRenderer.invoke('metrics:export', projectId),
 
   // Event listeners

@@ -17,7 +17,8 @@ import type { Task, TaskStatus } from '@shared/types'
 
 const COLUMNS: { id: string; title: string; statuses: TaskStatus[] }[] = [
     { id: 'pending', title: 'Pending', statuses: ['pending'] },
-    { id: 'building', title: 'Building', statuses: ['in_progress', 'review', 'failed'] },
+    { id: 'building', title: 'Building', statuses: ['in_progress', 'failed'] },
+    { id: 'review', title: 'Human Review', statuses: ['review'] },
     { id: 'complete', title: 'Complete', statuses: ['done', 'approved'] },
 ]
 
@@ -31,6 +32,7 @@ function getColumnForStatus(status: TaskStatus): string {
 function getDefaultStatusForColumn(columnId: string): TaskStatus {
     switch (columnId) {
         case 'building': return 'in_progress'
+        case 'review': return 'review'
         case 'complete': return 'done'
         default: return 'pending'
     }

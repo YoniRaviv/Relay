@@ -1,7 +1,11 @@
 import { ipcMain } from 'electron';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import simpleGit from 'simple-git';
 import { store } from './settings';
 import { openDb } from '../db/connection';
+
+const execFileAsync = promisify(execFile);
 
 function getProjectPath(projectId: string): string {
   const projects = store.get('recentProjects', []) as Array<{ path: string }>;
@@ -105,5 +109,61 @@ export function registerGitHandlers(): void {
     await git.checkout(['--', '.']);
     await git.clean('f', ['-d']);
     return { status: 'ok' };
+  });
+
+  ipcMain.handle('git:checkout', async (_event, projectId: string, branch: string) => {
+    const projectPath = getProjectPath(projectId);
+    const git = simpleGit(projectPath);
+    await git.checkout(branch);
+    return { status: 'ok' };
+  });
+
+  ipcMain.handle('git:pull', async (_event, projectId: string) => {
+    const projectPath = getProjectPath(projectId);
+    const git = simpleGit(projectPath);
+    const result = await git.pull();
+    return { summary: result.summary };
+  });
+
+  ipcMain.handle('git:createBranch', async (_event, projectId: string, branchName: string, baseBranch: string) => {
+    const projectPath = getProjectPath(projectId);
+    const git = simpleGit(projectPath);
+    // Checkout base, pull latest, create new branch
+    await git.checkout(baseBranch);
+    try {
+      await git.pull();
+    } catch {
+      // pull may fail if no remote tracking — continue anyway
+    }
+    await git.checkoutLocalBranch(branchName);
+    return { status: 'ok', branch: branchName };
+  });
+
+  ipcMain.handle('git:push', async (_event, projectId: string) => {
+    const projectPath = getProjectPath(projectId);
+    const git = simpleGit(projectPath);
+    const branchSummary = await git.branch();
+    await git.push('origin', branchSummary.current, ['--set-upstream']);
+    return { status: 'ok' };
+  });
+
+  ipcMain.handle('git:stash', async (_event, projectId: string) => {
+    const projectPath = getProjectPath(projectId);
+    const git = simpleGit(projectPath);
+    await git.stash();
+    return { status: 'ok' };
+  });
+
+  ipcMain.handle('git:createPr', async (_event, projectId: string, title: string, body: string, baseBranch: string) => {
+    const projectPath = getProjectPath(projectId);
+    const { stdout } = await execFileAsync('gh', [
+      'pr', 'create',
+      '--title', title,
+      '--body', body,
+      '--base', baseBranch,
+    ], { cwd: projectPath });
+    // gh pr create prints the PR URL to stdout
+    const prUrl = stdout.trim();
+    return { url: prUrl };
   });
 }

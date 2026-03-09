@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { DiffViewer } from './DiffViewer'
+import type { DiffViewerHandle } from './DiffViewer'
 import { FileChangeList } from './FileChangeList'
 import { CommitDialog } from './CommitDialog'
 import { useRelayStore } from '@/store/useRelayStore'
@@ -22,6 +23,8 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
     const [showRejectInput, setShowRejectInput] = useState(false)
     const [rejectionNotes, setRejectionNotes] = useState('')
     const [submitting, setSubmitting] = useState(false)
+    const [activeFile, setActiveFile] = useState<string | null>(null)
+    const diffViewerRef = useRef<DiffViewerHandle>(null)
 
     useEffect(() => {
         loadDiff()
@@ -71,6 +74,11 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
         } finally {
             setSubmitting(false)
         }
+    }
+
+    const handleFileClick = (path: string) => {
+        setActiveFile(path)
+        diffViewerRef.current?.scrollToFile(path)
     }
 
     const defaultCommitMessage = `feat(${task.storyId}): ${task.title}`
@@ -147,11 +155,15 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
                     {/* File list sidebar */}
                     <div className="w-64 border-r border-border overflow-auto bg-[var(--color-sidebar)]">
                         <div className="px-3 py-2.5 border-b border-border">
-                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 Changed Files
                             </h3>
                         </div>
-                        <FileChangeList files={files} />
+                        <FileChangeList
+                            files={files}
+                            activeFile={activeFile}
+                            onFileClick={handleFileClick}
+                        />
                     </div>
 
                     {/* Diff viewer */}
@@ -161,7 +173,11 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
                                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                             </div>
                         ) : (
-                            <DiffViewer diffString={diffString} />
+                            <DiffViewer
+                                ref={diffViewerRef}
+                                diffString={diffString}
+                                onActiveFileChange={setActiveFile}
+                            />
                         )}
                     </div>
                 </div>

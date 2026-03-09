@@ -70,4 +70,10 @@ export function initializeDatabase(db: Database.Database): void {
   if (!projectColumns.some(c => c.name === 'context')) {
     db.exec(`ALTER TABLE projects ADD COLUMN context TEXT`);
   }
+
+  // Migration: add commit_hash column to tasks table
+  const taskColumns = db.pragma('table_info(tasks)') as Array<{ name: string }>;
+  if (!taskColumns.some(c => c.name === 'commit_hash')) {
+    db.exec(`ALTER TABLE tasks ADD COLUMN commit_hash TEXT`);
+  }
 }

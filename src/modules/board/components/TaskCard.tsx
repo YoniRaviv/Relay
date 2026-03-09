@@ -50,7 +50,9 @@ export function TaskCard({ task, isActive, onClick, onReview }: TaskCardProps) {
             onClick={onClick}
             className={`p-3 rounded-lg bg-card cursor-pointer transition-all hover:shadow-sm ${
                 isDragging ? 'opacity-0' : ''
-            } ${isActive ? 'ring-2 ring-primary' : ''}`}
+            } ${isActive ? 'ring-2 ring-primary' : ''} ${
+                task.status === 'review' ? 'ring-1 ring-amber-500/40' : ''
+            }`}
         >
             <TaskCardContent task={task} />
             {task.status === 'review' && (
@@ -59,10 +61,10 @@ export function TaskCard({ task, isActive, onClick, onReview }: TaskCardProps) {
                         e.stopPropagation()
                         onReview?.()
                     }}
-                    className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
+                    className="w-full mt-2.5 py-1.5 rounded-md text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25 transition-colors flex items-center justify-center gap-1.5"
                 >
-                    <Eye className="h-3 w-3" />
-                    Review
+                    <Eye className="h-3.5 w-3.5" />
+                    Review Changes
                 </button>
             )}
         </div>

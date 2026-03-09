@@ -122,66 +122,170 @@ body {
   background: var(--color-muted-foreground);
 }
 
-/* diff2html theme overrides */
+/* ── diff2html: reset structure ── */
 .diff-viewer .d2h-wrapper {
   font-size: 12px;
+  line-height: 1.5;
 }
 .diff-viewer .d2h-file-header {
-  background: var(--color-muted);
-  border-color: var(--color-border);
-  color: var(--color-foreground);
+  display: none;
 }
-.diff-viewer .d2h-file-name {
-  color: var(--color-foreground);
+.diff-viewer .d2h-file-diff {
+  border: none;
+  margin: 0;
 }
+.diff-viewer .d2h-diff-table {
+  border-collapse: collapse;
+  font-family: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  width: 100%;
+}
+.diff-viewer .d2h-code-line,
+.diff-viewer .d2h-code-side-line {
+  width: 100%;
+}
+.diff-viewer .d2h-code-line-ctn {
+  width: 100%;
+}
+.diff-viewer .d2h-diff-tbody tr {
+  border-color: transparent;
+}
+.diff-viewer .d2h-code-linenumber::after {
+  display: none;
+}
+
+/* ── Line numbers: tight, subtle ── */
 .diff-viewer .d2h-code-linenumber,
 .diff-viewer .d2h-code-side-linenumber {
   color: var(--color-muted-foreground);
-  background: var(--color-muted);
-  border-color: var(--color-border);
+  opacity: 0.5;
+  background: transparent;
+  border-color: transparent;
   position: sticky;
   left: 0;
   z-index: 1;
+  padding: 0 6px 0 8px;
+  min-width: 24px;
+  width: auto;
+  text-align: right;
+  user-select: none;
 }
+
+/* ── Code lines ── */
 .diff-viewer .d2h-code-line {
   color: var(--color-foreground);
+  padding-left: 4px;
 }
+.diff-viewer .d2h-code-line-prefix {
+  user-select: none;
+  width: 14px;
+  display: inline-block;
+}
+
+/* ── Empty / info ── */
 .diff-viewer .d2h-emptyplaceholder,
 .diff-viewer .d2h-code-side-emptyplaceholder {
   background: var(--color-muted);
-  border-color: var(--color-border);
+  border-color: transparent;
 }
 .diff-viewer .d2h-info {
-  background: var(--color-muted);
+  background: transparent;
   color: var(--color-muted-foreground);
-  border-color: var(--color-border);
+  opacity: 0.6;
+  border-color: transparent;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+/* ── File diff tags ── */
+.diff-tag {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.diff-tag-changed {
+  background: #fef3c7;
+  color: #92400e;
+}
+.diff-tag-added {
+  background: #dcfce7;
+  color: #166534;
+}
+.diff-tag-deleted {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.diff-tag-renamed {
+  background: #e0f2fe;
+  color: #075985;
+}
+.dark .diff-tag-changed {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+}
+.dark .diff-tag-added {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+}
+.dark .diff-tag-deleted {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+.dark .diff-tag-renamed {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
 }
 
 /* ── Light mode diff highlights ── */
 .diff-viewer .d2h-ins {
-  background: #e6f9f0;
+  background: #ecfdf5;
 }
 .diff-viewer .d2h-del {
-  background: #fde8e8;
+  background: #fef2f2;
 }
 .diff-viewer .d2h-ins .d2h-code-line-ctn {
-  background: #d1f5e4;
+  background: #d1fae5;
 }
 .diff-viewer .d2h-del .d2h-code-line-ctn {
-  background: #fbd5d5;
+  background: #fecaca;
 }
-/* Inline word-level highlights */
 .diff-viewer .d2h-ins .d2h-code-line-ctn ins,
 .diff-viewer .d2h-ins ins {
-  background: #a7e8c8;
-  color: #1a3a2a;
+  background: #86efac;
+  color: #14532d;
   text-decoration: none;
+  border-radius: 2px;
+  padding: 0 1px;
 }
 .diff-viewer .d2h-del .d2h-code-line-ctn del,
 .diff-viewer .d2h-del del {
-  background: #f5a8a8;
-  color: #3a1a1a;
+  background: #fca5a5;
+  color: #450a0a;
   text-decoration: none;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+/* Light mode: tinted line numbers for changed rows */
+.diff-viewer .d2h-ins .d2h-code-linenumber,
+.diff-viewer .d2h-ins .d2h-code-side-linenumber {
+  opacity: 0.7;
+}
+.diff-viewer .d2h-del .d2h-code-linenumber,
+.diff-viewer .d2h-del .d2h-code-side-linenumber {
+  opacity: 0.7;
+}
+/* Light mode +/- prefix */
+.diff-viewer .d2h-ins .d2h-code-line-prefix {
+  color: #16a34a;
+  font-weight: 600;
+}
+.diff-viewer .d2h-del .d2h-code-line-prefix {
+  color: #dc2626;
+  font-weight: 600;
 }
 
 /* ── Dark mode diff highlights ── */
@@ -189,38 +293,46 @@ body {
   background: var(--color-card);
 }
 .dark .diff-viewer .d2h-ins {
-  background: rgba(46, 196, 166, 0.10);
+  background: rgba(34, 197, 94, 0.06);
 }
 .dark .diff-viewer .d2h-del {
-  background: rgba(229, 62, 62, 0.10);
+  background: rgba(239, 68, 68, 0.06);
 }
 .dark .diff-viewer .d2h-ins .d2h-code-line-ctn {
-  background: rgba(46, 196, 166, 0.15);
+  background: rgba(34, 197, 94, 0.12);
 }
 .dark .diff-viewer .d2h-del .d2h-code-line-ctn {
-  background: rgba(229, 62, 62, 0.15);
+  background: rgba(239, 68, 68, 0.12);
 }
-/* Dark mode inline word-level highlights */
 .dark .diff-viewer .d2h-ins .d2h-code-line-ctn ins,
 .dark .diff-viewer .d2h-ins ins {
-  background: rgba(46, 196, 166, 0.30);
-  color: #b8f0de;
+  background: rgba(34, 197, 94, 0.28);
+  color: #86efac;
   text-decoration: none;
 }
 .dark .diff-viewer .d2h-del .d2h-code-line-ctn del,
 .dark .diff-viewer .d2h-del del {
-  background: rgba(229, 62, 62, 0.30);
-  color: #f5b8b8;
+  background: rgba(239, 68, 68, 0.28);
+  color: #fca5a5;
   text-decoration: none;
 }
-/* Dark mode line numbers for ins/del rows */
+/* Dark mode line numbers for ins/del */
 .dark .diff-viewer .d2h-ins .d2h-code-linenumber,
 .dark .diff-viewer .d2h-ins .d2h-code-side-linenumber {
-  background: rgba(46, 196, 166, 0.08);
-  color: var(--color-muted-foreground);
+  background: transparent;
+  opacity: 0.6;
 }
 .dark .diff-viewer .d2h-del .d2h-code-linenumber,
 .dark .diff-viewer .d2h-del .d2h-code-side-linenumber {
-  background: rgba(229, 62, 62, 0.08);
-  color: var(--color-muted-foreground);
+  background: transparent;
+  opacity: 0.6;
+}
+/* Dark mode +/- prefix */
+.dark .diff-viewer .d2h-ins .d2h-code-line-prefix {
+  color: #4ade80;
+  font-weight: 600;
+}
+.dark .diff-viewer .d2h-del .d2h-code-line-prefix {
+  color: #f87171;
+  font-weight: 600;
 }

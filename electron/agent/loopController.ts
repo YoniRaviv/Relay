@@ -36,6 +36,7 @@ function rowToTask(row: Record<string, unknown>): Task {
     order: row.order as number,
     passes: row.passes as number,
     rejectionNotes: row.rejection_notes as string | null,
+    commitHash: (row.commit_hash as string | null) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -79,6 +80,7 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
           content: 'All tasks complete. Loop finished.',
           timestamp: new Date().toISOString(),
         });
+        win.webContents.send('loop:allTasksComplete', { projectId });
         break;
       }
 
