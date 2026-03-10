@@ -18,6 +18,7 @@ import { useKeyboardShortcuts } from '@/lib/shortcuts'
 import { useRelayStore } from '@/store/useRelayStore'
 import { useIpcListener } from '@/shared/hooks/useIpcListener'
 import { Button } from '@/components/ui/button'
+import { BuildTimer } from '@/modules/agent/components/BuildTimer'
 import type { Task, TaskLog, LoopState } from '@shared/types'
 
 interface BoardProps {
@@ -28,8 +29,8 @@ interface BoardProps {
 
 export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardProps) {
     const {
-        activeProject, tasks, setTasks, selectedTaskId, prdMarkdown, activePrdId, features,
-        setLoopState, setCurrentTaskId, addActivity,
+        activeProject, tasks, setTasks, selectedTaskId, prdMarkdown, activePrdId, features, setFeatures,
+        setLoopState, setCurrentTaskId, addActivity, updateTask, setBuildStartTime,
         reviewingTaskId, setReviewingTaskId,
         projectContext, scanningProject,
     } = useRelayStore()
@@ -86,11 +87,33 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
     useIpcListener('loop:taskChange', (data: unknown) => {
         const { taskId } = data as { taskId: string | null }
         setCurrentTaskId(taskId)
-    }, [setCurrentTaskId])
+        // Fix 2: Optimistically move task to in_progress when build starts
+        if (taskId) {
+            updateTask(taskId, { status: 'in_progress' })
+            setBuildStartTime(new Date().toISOString())
+        } else {
+            setBuildStartTime(null)
+        }
+    }, [setCurrentTaskId, updateTask, setBuildStartTime])
 
     useIpcListener('loop:tasksUpdated', (data: unknown) => {
-        setTasks(data as Task[])
-    }, [setTasks])
+        const incoming = data as Task[]
+        // Fix 1 safety net: filter by activePrdId to prevent cross-feature leakage
+        const { activePrdId: currentPrdId, features: currentFeatures } = useRelayStore.getState()
+        const filtered = currentPrdId
+            ? incoming.filter(t => t.prdId === currentPrdId)
+            : incoming
+        setTasks(filtered)
+
+        // Fix 3: Update feature counter after task status changes
+        if (currentPrdId && currentFeatures.length > 0) {
+            const doneCount = filtered.filter(t => t.status === 'done' || t.status === 'approved').length
+            const updated = currentFeatures.map(f =>
+                f.id === currentPrdId ? { ...f, doneCount, taskCount: filtered.length } : f
+            )
+            setFeatures(updated)
+        }
+    }, [setTasks, setFeatures])
 
     useIpcListener('agent:error', (data: unknown) => {
         const { message } = data as { message: string }
@@ -186,10 +209,11 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                                             <KanbanBoard />
                                         </div>
                                         <div className="h-48 bg-[var(--color-sidebar)] flex flex-col">
-                                            <div className="px-4 py-2">
+                                            <div className="px-4 py-2 flex items-center gap-3">
                                                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                                     Agent Activity
                                                 </span>
+                                                <BuildTimer />
                                             </div>
                                             <AgentActivityFeed />
                                         </div>

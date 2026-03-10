@@ -76,10 +76,14 @@ export function registerReviewHandlers(): void {
         timestamp: new Date().toISOString(),
       });
 
-      // Refresh tasks in UI
-      const allTasks = db.prepare(
-        `SELECT * FROM tasks WHERE project_id = ? ORDER BY "order" ASC`
-      ).all(projectId) as Record<string, unknown>[];
+      // Refresh tasks in UI — filter by prd_id to avoid cross-feature leakage
+      const taskRow = db.prepare('SELECT prd_id FROM tasks WHERE id = ?').get(taskId) as Record<string, unknown> | undefined;
+      const prdId = taskRow?.prd_id as string | undefined;
+      const query = prdId
+        ? `SELECT * FROM tasks WHERE project_id = ? AND prd_id = ? ORDER BY "order" ASC`
+        : `SELECT * FROM tasks WHERE project_id = ? ORDER BY "order" ASC`;
+      const params = prdId ? [projectId, prdId] : [projectId];
+      const allTasks = db.prepare(query).all(...params) as Record<string, unknown>[];
       win.webContents.send('loop:tasksUpdated', allTasks.map(rowToTask));
     }
 
@@ -118,9 +122,14 @@ export function registerReviewHandlers(): void {
         timestamp: new Date().toISOString(),
       });
 
-      const allTasks = db.prepare(
-        `SELECT * FROM tasks WHERE project_id = ? ORDER BY "order" ASC`
-      ).all(projectId) as Record<string, unknown>[];
+      // Refresh tasks in UI — filter by prd_id to avoid cross-feature leakage
+      const taskRow = db.prepare('SELECT prd_id FROM tasks WHERE id = ?').get(taskId) as Record<string, unknown> | undefined;
+      const prdId = taskRow?.prd_id as string | undefined;
+      const query = prdId
+        ? `SELECT * FROM tasks WHERE project_id = ? AND prd_id = ? ORDER BY "order" ASC`
+        : `SELECT * FROM tasks WHERE project_id = ? ORDER BY "order" ASC`;
+      const params = prdId ? [projectId, prdId] : [projectId];
+      const allTasks = db.prepare(query).all(...params) as Record<string, unknown>[];
       win.webContents.send('loop:tasksUpdated', allTasks.map(rowToTask));
     }
 

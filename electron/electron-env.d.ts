@@ -46,7 +46,7 @@ interface RelayAPI {
   reorderTasks(tasks: unknown): Promise<unknown>
 
   // Agent Loop
-  startLoop(projectId?: string, prdId?: string): Promise<unknown>
+  startLoop(projectId?: string, prdId?: string, buildMode?: import('../shared/types').BuildMode): Promise<unknown>
   pauseLoop(): Promise<unknown>
   resumeLoop(): Promise<unknown>
   stopLoop(): Promise<unknown>
