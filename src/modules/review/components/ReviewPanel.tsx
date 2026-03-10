@@ -85,7 +85,7 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
 
     return (
         <div className="fixed inset-0 z-40 flex bg-background/80 backdrop-blur-sm">
-            <div className="flex flex-col w-full h-full bg-card border border-border rounded-lg m-4 shadow-xl overflow-hidden">
+            <div className="flex flex-col w-full h-full bg-card border border-border rounded-lg m-4 shadow-xl shadow-black/10 dark:shadow-black/30 overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-[var(--color-sidebar)]">
                     <div className="flex items-center gap-3 min-w-0">
@@ -103,7 +103,7 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
                                     size="sm"
                                     onClick={() => setShowRejectInput(true)}
                                     disabled={submitting}
-                                    className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                                    className="text-destructive border-destructive/50 hover:bg-destructive/10"
                                 >
                                     <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
                                     Reject

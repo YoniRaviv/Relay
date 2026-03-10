@@ -3,7 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { getEngine } from './engines';
 import { openDb } from '../db/connection';
 import { store } from '../ipc/settings';
-import type { Task } from '../../shared/types';
+import { autoCommitTask } from './autoCommit';
+import type { Task, BuildMode } from '../../shared/types';
 
 let loopState: 'idle' | 'running' | 'paused' | 'stopped' = 'idle';
 let abortSignal = { aborted: false };
@@ -62,7 +63,7 @@ export function getLoopState(): typeof loopState {
   return loopState;
 }
 
-export async function startLoop(projectId: string, win: BrowserWindow, prdId?: string): Promise<void> {
+export async function startLoop(projectId: string, win: BrowserWindow, prdId?: string, buildMode: BuildMode = 'review'): Promise<void> {
   if (loopState === 'running') return;
 
   loopState = 'running';
@@ -96,28 +97,49 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
         : db.prepare(`SELECT * FROM tasks WHERE project_id = ? ORDER BY "order" ASC`).all(projectId) as Record<string, unknown>[];
       win.webContents.send('loop:tasksUpdated', allTasks.map(rowToTask));
 
-      // Check if the task is now in review — auto-pause for human review
-      const updatedTask = db.prepare('SELECT status FROM tasks WHERE id = ?').get(task.id) as Record<string, unknown> | undefined;
+      // Check if the task is now in review — behaviour depends on buildMode
+      const updatedTask = db.prepare('SELECT status, story_id, title FROM tasks WHERE id = ?').get(task.id) as Record<string, unknown> | undefined;
       if (updatedTask && updatedTask.status === 'review') {
-        loopState = 'paused';
-        win.webContents.send('loop:stateChange', { state: 'paused' });
-        win.webContents.send('agent:activity', {
-          id: randomUUID(),
-          taskId: task.id,
-          type: 'text',
-          content: 'Paused: waiting for human review before continuing.',
-          timestamp: new Date().toISOString(),
-        });
-        // Wait for resume or stop
-        await new Promise<void>((resolve) => {
-          const check = setInterval(() => {
-            if (loopState !== 'paused') {
-              clearInterval(check);
-              resolve();
-            }
-          }, 200);
-        });
-        if (loopState as string === 'stopped') break;
+        if (buildMode === 'auto-commit') {
+          // Auto-approve: commit and mark as approved, then continue
+          const commitMsg = `feat(${updatedTask.story_id}): ${updatedTask.title}`;
+          await autoCommitTask(projectId, task.id, commitMsg, win);
+          // Refresh task list after auto-commit
+          const refreshedTasks = prdId
+            ? db.prepare(`SELECT * FROM tasks WHERE project_id = ? AND prd_id = ? ORDER BY "order" ASC`).all(projectId, prdId) as Record<string, unknown>[]
+            : db.prepare(`SELECT * FROM tasks WHERE project_id = ? ORDER BY "order" ASC`).all(projectId) as Record<string, unknown>[];
+          win.webContents.send('loop:tasksUpdated', refreshedTasks.map(rowToTask));
+        } else if (buildMode === 'continuous') {
+          // Continuous: skip the pause, leave task in review status, continue to next
+          win.webContents.send('agent:activity', {
+            id: randomUUID(),
+            taskId: task.id,
+            type: 'text',
+            content: 'Task ready for review. Continuing to next task.',
+            timestamp: new Date().toISOString(),
+          });
+        } else {
+          // Review mode (default): pause and wait for human
+          loopState = 'paused';
+          win.webContents.send('loop:stateChange', { state: 'paused' });
+          win.webContents.send('agent:activity', {
+            id: randomUUID(),
+            taskId: task.id,
+            type: 'text',
+            content: 'Paused: waiting for human review before continuing.',
+            timestamp: new Date().toISOString(),
+          });
+          // Wait for resume or stop
+          await new Promise<void>((resolve) => {
+            const check = setInterval(() => {
+              if (loopState !== 'paused') {
+                clearInterval(check);
+                resolve();
+              }
+            }, 200);
+          });
+          if (loopState as string === 'stopped') break;
+        }
       }
 
       // Check if paused (manual pause)

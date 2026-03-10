@@ -1,5 +1,6 @@
 export { LoopControls } from './components/LoopControls'
 export { AgentActivityFeed } from './components/AgentActivityFeed'
 export { ActivityMessage } from './components/ActivityMessage'
+export { BuildTimer } from './components/BuildTimer'
 export { BranchSetupDialog } from './components/BranchSetupDialog'
 export { UncommittedChangesDialog } from './components/UncommittedChangesDialog'

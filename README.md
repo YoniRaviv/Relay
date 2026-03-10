@@ -32,8 +32,13 @@
 
 - **PRD Wizard** — AI-generated product specs with streaming preview and manual editing
 - **Kanban Board** — Drag-and-drop task management across Pending, Building, and Complete columns
-- **Agent Loop** — Autonomous code generation with play/pause/stop controls
+- **Agent Loop** — Autonomous code generation with play/pause/stop controls and three build modes:
+  - **Stop Each Task For Review** — Pauses after each task for human approve/reject
+  - **Continue To Next Task** — Keeps building without pausing; review completed tasks later
+  - **Auto-commit All Tasks** — Auto-approves and commits each task, fully hands-off
 - **Human Review Gate** — Syntax-highlighted diff viewer with approve/reject flow and git integration
+- **Build Timer** — Live elapsed timer while a task is being built
+- **Smart Branch Detection** — Resumes on existing feature branches across app restarts without re-prompting
 - **Metrics Dashboard** — Per-task and aggregate stats including cost tracking (Sonnet 4 & Opus 4.6 pricing)
 - **Dark / Light Mode** — Toggle in sidebar, respects system preference by default
 - **Keyboard Shortcuts** — `Space` to toggle the agent loop, `Esc` to close panels
@@ -106,7 +111,7 @@ npm run lint
 electron/
   main.ts              # Electron main process
   preload.ts           # Context bridge (relayAPI)
-  agent/               # Claude agent runner, prompts, loop controller
+  agent/               # Claude agent runner, prompts, loop controller, auto-commit
   db/                  # SQLite connection and schema
   ipc/                 # IPC handlers (settings, project, prd, tasks, agent, git, review, metrics)
 shared/
@@ -116,7 +121,7 @@ src/
   pages/               # Board, PRDWizard, Setup, Summary
   modules/             # Feature-based component modules
     board/             # KanbanBoard, KanbanColumn, TaskCard, TaskDetail
-    agent/             # LoopControls, AgentActivityFeed, ActivityMessage
+    agent/             # LoopControls, AgentActivityFeed, ActivityMessage, BuildTimer
     review/            # ReviewPanel, DiffViewer, FileChangeList, CommitDialog
     prd/               # PRDPreview, PRDEditor, FeatureInput, StepIndicator, TaskReview
     settings/          # SettingsView, ModelPicker, ApiKeyInput, ThemeToggle

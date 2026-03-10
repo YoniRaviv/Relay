@@ -16,6 +16,8 @@ export type TaskPriority = 'high' | 'medium' | 'low';
 
 export type LoopState = 'idle' | 'running' | 'paused' | 'stopped';
 
+export type BuildMode = 'review' | 'continuous' | 'auto-commit';
+
 export type EngineMode = 'api-key' | 'claude-code';
 
 export type CliToolsPreset = 'conservative' | 'full';

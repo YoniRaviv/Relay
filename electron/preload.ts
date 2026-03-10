@@ -39,7 +39,7 @@ const relayAPI = {
   reorderTasks: (tasks: unknown) => ipcRenderer.invoke('tasks:reorder', tasks),
 
   // Agent Loop
-  startLoop: (projectId?: string, prdId?: string) => ipcRenderer.invoke('loop:start', projectId, prdId),
+  startLoop: (projectId?: string, prdId?: string, buildMode?: string) => ipcRenderer.invoke('loop:start', projectId, prdId, buildMode),
   pauseLoop: () => ipcRenderer.invoke('loop:pause'),
   resumeLoop: () => ipcRenderer.invoke('loop:resume'),
   stopLoop: () => ipcRenderer.invoke('loop:stop'),

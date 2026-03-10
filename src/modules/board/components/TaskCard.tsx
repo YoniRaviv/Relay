@@ -50,8 +50,12 @@ export function TaskCard({ task, isActive, onClick, onReview }: TaskCardProps) {
             onClick={onClick}
             className={`p-3 rounded-lg bg-card cursor-pointer transition-all hover:shadow-sm ${
                 isDragging ? 'opacity-0' : ''
-            } ${isActive ? 'ring-2 ring-primary' : ''} ${
-                task.status === 'review' ? 'ring-1 ring-amber-500/40' : ''
+            } ${isActive && task.status === 'in_progress'
+                ? 'ring-2 ring-emerald-500 building-glow'
+                : isActive
+                    ? 'ring-2 ring-primary ring-offset-1 ring-offset-background'
+                    : ''
+            } ${task.status === 'review' ? 'ring-1 ring-amber-500/40' : ''
             }`}
         >
             <TaskCardContent task={task} />

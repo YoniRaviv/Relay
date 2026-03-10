@@ -7,6 +7,7 @@ import type {
   AuthStatus,
   RecentProject,
   LoopState,
+  BuildMode,
 } from '../../shared/types';
 
 // ── Settings Slice ──
@@ -65,10 +66,14 @@ interface AgentSlice {
   loopState: LoopState;
   currentTaskId: string | null;
   activityFeed: TaskLog[];
+  buildStartTime: string | null;
+  buildMode: BuildMode;
   setLoopState: (state: LoopState) => void;
   setCurrentTaskId: (id: string | null) => void;
   addActivity: (log: TaskLog) => void;
   clearActivity: () => void;
+  setBuildStartTime: (time: string | null) => void;
+  setBuildMode: (mode: BuildMode) => void;
 }
 
 // ── Git Slice ──
@@ -140,11 +145,15 @@ export const useRelayStore = create<RelayStore>((set) => ({
   loopState: 'idle',
   currentTaskId: null,
   activityFeed: [],
+  buildStartTime: null,
+  buildMode: 'review',
   setLoopState: (loopState) => set({ loopState }),
   setCurrentTaskId: (currentTaskId) => set({ currentTaskId }),
   addActivity: (log) =>
     set((state) => ({ activityFeed: [...state.activityFeed, log] })),
   clearActivity: () => set({ activityFeed: [] }),
+  setBuildStartTime: (buildStartTime) => set({ buildStartTime }),
+  setBuildMode: (buildMode) => set({ buildMode }),
 
   // Git
   currentBranch: null,
