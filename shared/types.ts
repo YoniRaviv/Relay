@@ -67,6 +67,11 @@ export interface TaskLog {
   type: 'text' | 'tool_use' | 'tool_result' | 'error';
   content: string;
   timestamp: string;
+  // Structured metadata (optional, backward-compatible)
+  toolName?: string;
+  toolInput?: Record<string, unknown>;
+  toolUseId?: string;
+  filePath?: string;
 }
 
 export interface TaskMetric {

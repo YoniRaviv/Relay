@@ -248,12 +248,18 @@ export const sdkEngine: TaskEngine = {
               input: block.input,
             });
 
+            const toolInput = block.input as Record<string, unknown>;
+            const filePath = (toolInput.path ?? toolInput.file_path) as string | undefined;
             win.webContents.send('agent:activity', {
               id: randomUUID(),
               taskId: task.id,
               type: 'tool_use',
-              content: `Tool: ${block.name}${(block.input as Record<string, unknown>).path ? ` — ${(block.input as Record<string, unknown>).path}` : ''}`,
+              content: `Tool: ${block.name}${filePath ? ` — ${filePath}` : ''}`,
               timestamp: new Date().toISOString(),
+              toolName: block.name,
+              toolUseId: block.id,
+              filePath: filePath || undefined,
+              toolInput,
             });
 
             const result = await executeTool(block.name, block.input as Record<string, unknown>, task.projectId);
@@ -266,6 +272,14 @@ export const sdkEngine: TaskEngine = {
 
             if (block.name === 'task_complete') {
               continueLoop = false;
+              win.webContents.send('agent:activity', {
+                id: randomUUID(),
+                taskId: task.id,
+                type: 'text',
+                content: (toolInput.summary as string) || 'Task complete.',
+                timestamp: new Date().toISOString(),
+                toolName: 'task_complete',
+              });
             }
 
             win.webContents.send('agent:activity', {
@@ -274,6 +288,7 @@ export const sdkEngine: TaskEngine = {
               type: 'tool_result',
               content: result.output.length > 500 ? result.output.slice(0, 500) + '...' : result.output,
               timestamp: new Date().toISOString(),
+              toolUseId: block.id,
             });
           }
         }

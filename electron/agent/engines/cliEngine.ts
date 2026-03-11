@@ -186,12 +186,18 @@ export const cliEngine: TaskEngine = {
                 });
               } else if (block.type === 'tool_use') {
                 toolCalls++;
+                const toolInput = block.input as Record<string, unknown>;
+                const filePath = (toolInput.path ?? toolInput.file_path) as string | undefined;
                 win.webContents.send('agent:activity', {
                   id: randomUUID(),
                   taskId: task.id,
                   type: 'tool_use',
-                  content: `Tool: ${block.name}${(block.input as Record<string, unknown>).path ? ` — ${(block.input as Record<string, unknown>).path}` : ''}`,
+                  content: `Tool: ${block.name}${filePath ? ` — ${filePath}` : ''}`,
                   timestamp: new Date().toISOString(),
+                  toolName: block.name,
+                  toolUseId: block.id,
+                  filePath: filePath || undefined,
+                  toolInput,
                 });
               }
             }

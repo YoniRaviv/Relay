@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef, type ReactNode } from 'react'
+import { useEffect, useState, useRef, useCallback, type ReactNode } from 'react'
 import { Setup } from '@/pages/Setup'
 import { PRDWizard } from '@/pages/PRDWizard'
 import { Board } from '@/pages/Board'
 import { useRelayStore } from '@/store/useRelayStore'
+import { useIpcListener } from '@/shared/hooks/useIpcListener'
 import type { Project } from '@shared/types'
 
 type AppView = 'loading' | 'setup-key' | 'setup-project' | 'prd-wizard' | 'board'
@@ -174,6 +175,19 @@ function App() {
     }
     setView('board')
   }
+
+  // Menu: open a project folder by path
+  const handleMenuOpenProject = useCallback(async (projectPath: unknown) => {
+    if (typeof projectPath !== 'string') return
+    const project = await window.relayAPI.openProject(projectPath)
+    if (project) {
+      await handleSetupComplete(project)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useIpcListener('menu:openProject', handleMenuOpenProject, [handleMenuOpenProject])
+  useIpcListener('menu:switchProject', handleSwitchProject, [handleSwitchProject])
+  useIpcListener('menu:newFeature', handleNewFeature, [handleNewFeature])
 
   const renderView = () => {
     switch (view) {

@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { registerAllHandlers } from './ipc/register'
 import { closeAllDbs } from './db/connection'
+import { buildAppMenu } from './menu'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -61,4 +62,7 @@ app.on('before-quit', () => {
   closeAllDbs()
 })
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  buildAppMenu()
+  createWindow()
+})
