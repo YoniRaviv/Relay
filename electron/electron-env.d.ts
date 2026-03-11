@@ -22,6 +22,14 @@ interface RelayAPI {
   checkCliAvailable(): Promise<{ available: boolean; error?: string }>
   getSelectedModel(): Promise<string>
   setSelectedModel(model: string): Promise<void>
+  getMaxPasses(): Promise<number>
+  setMaxPasses(max: number): Promise<void>
+  getBuildMode(): Promise<import('../shared/types').BuildMode>
+  setBuildMode(mode: import('../shared/types').BuildMode): Promise<void>
+  getCommitPrefix(): Promise<string>
+  setCommitPrefix(prefix: string): Promise<void>
+  getNotificationsEnabled(): Promise<boolean>
+  setNotificationsEnabled(enabled: boolean): Promise<void>
 
   // Project
   createProject(params: { name: string; path: string }): Promise<import('../shared/types').Project>

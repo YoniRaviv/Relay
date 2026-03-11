@@ -18,7 +18,6 @@ const navItems: { id: SidebarView; label: string; icon: React.ReactNode }[] = [
     { id: 'board', label: 'Board', icon: <LayoutDashboard className="h-4 w-4" /> },
     { id: 'prd', label: 'PRD', icon: <FileText className="h-4 w-4" /> },
     { id: 'summary', label: 'Summary', icon: <BarChart3 className="h-4 w-4" /> },
-    { id: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
 ]
 
 function extractTitle(description: string): string {
@@ -109,8 +108,16 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                 ))}
             </nav>
 
-            <div className="mt-auto pt-4 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Theme</span>
+            <div className="mt-auto pt-4 flex items-center gap-2">
+                <Button
+                    variant={activeView === 'settings' ? 'secondary' : 'ghost'}
+                    className="flex-1 justify-start gap-2"
+                    size="sm"
+                    onClick={() => onViewChange('settings')}
+                >
+                    <Settings className="h-4 w-4" />
+                    Settings
+                </Button>
                 <ThemeToggle />
             </div>
         </div>

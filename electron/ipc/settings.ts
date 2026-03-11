@@ -1,6 +1,6 @@
 import { ipcMain, safeStorage, app } from 'electron';
 import Store from 'electron-store';
-import type { AuthStatus, EngineMode, CliToolsPreset } from '../../shared/types';
+import type { AuthStatus, EngineMode, CliToolsPreset, BuildMode } from '../../shared/types';
 
 const store = new Store<{
   apiKey?: string;
@@ -8,6 +8,10 @@ const store = new Store<{
   engineMode?: EngineMode;
   cliToolsPreset?: CliToolsPreset;
   selectedModel?: string;
+  maxPassesPerTask?: number;
+  buildMode?: BuildMode;
+  commitPrefix?: string;
+  notificationsEnabled?: boolean;
 }>();
 
 const isDev = !app.isPackaged;
@@ -117,6 +121,42 @@ export function registerSettingsHandlers(): void {
     } catch {
       return { available: false, error: 'Claude Code SDK not available. Run `claude login` in your terminal first.' };
     }
+  });
+
+  // Max passes per task
+  ipcMain.handle('cc:getMaxPasses', async (): Promise<number> => {
+    return store.get('maxPassesPerTask', 5) as number;
+  });
+
+  ipcMain.handle('cc:setMaxPasses', async (_event, max: number): Promise<void> => {
+    store.set('maxPassesPerTask', max);
+  });
+
+  // Build mode
+  ipcMain.handle('cc:getBuildMode', async (): Promise<BuildMode> => {
+    return (store.get('buildMode') ?? 'review') as BuildMode;
+  });
+
+  ipcMain.handle('cc:setBuildMode', async (_event, mode: BuildMode): Promise<void> => {
+    store.set('buildMode', mode);
+  });
+
+  // Commit prefix
+  ipcMain.handle('cc:getCommitPrefix', async (): Promise<string> => {
+    return (store.get('commitPrefix') ?? 'feat') as string;
+  });
+
+  ipcMain.handle('cc:setCommitPrefix', async (_event, prefix: string): Promise<void> => {
+    store.set('commitPrefix', prefix);
+  });
+
+  // Desktop notifications
+  ipcMain.handle('cc:getNotificationsEnabled', async (): Promise<boolean> => {
+    return store.get('notificationsEnabled', true) as boolean;
+  });
+
+  ipcMain.handle('cc:setNotificationsEnabled', async (_event, enabled: boolean): Promise<void> => {
+    store.set('notificationsEnabled', enabled);
   });
 }
 
