@@ -132,6 +132,29 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
         }
     })
 
+    // Menu bar events
+    useIpcListener('menu:openSettings', () => setSidebarView('settings'), [])
+    useIpcListener('menu:navigate', (view: unknown) => {
+        if (view === 'board' || view === 'prd' || view === 'summary') {
+            setSidebarView(view as SidebarView)
+        }
+    }, [])
+    useIpcListener('menu:loopToggle', toggleLoop, [])
+    useIpcListener('menu:loopPause', () => {
+        const { loopState: ls } = useRelayStore.getState()
+        if (ls === 'running') {
+            useRelayStore.getState().setLoopState('paused')
+            window.relayAPI.pauseLoop()
+        }
+    }, [])
+    useIpcListener('menu:loopStop', () => {
+        const { loopState: ls } = useRelayStore.getState()
+        if (ls === 'running' || ls === 'paused') {
+            useRelayStore.getState().setLoopState('stopped')
+            window.relayAPI.stopLoop()
+        }
+    }, [])
+
     // Update window title
     useEffect(() => {
         const { currentTaskId } = useRelayStore.getState()
@@ -208,7 +231,7 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                                         <div className="flex-1 overflow-hidden">
                                             <KanbanBoard />
                                         </div>
-                                        <div className="h-48 bg-[var(--color-sidebar)] flex flex-col">
+                                        <div className="h-56 bg-[var(--color-sidebar)] flex flex-col">
                                             <div className="px-4 py-2 flex items-center gap-3">
                                                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                                     Agent Activity

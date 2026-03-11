@@ -1,10 +1,16 @@
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, Notification } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { getEngine } from './engines';
 import { openDb } from '../db/connection';
 import { store } from '../ipc/settings';
 import { autoCommitTask } from './autoCommit';
 import type { Task, BuildMode } from '../../shared/types';
+
+function sendNotification(title: string, body: string): void {
+  if (store.get('notificationsEnabled', true) && Notification.isSupported()) {
+    new Notification({ title, body }).show();
+  }
+}
 
 let loopState: 'idle' | 'running' | 'paused' | 'stopped' = 'idle';
 let abortSignal = { aborted: false };
@@ -63,7 +69,8 @@ export function getLoopState(): typeof loopState {
   return loopState;
 }
 
-export async function startLoop(projectId: string, win: BrowserWindow, prdId?: string, buildMode: BuildMode = 'review'): Promise<void> {
+export async function startLoop(projectId: string, win: BrowserWindow, prdId?: string, buildMode?: BuildMode): Promise<void> {
+  const effectiveBuildMode: BuildMode = buildMode ?? (store.get('buildMode') as BuildMode | undefined) ?? 'review';
   if (loopState === 'running') return;
 
   loopState = 'running';
@@ -82,6 +89,7 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
           timestamp: new Date().toISOString(),
         });
         win.webContents.send('loop:allTasksComplete', { projectId });
+        sendNotification('Build Complete', 'All tasks have been completed.');
         break;
       }
 
@@ -90,6 +98,28 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
 
       await getEngine().runTask(task, win, abortSignal);
 
+      // Check if task exceeded max passes
+      const maxPasses = store.get('maxPassesPerTask', 5) as number;
+      if (maxPasses > 0 && task.passes >= maxPasses) {
+        const db2 = getDbForProject(projectId);
+        db2.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
+          .run('failed', new Date().toISOString(), task.id);
+        win.webContents.send('agent:activity', {
+          id: randomUUID(),
+          taskId: task.id,
+          type: 'error',
+          content: `Task failed: exceeded max attempts (${maxPasses}).`,
+          timestamp: new Date().toISOString(),
+        });
+        sendNotification('Task Failed', `"${task.title}" exceeded ${maxPasses} attempts.`);
+        // Refresh and continue to next task
+        const failedTasks = prdId
+          ? db2.prepare(`SELECT * FROM tasks WHERE project_id = ? AND prd_id = ? ORDER BY "order" ASC`).all(projectId, prdId) as Record<string, unknown>[]
+          : db2.prepare(`SELECT * FROM tasks WHERE project_id = ? ORDER BY "order" ASC`).all(projectId) as Record<string, unknown>[];
+        win.webContents.send('loop:tasksUpdated', failedTasks.map(rowToTask));
+        continue;
+      }
+
       // Refresh task list in UI
       const db = getDbForProject(projectId);
       const allTasks = prdId
@@ -97,19 +127,20 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
         : db.prepare(`SELECT * FROM tasks WHERE project_id = ? ORDER BY "order" ASC`).all(projectId) as Record<string, unknown>[];
       win.webContents.send('loop:tasksUpdated', allTasks.map(rowToTask));
 
-      // Check if the task is now in review — behaviour depends on buildMode
+      // Check if the task is now in review — behaviour depends on effectiveBuildMode
       const updatedTask = db.prepare('SELECT status, story_id, title FROM tasks WHERE id = ?').get(task.id) as Record<string, unknown> | undefined;
       if (updatedTask && updatedTask.status === 'review') {
-        if (buildMode === 'auto-commit') {
+        if (effectiveBuildMode === 'auto-commit') {
           // Auto-approve: commit and mark as approved, then continue
-          const commitMsg = `feat(${updatedTask.story_id}): ${updatedTask.title}`;
+          const commitPrefix = (store.get('commitPrefix') ?? 'feat') as string;
+          const commitMsg = `${commitPrefix}(${updatedTask.story_id}): ${updatedTask.title}`;
           await autoCommitTask(projectId, task.id, commitMsg, win);
           // Refresh task list after auto-commit
           const refreshedTasks = prdId
             ? db.prepare(`SELECT * FROM tasks WHERE project_id = ? AND prd_id = ? ORDER BY "order" ASC`).all(projectId, prdId) as Record<string, unknown>[]
             : db.prepare(`SELECT * FROM tasks WHERE project_id = ? ORDER BY "order" ASC`).all(projectId) as Record<string, unknown>[];
           win.webContents.send('loop:tasksUpdated', refreshedTasks.map(rowToTask));
-        } else if (buildMode === 'continuous') {
+        } else if (effectiveBuildMode === 'continuous') {
           // Continuous: skip the pause, leave task in review status, continue to next
           win.webContents.send('agent:activity', {
             id: randomUUID(),
@@ -122,6 +153,7 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
           // Review mode (default): pause and wait for human
           loopState = 'paused';
           win.webContents.send('loop:stateChange', { state: 'paused' });
+          sendNotification('Review Needed', `"${task.title}" is ready for your review.`);
           win.webContents.send('agent:activity', {
             id: randomUUID(),
             taskId: task.id,

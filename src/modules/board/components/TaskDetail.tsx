@@ -1,17 +1,27 @@
+import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { X, Eye, GitCommit } from 'lucide-react'
-import { ActivityMessage } from '@/modules/agent'
+import { X, Eye, GitCommit, ChevronDown } from 'lucide-react'
+import { ActionBlock } from '@/modules/agent/components/ActionBlock'
+import { TextBlock } from '@/modules/agent/components/TextBlock'
+import { groupActions } from '@/modules/agent/utils/parseActivity'
+import { isActionGroup } from '@/shared/types/activity'
+import { CompletedTaskSummary } from './CompletedTaskSummary'
 import { useRelayStore } from '@/store/useRelayStore'
 import { statusColors, statusLabels } from '@/shared/constants/statusMaps'
 
 export function TaskDetail() {
     const { tasks, selectedTaskId, setSelectedTaskId, activityFeed, currentTaskId, setReviewingTaskId } = useRelayStore()
     const task = tasks.find((t) => t.id === selectedTaskId)
+    const taskActivity = useMemo(
+        () => task ? activityFeed.filter((a) => a.taskId === task.id) : [],
+        [task, activityFeed]
+    )
+    const groupedActivity = useMemo(() => groupActions(taskActivity), [taskActivity])
 
     if (!task) return null
 
     const isActiveTask = task.id === currentTaskId
-    const taskActivity = activityFeed.filter((a) => a.taskId === task.id)
+    const isCompleted = task.status === 'done' || task.status === 'approved'
 
     return (
         <div className="w-96 bg-[var(--color-sidebar)] flex flex-col h-full overflow-hidden">
@@ -80,29 +90,59 @@ export function TaskDetail() {
                     </Section>
                 )}
 
-                <Section title="Activity">
-                    {taskActivity.length > 0 ? (
-                        <div className="space-y-0.5">
-                            {taskActivity.map((log) => (
-                                <ActivityMessage key={log.id} log={log} />
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-sm text-muted-foreground italic">
-                            {isActiveTask ? 'Waiting for activity...' : 'No activity recorded yet.'}
-                        </p>
-                    )}
-                </Section>
+                {isCompleted && taskActivity.length > 0 ? (
+                    <Section title="Summary" collapsible>
+                        <CompletedTaskSummary activity={taskActivity} />
+                    </Section>
+                ) : (
+                    <Section title="Activity" collapsible>
+                        {taskActivity.length > 0 ? (
+                            <div className="space-y-0.5">
+                                {groupedActivity.map((item) =>
+                                    isActionGroup(item) ? (
+                                        <ActionBlock key={item.id} action={item} />
+                                    ) : (
+                                        <TextBlock key={item.id} log={item} />
+                                    )
+                                )}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground italic">
+                                {isActiveTask ? 'Waiting for activity...' : 'No activity recorded yet.'}
+                            </p>
+                        )}
+                    </Section>
+                )}
             </div>
         </div>
     )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, collapsible = false, defaultOpen = true }: {
+    title: string
+    children: React.ReactNode
+    collapsible?: boolean
+    defaultOpen?: boolean
+}) {
+    const [open, setOpen] = useState(defaultOpen)
+
     return (
         <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{title}</h3>
-            {children}
+            {collapsible ? (
+                <button
+                    type="button"
+                    className="flex items-center gap-1.5 mb-1.5 group"
+                    onClick={() => setOpen(!open)}
+                >
+                    <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${open ? '' : '-rotate-90'}`} />
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">
+                        {title}
+                    </h3>
+                </button>
+            ) : (
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{title}</h3>
+            )}
+            {open && children}
         </div>
     )
 }

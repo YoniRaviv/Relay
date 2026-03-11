@@ -15,6 +15,14 @@ const relayAPI = {
   checkCliAvailable: () => ipcRenderer.invoke('cc:checkCliAvailable'),
   getSelectedModel: () => ipcRenderer.invoke('cc:getSelectedModel'),
   setSelectedModel: (model: string) => ipcRenderer.invoke('cc:setSelectedModel', model),
+  getMaxPasses: () => ipcRenderer.invoke('cc:getMaxPasses'),
+  setMaxPasses: (max: number) => ipcRenderer.invoke('cc:setMaxPasses', max),
+  getBuildMode: () => ipcRenderer.invoke('cc:getBuildMode'),
+  setBuildMode: (mode: string) => ipcRenderer.invoke('cc:setBuildMode', mode),
+  getCommitPrefix: () => ipcRenderer.invoke('cc:getCommitPrefix'),
+  setCommitPrefix: (prefix: string) => ipcRenderer.invoke('cc:setCommitPrefix', prefix),
+  getNotificationsEnabled: () => ipcRenderer.invoke('cc:getNotificationsEnabled'),
+  setNotificationsEnabled: (enabled: boolean) => ipcRenderer.invoke('cc:setNotificationsEnabled', enabled),
 
   // Project
   createProject: (params: { name: string; path: string }) => ipcRenderer.invoke('project:create', params),

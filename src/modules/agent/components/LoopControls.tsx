@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { Play, Pause, Square } from 'lucide-react'
+import { Play, Pause, Square, ChevronDown, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRelayStore } from '@/store/useRelayStore'
 import { UncommittedChangesDialog } from './UncommittedChangesDialog'
 import { BranchSetupDialog } from './BranchSetupDialog'
+import { useClickOutside } from '@/shared/hooks/useClickOutside'
 import type { FileChange } from '@/shared/types/review'
 import type { BuildMode } from '@shared/types'
 
@@ -121,11 +122,17 @@ export function LoopControls() {
         await window.relayAPI.stopLoop()
     }
 
-    const buildModeLabels: Record<BuildMode, string> = {
-        'review': 'Stop Loop For Review',
-        'continuous': 'Continue To Next Task',
-        'auto-commit': 'Auto-commit All Tasks',
-    }
+    const [modeOpen, setModeOpen] = useState(false)
+    const modeRef = useRef<HTMLDivElement>(null)
+    useClickOutside(modeRef, useCallback(() => setModeOpen(false), []), modeOpen)
+
+    const buildModeOptions: { mode: BuildMode; label: string; description: string }[] = [
+        { mode: 'review', label: 'Pause for Review', description: 'Pauses after each task for you to approve or reject' },
+        { mode: 'auto-commit', label: 'Auto-Commit', description: 'Commits each task automatically and continues' },
+        { mode: 'continuous', label: 'Continuous', description: 'Builds all tasks, leaves changes for batch review' },
+    ]
+
+    const currentModeOption = buildModeOptions.find(o => o.mode === buildMode) ?? buildModeOptions[0]
 
     const stateLabel: Record<string, string> = {
         idle: 'Idle',
@@ -149,16 +156,36 @@ export function LoopControls() {
 
                 {loopState === 'idle' || loopState === 'stopped' ? (
                     <>
-                        <select
-                            value={buildMode}
-                            onChange={(e) => setBuildMode(e.target.value as BuildMode)}
-                            className="h-7 rounded-md border border-border bg-card px-2 pr-6 text-xs font-medium text-foreground shadow-sm cursor-pointer appearance-none bg-[length:16px] bg-[right_4px_center] bg-no-repeat focus:outline-none focus:ring-1 focus:ring-ring"
-                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237d756a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")` }}
-                        >
-                            {(Object.keys(buildModeLabels) as BuildMode[]).map(mode => (
-                                <option key={mode} value={mode}>{buildModeLabels[mode]}</option>
-                            ))}
-                        </select>
+                        <div ref={modeRef} className="relative">
+                            <button
+                                onClick={() => setModeOpen(!modeOpen)}
+                                className="h-7 rounded-md border border-border bg-card px-2.5 text-xs font-medium text-foreground shadow-sm cursor-pointer flex items-center gap-1.5 hover:bg-accent/50 transition-colors"
+                            >
+                                {currentModeOption.label}
+                                <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${modeOpen ? 'rotate-180' : ''}`} />
+                            </button>
+                            {modeOpen && (
+                                <div className="absolute top-full right-0 mt-1 w-72 rounded-lg bg-card border border-border shadow-xl z-50 overflow-hidden">
+                                    {buildModeOptions.map(({ mode, label, description }) => (
+                                        <button
+                                            key={mode}
+                                            onClick={() => { setBuildMode(mode); setModeOpen(false) }}
+                                            className={`flex items-start gap-2.5 w-full px-3 py-2.5 text-left transition-colors ${
+                                                buildMode === mode ? 'bg-accent/60' : 'hover:bg-accent/30'
+                                            }`}
+                                        >
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-medium">{label}</p>
+                                                <p className="text-[11px] text-muted-foreground mt-0.5">{description}</p>
+                                            </div>
+                                            {buildMode === mode && (
+                                                <Check className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                         <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={handleStart}>
                             <Play className="h-3.5 w-3.5" />
                             Start

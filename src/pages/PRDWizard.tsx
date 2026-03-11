@@ -153,7 +153,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
             setError(err instanceof Error ? err.message : 'Failed to generate PRD')
             setStreaming(false)
         }
-    }, [featureDescription, setPrdMarkdown])
+    }, [featureDescription, setPrdMarkdown, projectContext])
 
     const decompose = useCallback(async () => {
         setError('')
@@ -165,7 +165,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
             setError(err instanceof Error ? err.message : 'Failed to decompose PRD')
             setDecomposing(false)
         }
-    }, [prdMarkdown])
+    }, [prdMarkdown, projectContext])
 
     const confirmTasks = useCallback(async () => {
         if (!activeProject) return

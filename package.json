@@ -1,15 +1,18 @@
 {
   "name": "relay",
+  "productName": "Relay",
   "private": true,
   "version": "0.1.0",
+  "description": "Relay is a tool for managing your software development process autonomously.",
+  "author": "Yoni Raviv",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "bash scripts/patch-electron-name.sh && vite",
     "build": "tsc && vite build && electron-builder",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "seed-demo": "npx tsx scripts/seed-demo.ts",
-    "postinstall": "electron-rebuild"
+    "postinstall": "electron-rebuild && bash scripts/patch-electron-name.sh"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.71",
