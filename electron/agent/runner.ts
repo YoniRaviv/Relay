@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { BrowserWindow } from 'electron';
+import type { PromptContent } from './prompts';
 
 let client: Anthropic | null = null;
 
@@ -17,7 +18,7 @@ export function resetClient(): void {
 export async function streamText(
   apiKey: string,
   systemPrompt: string,
-  userMessage: string,
+  userMessage: PromptContent,
   win: BrowserWindow,
   channel: string
 ): Promise<string> {
@@ -28,7 +29,7 @@ export async function streamText(
     model: 'claude-sonnet-4-20250514',
     max_tokens: 8192,
     system: systemPrompt,
-    messages: [{ role: 'user', content: userMessage }],
+    messages: [{ role: 'user', content: userMessage as Anthropic.MessageCreateParams['messages'][0]['content'] }],
   });
 
   for await (const event of stream) {
@@ -45,7 +46,7 @@ export async function streamText(
 export async function generateText(
   apiKey: string,
   systemPrompt: string,
-  userMessage: string,
+  userMessage: PromptContent,
 ): Promise<string> {
   const anthropic = getClient(apiKey);
 
@@ -53,7 +54,7 @@ export async function generateText(
     model: 'claude-sonnet-4-20250514',
     max_tokens: 8192,
     system: systemPrompt,
-    messages: [{ role: 'user', content: userMessage }],
+    messages: [{ role: 'user', content: userMessage as Anthropic.MessageCreateParams['messages'][0]['content'] }],
   });
 
   const block = message.content[0];

@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Loader2, SkipForward } from 'lucide-react'
 import { ProjectContextBadge } from '@/shared/components/ProjectContextBadge'
+import { AttachmentPanel } from './AttachmentPanel'
+import type { Attachment } from '@shared/types'
 
 interface ClarifyQuestion {
     id: string
@@ -17,9 +19,11 @@ interface FeatureInputProps {
     loading: boolean
     projectContext?: string | null
     scanningProject?: boolean
+    attachments: Attachment[]
+    onAttachmentsChange: (attachments: Attachment[]) => void
 }
 
-export function FeatureInput({ value, onChange, onGenerate, loading, projectContext, scanningProject }: FeatureInputProps) {
+export function FeatureInput({ value, onChange, onGenerate, loading, projectContext, scanningProject, attachments, onAttachmentsChange }: FeatureInputProps) {
     const [phase, setPhase] = useState<'describe' | 'clarifying' | 'answering'>('describe')
     const [questions, setQuestions] = useState<ClarifyQuestion[]>([])
     const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -29,7 +33,7 @@ export function FeatureInput({ value, onChange, onGenerate, loading, projectCont
         setError('')
         setPhase('clarifying')
         try {
-            const result = await window.relayAPI.clarifyPrd(value, projectContext ?? undefined)
+            const result = await window.relayAPI.clarifyPrd(value, projectContext ?? undefined, attachments.length > 0 ? attachments : undefined)
             const jsonMatch = result.text.match(/\[[\s\S]*\]/)
             if (jsonMatch) {
                 const parsed = JSON.parse(jsonMatch[0]) as ClarifyQuestion[]
@@ -76,6 +80,14 @@ export function FeatureInput({ value, onChange, onGenerate, loading, projectCont
 
     const hasAnswers = Object.values(answers).some((a) => a.trim())
 
+    const handleAddAttachments = (items: Attachment[]) => {
+        onAttachmentsChange([...attachments, ...items].slice(0, 10))
+    }
+
+    const handleRemoveAttachment = (id: string) => {
+        onAttachmentsChange(attachments.filter((a) => a.id !== id))
+    }
+
     if (phase === 'describe') {
         return (
             <div className="space-y-4">
@@ -92,6 +104,11 @@ export function FeatureInput({ value, onChange, onGenerate, loading, projectCont
                         onChange={(e) => onChange(e.target.value)}
                     />
                 </div>
+                <AttachmentPanel
+                    attachments={attachments}
+                    onAdd={handleAddAttachments}
+                    onRemove={handleRemoveAttachment}
+                />
                 {error && (
                     <p className="text-sm text-destructive text-center">{error}</p>
                 )}

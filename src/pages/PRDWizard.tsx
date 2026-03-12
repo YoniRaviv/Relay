@@ -4,6 +4,7 @@ import { useRelayStore } from '@/store/useRelayStore'
 import { useIpcListener } from '@/shared/hooks/useIpcListener'
 import { ArrowLeft } from 'lucide-react'
 import type { DecomposedTask } from '@/shared/types/prd'
+import type { Attachment } from '@shared/types'
 
 const STEPS = ['Describe', 'Review PRD', 'Edit', 'Tasks', 'Confirm']
 
@@ -31,6 +32,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
     const [tasks, setTasks] = useState<DecomposedTask[]>([])
     const [error, setError] = useState('')
     const [agentStatus, setAgentStatus] = useState('')
+    const [attachments, setAttachments] = useState<Attachment[]>([])
 
     // Simulated streaming for CLI mode (large chunks arrive at once)
     const textQueueRef = useRef('')
@@ -133,6 +135,8 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                 if (jsonMatch) {
                     const parsed = JSON.parse(jsonMatch[0]) as DecomposedTask[]
                     setTasks(parsed)
+                } else {
+                    setError('No tasks were returned. The AI response did not contain a valid task list. Please try again.')
                 }
             } catch {
                 setError('Failed to parse tasks. Please try again.')
@@ -148,12 +152,17 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         setStreaming(true)
         setPrdMarkdown('')
         try {
-            await window.relayAPI.generatePrd(featureDescription, clarifications, projectContext ?? undefined)
+            await window.relayAPI.generatePrd(
+                featureDescription,
+                clarifications,
+                projectContext ?? undefined,
+                attachments.length > 0 ? attachments : undefined,
+            )
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to generate PRD')
             setStreaming(false)
         }
-    }, [featureDescription, setPrdMarkdown, projectContext])
+    }, [featureDescription, setPrdMarkdown, projectContext, attachments])
 
     const decompose = useCallback(async () => {
         setError('')
@@ -295,6 +304,8 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                                 loading={streaming}
                                 projectContext={projectContext}
                                 scanningProject={scanningProject}
+                                attachments={attachments}
+                                onAttachmentsChange={setAttachments}
                             />
                         )}
 

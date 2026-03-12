@@ -6,6 +6,7 @@ import { registerAgentHandlers } from './agent';
 import { registerGitHandlers } from './git';
 import { registerReviewHandlers } from './review';
 import { registerMetricsHandlers } from './metrics';
+import { registerAttachmentHandlers } from './attachments';
 
 export function registerAllHandlers(): void {
   registerSettingsHandlers();
@@ -16,4 +17,5 @@ export function registerAllHandlers(): void {
   registerGitHandlers();
   registerReviewHandlers();
   registerMetricsHandlers();
+  registerAttachmentHandlers();
 }

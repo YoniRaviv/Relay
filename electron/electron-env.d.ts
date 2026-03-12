@@ -39,9 +39,13 @@ interface RelayAPI {
   scanProject(projectId: string): Promise<{ status: string; context: string }>
   getProjectContext(projectId: string): Promise<string | null>
 
+  // Attachments
+  pickAttachments(mode?: 'all' | 'images' | 'documents'): Promise<import('../shared/types').Attachment[]>
+  readDroppedFiles(paths: string[]): Promise<import('../shared/types').Attachment[]>
+
   // PRD
-  clarifyPrd(description: string, projectContext?: string): Promise<{ status: string; text: string }>
-  generatePrd(description: string, clarifications?: string, projectContext?: string): Promise<unknown>
+  clarifyPrd(description: string, projectContext?: string, attachments?: import('../shared/types').Attachment[]): Promise<{ status: string; text: string }>
+  generatePrd(description: string, clarifications?: string, projectContext?: string, attachments?: import('../shared/types').Attachment[]): Promise<unknown>
   decomposePrd(prdMarkdown: string, projectContext?: string): Promise<unknown>
   savePrd(prd: unknown): Promise<unknown>
   getPrd(projectId: string): Promise<import('../shared/types').PRD | null>

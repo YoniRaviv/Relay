@@ -1,16 +1,89 @@
+import type { Attachment, ImageAttachment } from '../../shared/types';
+
 export interface ClarifyQuestion {
   id: string;
   question: string;
   options?: string[];
 }
 
+// ── Content block types for multimodal messages ──
+
+export type TextBlock = { type: 'text'; text: string };
+export type ImageBlock = {
+  type: 'image';
+  source: { type: 'base64'; media_type: string; data: string };
+};
+export type ContentBlock = TextBlock | ImageBlock;
+export type PromptContent = string | ContentBlock[];
+
+// ── Helpers ──
+
 function projectContextBlock(projectContext?: string): string {
   if (!projectContext) return '';
   return `\n\n## Project Context\nThe following is known about the project where this feature will be built:\n${projectContext}`;
 }
 
-export function buildClarifyPrompt(featureDescription: string, projectContext?: string): string {
-  return `You are a senior product manager. A user wants to build the following feature. Before writing a PRD, ask 3-5 essential clarifying questions to fill in gaps.
+function buildAttachmentContent(attachments: Attachment[]): { textContext: string; imageBlocks: ImageBlock[] } {
+  let textContext = '';
+  const imageBlocks: ImageBlock[] = [];
+
+  for (const att of attachments) {
+    if (att.type === 'file') {
+      textContext += `\n\n## Attached Document: ${att.name}\n\`\`\`\n${att.content}\n\`\`\``;
+    } else if (att.type === 'image') {
+      const img = att as ImageAttachment;
+      imageBlocks.push({
+        type: 'image',
+        source: { type: 'base64', media_type: img.mediaType, data: img.base64 },
+      });
+      textContext += `\n\n[Image attached: ${att.name}]`;
+    }
+  }
+
+  return { textContext, imageBlocks };
+}
+
+function attachmentInstructions(attachments: Attachment[]): string {
+  const hasImages = attachments.some(a => a.type === 'image');
+  const hasDocs = attachments.some(a => a.type === 'file');
+
+  if (!hasImages && !hasDocs) return '';
+
+  const parts: string[] = [];
+  if (hasImages) parts.push('reference the attached images/designs in your analysis');
+  if (hasDocs) parts.push('incorporate context from the attached documents');
+
+  return `\n\nIMPORTANT: The user has provided attachments. Please ${parts.join(' and ')}.`;
+}
+
+function toPromptContent(textPrompt: string, attachments?: Attachment[]): PromptContent {
+  if (!attachments || attachments.length === 0) return textPrompt;
+
+  const { textContext, imageBlocks } = buildAttachmentContent(attachments);
+  const fullText = textPrompt + textContext + attachmentInstructions(attachments);
+
+  if (imageBlocks.length === 0) return fullText;
+
+  // Build content blocks: text first, then images, then a closing instruction
+  const blocks: ContentBlock[] = [
+    { type: 'text', text: fullText },
+    ...imageBlocks,
+  ];
+
+  if (imageBlocks.length > 0) {
+    blocks.push({
+      type: 'text',
+      text: `The above ${imageBlocks.length === 1 ? 'image shows a design/screenshot' : 'images show designs/screenshots'} relevant to this feature. Analyze ${imageBlocks.length === 1 ? 'it' : 'them'} carefully and incorporate visual details into your output.`,
+    });
+  }
+
+  return blocks;
+}
+
+// ── Prompt builders ──
+
+export function buildClarifyPrompt(featureDescription: string, projectContext?: string, attachments?: Attachment[]): PromptContent {
+  const text = `You are a senior product manager. A user wants to build the following feature. Before writing a PRD, ask 3-5 essential clarifying questions to fill in gaps.
 
 ## Feature Request
 ${featureDescription}${projectContextBlock(projectContext)}
@@ -37,14 +110,16 @@ Return ONLY a JSON array, no other text:
 \`\`\`
 
 If the feature description is already very detailed and clear, return fewer questions. Never ask more than 5.`;
+
+  return toPromptContent(text, attachments);
 }
 
-export function buildPrdPrompt(featureDescription: string, clarifications?: string, projectContext?: string): string {
+export function buildPrdPrompt(featureDescription: string, clarifications?: string, projectContext?: string, attachments?: Attachment[]): PromptContent {
   const clarificationBlock = clarifications
     ? `\n\n## Clarifications\nThe following questions were answered to refine the requirements:\n${clarifications}`
     : '';
 
-  return `You are a senior product manager. Generate a detailed Product Requirements Document (PRD) for the following feature request.
+  const text = `You are a senior product manager. Generate a detailed Product Requirements Document (PRD) for the following feature request.
 
 ## Feature Request
 ${featureDescription}${clarificationBlock}${projectContextBlock(projectContext)}
@@ -82,6 +157,8 @@ What is explicitly NOT included.
 How to measure if the feature is successful.
 
 Be thorough but practical. Focus on what needs to be built, not how to build it.`
+
+  return toPromptContent(text, attachments);
 }
 
 export function buildDecomposePrompt(prdMarkdown: string, projectContext?: string): string {

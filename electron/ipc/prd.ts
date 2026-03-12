@@ -1,14 +1,17 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { buildPrdPrompt, buildDecomposePrompt, buildClarifyPrompt } from '../agent/prompts';
+import type { PromptContent } from '../agent/prompts';
 import { streamText, generateText } from '../agent/runner';
 import { openDb } from '../db/connection';
 import { store } from './settings';
 import { safeStorage } from 'electron';
 import { query } from '@anthropic-ai/claude-agent-sdk';
+import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import type { EngineMode } from '../agent/engines/types';
+import type { Attachment } from '../../shared/types';
 import { DEFAULT_MODEL } from '../../shared/pricing';
 
 let _claudePath: string | undefined;
@@ -55,13 +58,16 @@ function buildCliEnv(): Record<string, string | undefined> {
   return cleanEnv;
 }
 
-function getCliQueryOptions(systemPrompt: string, stderrLines: string[]) {
+function getCliQueryOptions(systemPrompt: string, stderrLines: string[], multimodal = false) {
   const selectedModel = (store.get('selectedModel') ?? DEFAULT_MODEL) as string;
   return {
-    systemPrompt,
+    // In multimodal mode, instructions are embedded in the user message to avoid
+    // being overridden by Claude Code's agent system prompt.
+    systemPrompt: multimodal ? undefined : systemPrompt,
     model: selectedModel,
     cwd: os.homedir(),
     maxTurns: 1,
+    tools: [] as string[],
     allowedTools: [] as string[],
     permissionMode: 'acceptEdits' as const,
     persistSession: false,
@@ -79,21 +85,58 @@ function sendStatus(win: BrowserWindow, status: string) {
   win.webContents.send('prd:status', { status });
 }
 
+// Check if prompt content has image blocks (requires streaming input mode)
+function hasImageBlocks(content: PromptContent): boolean {
+  return Array.isArray(content) && content.some(b => b.type === 'image');
+}
+
+// Build an AsyncGenerator for streaming input mode (required for image content blocks).
+// Embeds the system prompt as a leading text block so it's not overridden by Claude Code's agent prompt.
+async function* buildStreamingPrompt(systemPrompt: string, content: PromptContent): AsyncGenerator<SDKUserMessage> {
+  // Prepend system role instructions into the user message itself
+  const instructionBlock = {
+    type: 'text' as const,
+    text: `IMPORTANT: ${systemPrompt} Generate your full response directly. Do NOT describe what you will do or plan steps — just produce the requested output.\n\n`,
+  };
+
+  const blocks = Array.isArray(content)
+    ? [instructionBlock, ...content]
+    : [{ type: 'text' as const, text: `${instructionBlock.text}${content}` }];
+
+  yield {
+    type: 'user',
+    message: { role: 'user', content: blocks },
+    parent_tool_use_id: null,
+    session_id: randomUUID(),
+  } as SDKUserMessage;
+}
+
+// Extract plain text from PromptContent (strips image blocks, used for string prompt mode)
+function toPlainText(content: PromptContent): string {
+  if (typeof content === 'string') return content;
+  return content.filter(b => b.type === 'text').map(b => (b as { text: string }).text).join('\n\n');
+}
+
 async function cliStreamText(
   systemPrompt: string,
-  userMessage: string,
+  promptContent: PromptContent,
   win: BrowserWindow,
   channel: string,
 ): Promise<string> {
   let fullText = '';
   let hasContent = false;
   const stderrLines: string[] = [];
+  const multimodal = hasImageBlocks(promptContent);
 
   sendStatus(win, 'Spawning Claude Code agent...');
 
+  // String prompt = simple text generation (text-only).
+  // AsyncGenerator = streaming input mode with vision content blocks (multimodal).
   const session = query({
-    prompt: userMessage,
-    options: getCliQueryOptions(systemPrompt, stderrLines),
+    prompt: multimodal
+      ? buildStreamingPrompt(systemPrompt, promptContent)
+      : toPlainText(promptContent),
+    options: getCliQueryOptions(systemPrompt, stderrLines, multimodal),
   });
 
   try {
@@ -139,33 +182,45 @@ async function cliStreamText(
 
 async function cliGenerateText(
   systemPrompt: string,
-  userMessage: string,
+  promptContent: PromptContent,
   win?: BrowserWindow,
 ): Promise<string> {
   let fullText = '';
+  let hasContent = false;
   const stderrLines: string[] = [];
+  const multimodal = hasImageBlocks(promptContent);
 
   if (win) sendStatus(win, 'Spawning Claude Code agent...');
 
   const session = query({
-    prompt: userMessage,
-    options: getCliQueryOptions(systemPrompt, stderrLines),
+    prompt: multimodal
+      ? buildStreamingPrompt(systemPrompt, promptContent)
+      : toPlainText(promptContent),
+    options: getCliQueryOptions(systemPrompt, stderrLines, multimodal),
   });
 
   try {
     for await (const message of session) {
       if (win && message.type === 'system' && 'subtype' in message && message.subtype === 'init') {
-        sendStatus(win, 'Agent connected, analyzing PRD...');
-      } else if (win && message.type === 'stream_event' && !fullText) {
-        sendStatus(win, 'Decomposing into tasks...');
+        sendStatus(win, 'Agent connected, processing...');
+      } else if (message.type === 'stream_event') {
+        if (win && !hasContent) {
+          sendStatus(win, 'Generating response...');
+          hasContent = true;
+        }
+        const evt = (message as { event: { type: string; delta?: { type: string; text?: string } } }).event;
+        if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta' && evt.delta.text) {
+          fullText += evt.delta.text;
+        }
       } else if (message.type === 'assistant') {
+        if (!hasContent) hasContent = true;
         for (const block of message.message.content) {
-          if (block.type === 'text') {
-            fullText += block.text;
+          if (block.type === 'text' && !fullText) {
+            fullText = block.text;
           }
         }
       } else if (win && message.type === 'result') {
-        sendStatus(win, 'Finalizing tasks...');
+        sendStatus(win, 'Finalizing...');
       }
     }
   } catch (err) {
@@ -178,12 +233,17 @@ async function cliGenerateText(
   return fullText;
 }
 
-export function registerPrdHandlers(): void {
-  ipcMain.handle('prd:clarify', async (_event, description: string, projectContext?: string) => {
-    const win = BrowserWindow.getFocusedWindow();
-    if (!win) throw new Error('No active window');
+function getWin(event: Electron.IpcMainInvokeEvent): BrowserWindow {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win) throw new Error('No active window');
+  return win;
+}
 
-    const prompt = buildClarifyPrompt(description, projectContext ?? undefined);
+export function registerPrdHandlers(): void {
+  ipcMain.handle('prd:clarify', async (event, description: string, projectContext?: string, attachments?: Attachment[]) => {
+    const win = getWin(event);
+
+    const prompt = buildClarifyPrompt(description, projectContext ?? undefined, attachments);
     const systemPrompt = 'You are a senior product manager. Return only valid JSON.';
 
     let result: string;
@@ -196,11 +256,10 @@ export function registerPrdHandlers(): void {
     return { status: 'ok', text: result };
   });
 
-  ipcMain.handle('prd:generate', async (_event, description: string, clarifications?: string, projectContext?: string) => {
-    const win = BrowserWindow.getFocusedWindow();
-    if (!win) throw new Error('No active window');
+  ipcMain.handle('prd:generate', async (event, description: string, clarifications?: string, projectContext?: string, attachments?: Attachment[]) => {
+    const win = getWin(event);
 
-    const prompt = buildPrdPrompt(description, clarifications, projectContext ?? undefined);
+    const prompt = buildPrdPrompt(description, clarifications, projectContext ?? undefined, attachments);
 
     if (getEngineMode() === 'claude-code') {
       await cliStreamText('You are a senior product manager.', prompt, win, 'prd:stream');
@@ -211,9 +270,8 @@ export function registerPrdHandlers(): void {
     return { status: 'ok' };
   });
 
-  ipcMain.handle('prd:decompose', async (_event, prdMarkdown: string, projectContext?: string) => {
-    const win = BrowserWindow.getFocusedWindow();
-    if (!win) throw new Error('No active window');
+  ipcMain.handle('prd:decompose', async (event, prdMarkdown: string, projectContext?: string) => {
+    const win = getWin(event);
 
     const prompt = buildDecomposePrompt(prdMarkdown, projectContext ?? undefined);
 
