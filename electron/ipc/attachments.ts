@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Attachment, FileAttachment, ImageAttachment } from '../../shared/types';
 
-const TEXT_EXTENSIONS = new Set(['.txt', '.md', '.pdf']);
+const TEXT_EXTENSIONS = new Set(['.txt', '.md']);
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
 
 const MAX_TEXT_SIZE = 100 * 1024;   // 100KB
@@ -65,15 +65,15 @@ export function registerAttachmentHandlers(): void {
 
     const filterMap = {
       all: [
-        { name: 'All Supported', extensions: ['txt', 'md', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'] },
-        { name: 'Documents', extensions: ['txt', 'md', 'pdf'] },
+        { name: 'All Supported', extensions: ['txt', 'md', 'png', 'jpg', 'jpeg', 'gif', 'webp'] },
+        { name: 'Documents', extensions: ['txt', 'md'] },
         { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] },
       ],
       images: [
         { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] },
       ],
       documents: [
-        { name: 'Documents', extensions: ['txt', 'md', 'pdf'] },
+        { name: 'Documents', extensions: ['txt', 'md'] },
       ],
     };
 

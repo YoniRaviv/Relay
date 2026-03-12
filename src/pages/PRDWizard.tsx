@@ -130,11 +130,13 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
     useIpcListener('prd:decomposeStream', useCallback((data: unknown) => {
         const event = data as { type: string; text: string }
         if (event.type === 'done') {
+            let success = false
             try {
                 const jsonMatch = event.text.match(/\[[\s\S]*\]/)
                 if (jsonMatch) {
                     const parsed = JSON.parse(jsonMatch[0]) as DecomposedTask[]
                     setTasks(parsed)
+                    success = true
                 } else {
                     setError('No tasks were returned. The AI response did not contain a valid task list. Please try again.')
                 }
@@ -142,7 +144,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                 setError('Failed to parse tasks. Please try again.')
             }
             setDecomposing(false)
-            setWizardStep(3)
+            if (success) setWizardStep(3)
         }
     }, [setWizardStep]))
 
