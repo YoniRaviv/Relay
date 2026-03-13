@@ -40,8 +40,8 @@ interface RelayAPI {
   getProjectContext(projectId: string): Promise<string | null>
 
   // PRD
-  clarifyPrd(description: string, projectContext?: string): Promise<{ status: string; text: string }>
-  generatePrd(description: string, clarifications?: string, projectContext?: string): Promise<unknown>
+  clarifyPrd(description: string, projectContext?: string, attachments?: import('../shared/types').ImageAttachment[]): Promise<{ status: string; text: string }>
+  generatePrd(description: string, clarifications?: string, projectContext?: string, attachments?: import('../shared/types').ImageAttachment[]): Promise<unknown>
   decomposePrd(prdMarkdown: string, projectContext?: string): Promise<unknown>
   savePrd(prd: unknown): Promise<unknown>
   getPrd(projectId: string): Promise<import('../shared/types').PRD | null>

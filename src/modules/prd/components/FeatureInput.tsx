@@ -1,8 +1,14 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Loader2, SkipForward } from 'lucide-react'
+import { Loader2, SkipForward, ImagePlus, X } from 'lucide-react'
 import { ProjectContextBadge } from '@/shared/components/ProjectContextBadge'
+import type { ImageAttachment } from '@shared/types'
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB per file
+const MAX_TOTAL_SIZE = 20 * 1024 * 1024 // 20MB total
+const MAX_IMAGES = 10
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const
 
 interface ClarifyQuestion {
     id: string
@@ -17,19 +23,70 @@ interface FeatureInputProps {
     loading: boolean
     projectContext?: string | null
     scanningProject?: boolean
+    attachments: ImageAttachment[]
+    onAddAttachment: (attachment: ImageAttachment) => void
+    onRemoveAttachment: (id: string) => void
 }
 
-export function FeatureInput({ value, onChange, onGenerate, loading, projectContext, scanningProject }: FeatureInputProps) {
+export function FeatureInput({ value, onChange, onGenerate, loading, projectContext, scanningProject, attachments, onAddAttachment, onRemoveAttachment }: FeatureInputProps) {
     const [phase, setPhase] = useState<'describe' | 'clarifying' | 'answering'>('describe')
     const [questions, setQuestions] = useState<ClarifyQuestion[]>([])
     const [answers, setAnswers] = useState<Record<string, string>>({})
     const [error, setError] = useState('')
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const totalSize = attachments.reduce((sum, a) => sum + a.sizeBytes, 0)
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files
+        if (!files) return
+
+        for (const file of Array.from(files)) {
+            if (!ACCEPTED_TYPES.includes(file.type as typeof ACCEPTED_TYPES[number])) {
+                setError(`${file.name}: unsupported format. Use JPEG, PNG, GIF, or WebP.`)
+                continue
+            }
+            if (file.size > MAX_FILE_SIZE) {
+                setError(`${file.name}: exceeds 5MB limit.`)
+                continue
+            }
+            if (totalSize + file.size > MAX_TOTAL_SIZE) {
+                setError('Total attachment size exceeds 20MB limit.')
+                break
+            }
+            if (attachments.length >= MAX_IMAGES) {
+                setError(`Maximum ${MAX_IMAGES} images allowed.`)
+                break
+            }
+
+            const reader = new FileReader()
+            reader.onload = () => {
+                const dataUrl = reader.result as string
+                const base64Data = dataUrl.split(',')[1]
+                onAddAttachment({
+                    id: crypto.randomUUID(),
+                    name: file.name,
+                    mediaType: file.type as ImageAttachment['mediaType'],
+                    base64Data,
+                    sizeBytes: file.size,
+                })
+            }
+            reader.readAsDataURL(file)
+        }
+
+        // Reset input so same file can be re-selected
+        if (fileInputRef.current) fileInputRef.current.value = ''
+    }
 
     const handleClarify = async () => {
         setError('')
         setPhase('clarifying')
         try {
-            const result = await window.relayAPI.clarifyPrd(value, projectContext ?? undefined)
+            const result = await window.relayAPI.clarifyPrd(
+                value,
+                projectContext ?? undefined,
+                attachments.length > 0 ? attachments : undefined,
+            )
             const jsonMatch = result.text.match(/\[[\s\S]*\]/)
             if (jsonMatch) {
                 const parsed = JSON.parse(jsonMatch[0]) as ClarifyQuestion[]
@@ -76,6 +133,31 @@ export function FeatureInput({ value, onChange, onGenerate, loading, projectCont
 
     const hasAnswers = Object.values(answers).some((a) => a.trim())
 
+    const attachmentStrip = attachments.length > 0 && (
+        <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+                {attachments.map((att) => (
+                    <div key={att.id} className="relative group">
+                        <img
+                            src={`data:${att.mediaType};base64,${att.base64Data}`}
+                            alt={att.name}
+                            className="h-16 w-16 rounded-md border border-border object-cover"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => onRemoveAttachment(att.id)}
+                            className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                            <X className="h-3 w-3" />
+                        </button>
+                        <p className="text-[10px] text-muted-foreground truncate w-16 mt-0.5">{att.name}</p>
+                    </div>
+                ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">{attachments.length}/{MAX_IMAGES} images</p>
+        </div>
+    )
+
     if (phase === 'describe') {
         return (
             <div className="space-y-4">
@@ -91,6 +173,27 @@ export function FeatureInput({ value, onChange, onGenerate, loading, projectCont
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
                     />
+                </div>
+                {attachmentStrip}
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    multiple
+                    className="hidden"
+                    onChange={handleFileSelect}
+                />
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={attachments.length >= MAX_IMAGES}
+                        className="gap-1.5"
+                    >
+                        <ImagePlus className="h-3.5 w-3.5" />
+                        Attach images
+                    </Button>
                 </div>
                 {error && (
                     <p className="text-sm text-destructive text-center">{error}</p>
@@ -112,7 +215,11 @@ export function FeatureInput({ value, onChange, onGenerate, loading, projectCont
                 </div>
                 <div className="flex flex-col items-center gap-3 py-6">
                     <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    <p className="text-sm text-muted-foreground">Analyzing your feature description...</p>
+                    <p className="text-sm text-muted-foreground">
+                        {attachments.length > 0
+                            ? 'Analyzing your feature description and attached images...'
+                            : 'Analyzing your feature description...'}
+                    </p>
                 </div>
             </div>
         )

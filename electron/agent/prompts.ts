@@ -1,7 +1,29 @@
+import type { ImageAttachment } from '../../shared/types';
+
 export interface ClarifyQuestion {
   id: string;
   question: string;
   options?: string[];
+}
+
+type ImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+
+export type ContentBlock =
+  | { type: 'image'; source: { type: 'base64'; media_type: ImageMediaType; data: string } }
+  | { type: 'text'; text: string };
+
+export function buildContentBlocks(
+  textPrompt: string,
+  attachments?: ImageAttachment[]
+): string | ContentBlock[] {
+  if (!attachments?.length) return textPrompt;
+
+  const imageBlocks: ContentBlock[] = attachments.map(att => ({
+    type: 'image' as const,
+    source: { type: 'base64' as const, media_type: att.mediaType, data: att.base64Data },
+  }));
+
+  return [...imageBlocks, { type: 'text' as const, text: textPrompt }];
 }
 
 function projectContextBlock(projectContext?: string): string {
@@ -9,11 +31,14 @@ function projectContextBlock(projectContext?: string): string {
   return `\n\n## Project Context\nThe following is known about the project where this feature will be built:\n${projectContext}`;
 }
 
-export function buildClarifyPrompt(featureDescription: string, projectContext?: string): string {
+export function buildClarifyPrompt(featureDescription: string, projectContext?: string, hasAttachments?: boolean): string {
+  const imageHint = hasAttachments
+    ? '\n\nReference images are attached. Analyze the visual designs carefully — incorporate layout, component structure, colors, spacing, and interaction patterns you observe into your questions and response.'
+    : '';
   return `You are a senior product manager. A user wants to build the following feature. Before writing a PRD, ask 3-5 essential clarifying questions to fill in gaps.
 
 ## Feature Request
-${featureDescription}${projectContextBlock(projectContext)}
+${featureDescription}${projectContextBlock(projectContext)}${imageHint}
 
 ## Instructions
 Identify what's unclear or underspecified. Focus on:
@@ -39,15 +64,19 @@ Return ONLY a JSON array, no other text:
 If the feature description is already very detailed and clear, return fewer questions. Never ask more than 5.`;
 }
 
-export function buildPrdPrompt(featureDescription: string, clarifications?: string, projectContext?: string): string {
+export function buildPrdPrompt(featureDescription: string, clarifications?: string, projectContext?: string, hasAttachments?: boolean): string {
   const clarificationBlock = clarifications
     ? `\n\n## Clarifications\nThe following questions were answered to refine the requirements:\n${clarifications}`
+    : '';
+
+  const imageHint = hasAttachments
+    ? '\n\nReference images are attached. Analyze the visual designs carefully — incorporate layout, component structure, colors, spacing, and interaction patterns you observe into your response.'
     : '';
 
   return `You are a senior product manager. Generate a detailed Product Requirements Document (PRD) for the following feature request.
 
 ## Feature Request
-${featureDescription}${clarificationBlock}${projectContextBlock(projectContext)}
+${featureDescription}${clarificationBlock}${projectContextBlock(projectContext)}${imageHint}
 
 ## Output Format
 Write the PRD in markdown with the following sections:

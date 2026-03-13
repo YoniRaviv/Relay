@@ -8,6 +8,7 @@ import type {
   RecentProject,
   LoopState,
   BuildMode,
+  ImageAttachment,
 } from '../../shared/types';
 
 // ── Settings Slice ──
@@ -43,6 +44,7 @@ interface PRDSlice {
   activePrdId: string | null;
   features: FeatureSummary[];
   decomposedTasks: Task[];
+  featureAttachments: ImageAttachment[];
   setWizardStep: (step: number) => void;
   setFeatureDescription: (desc: string) => void;
   setPrdMarkdown: (md: string | ((prev: string) => string)) => void;
@@ -50,6 +52,9 @@ interface PRDSlice {
   setActivePrdId: (id: string | null) => void;
   setFeatures: (features: FeatureSummary[]) => void;
   setDecomposedTasks: (tasks: Task[]) => void;
+  setFeatureAttachments: (attachments: ImageAttachment[]) => void;
+  addFeatureAttachment: (attachment: ImageAttachment) => void;
+  removeFeatureAttachment: (id: string) => void;
 }
 
 // ── Tasks Slice ──
@@ -120,6 +125,7 @@ export const useRelayStore = create<RelayStore>((set) => ({
   activePrdId: null,
   features: [],
   decomposedTasks: [],
+  featureAttachments: [],
   setWizardStep: (wizardStep) => set({ wizardStep }),
   setFeatureDescription: (featureDescription) => set({ featureDescription }),
   setPrdMarkdown: (prdMarkdown) =>
@@ -130,6 +136,11 @@ export const useRelayStore = create<RelayStore>((set) => ({
   setActivePrdId: (activePrdId) => set({ activePrdId }),
   setFeatures: (features) => set({ features }),
   setDecomposedTasks: (decomposedTasks) => set({ decomposedTasks }),
+  setFeatureAttachments: (featureAttachments) => set({ featureAttachments }),
+  addFeatureAttachment: (attachment) =>
+    set((state) => ({ featureAttachments: [...state.featureAttachments, attachment] })),
+  removeFeatureAttachment: (id) =>
+    set((state) => ({ featureAttachments: state.featureAttachments.filter((a) => a.id !== id) })),
 
   // Tasks
   tasks: [],

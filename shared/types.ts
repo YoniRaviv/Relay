@@ -85,6 +85,16 @@ export interface TaskMetric {
   createdAt: string;
 }
 
+// ── Image Attachment ──
+
+export interface ImageAttachment {
+  id: string;
+  name: string;
+  mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+  base64Data: string;
+  sizeBytes: number;
+}
+
 // ── IPC Types ──
 
 export interface AuthStatus {

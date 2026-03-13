@@ -65,8 +65,31 @@ function getNextPendingTask(projectId: string, prdId?: string): Task | null {
   return rowToTask(row);
 }
 
+function refreshAndBroadcastTasks(projectId: string, prdId: string | undefined, win: BrowserWindow): void {
+  const db = getDbForProject(projectId);
+  const rows = prdId
+    ? db.prepare(`SELECT * FROM tasks WHERE project_id = ? AND prd_id = ? ORDER BY "order" ASC`).all(projectId, prdId) as Record<string, unknown>[]
+    : db.prepare(`SELECT * FROM tasks WHERE project_id = ? ORDER BY "order" ASC`).all(projectId) as Record<string, unknown>[];
+  win.webContents.send('loop:tasksUpdated', rows.map(rowToTask));
+}
+
 export function getLoopState(): typeof loopState {
   return loopState;
+}
+
+/**
+ * Wait for the loop to leave the paused state (resume or stop).
+ */
+async function waitForUnpause(win: BrowserWindow): Promise<void> {
+  win.webContents.send('loop:stateChange', { state: 'paused' });
+  await new Promise<void>((resolve) => {
+    const check = setInterval(() => {
+      if (loopState !== 'paused') {
+        clearInterval(check);
+        resolve();
+      }
+    }, 200);
+  });
 }
 
 export async function startLoop(projectId: string, win: BrowserWindow, prdId?: string, buildMode?: BuildMode): Promise<void> {
@@ -96,38 +119,87 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
       // Notify UI of current task
       win.webContents.send('loop:taskChange', { taskId: task.id });
 
-      await getEngine().runTask(task, win, abortSignal);
+      const result = await getEngine().runTask(task, win, abortSignal);
 
-      // Check if task exceeded max passes
-      const maxPasses = store.get('maxPassesPerTask', 5) as number;
-      if (maxPasses > 0 && task.passes >= maxPasses) {
-        const db2 = getDbForProject(projectId);
-        db2.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
-          .run('failed', new Date().toISOString(), task.id);
-        win.webContents.send('agent:activity', {
-          id: randomUUID(),
-          taskId: task.id,
-          type: 'error',
-          content: `Task failed: exceeded max attempts (${maxPasses}).`,
-          timestamp: new Date().toISOString(),
-        });
-        sendNotification('Task Failed', `"${task.title}" exceeded ${maxPasses} attempts.`);
-        // Refresh and continue to next task
-        const failedTasks = prdId
-          ? db2.prepare(`SELECT * FROM tasks WHERE project_id = ? AND prd_id = ? ORDER BY "order" ASC`).all(projectId, prdId) as Record<string, unknown>[]
-          : db2.prepare(`SELECT * FROM tasks WHERE project_id = ? ORDER BY "order" ASC`).all(projectId) as Record<string, unknown>[];
-        win.webContents.send('loop:tasksUpdated', failedTasks.map(rowToTask));
+      // ── Handle pause/stop that interrupted the task ──
+      if (abortSignal.aborted) {
+        const db = getDbForProject(projectId);
+        if (loopState as string === 'paused') {
+          // Pause interrupted the task — reset it to pending so it can be retried
+          db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
+            .run('pending', new Date().toISOString(), task.id);
+          win.webContents.send('agent:activity', {
+            id: randomUUID(),
+            taskId: task.id,
+            type: 'text',
+            content: 'Task paused and returned to pending.',
+            timestamp: new Date().toISOString(),
+          });
+          refreshAndBroadcastTasks(projectId, prdId, win);
+          await waitForUnpause(win);
+          if (loopState as string === 'stopped') break;
+          // Reset abort signal for the next task
+          abortSignal = { aborted: false };
+          continue;
+        }
+        // Stopped — reset task to pending so it's not left in a broken state
+        db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
+          .run('pending', new Date().toISOString(), task.id);
+        refreshAndBroadcastTasks(projectId, prdId, win);
+        break;
+      }
+
+      // ── Handle task failure (engine returned success: false) ──
+      if (!result.success) {
+        const db = getDbForProject(projectId);
+        // Re-read current passes from DB (engine may have incremented)
+        const currentRow = db.prepare('SELECT passes FROM tasks WHERE id = ?').get(task.id) as { passes: number } | undefined;
+        const currentPasses = (currentRow?.passes ?? task.passes) + 1;
+        const maxPasses = store.get('maxPassesPerTask', 5) as number;
+
+        const errorMsg = result.error || 'Unknown error';
+
+        if (maxPasses > 0 && currentPasses >= maxPasses) {
+          // Exceeded max attempts — mark as permanently failed
+          db.prepare('UPDATE tasks SET status = ?, passes = ?, rejection_notes = ?, updated_at = ? WHERE id = ?')
+            .run('failed', currentPasses, `Failed after ${currentPasses} attempts. Last error: ${errorMsg}`, new Date().toISOString(), task.id);
+          win.webContents.send('agent:activity', {
+            id: randomUUID(),
+            taskId: task.id,
+            type: 'error',
+            content: `Task failed: exceeded max attempts (${maxPasses}). Error: ${errorMsg}`,
+            timestamp: new Date().toISOString(),
+          });
+          sendNotification('Task Failed', `"${task.title}" exceeded ${maxPasses} attempts.`);
+        } else {
+          // Reset to pending for retry with incremented pass count and error context
+          db.prepare('UPDATE tasks SET status = ?, passes = ?, rejection_notes = ?, updated_at = ? WHERE id = ?')
+            .run('pending', currentPasses, `Attempt ${currentPasses} failed: ${errorMsg}`, new Date().toISOString(), task.id);
+          win.webContents.send('agent:activity', {
+            id: randomUUID(),
+            taskId: task.id,
+            type: 'error',
+            content: `Task failed (attempt ${currentPasses}/${maxPasses > 0 ? maxPasses : '∞'}): ${errorMsg}. Will retry.`,
+            timestamp: new Date().toISOString(),
+          });
+        }
+
+        refreshAndBroadcastTasks(projectId, prdId, win);
+
+        // Check for pause/stop before continuing
+        if (loopState as string === 'paused') {
+          await waitForUnpause(win);
+          if (loopState as string === 'stopped') break;
+        }
+        if (loopState as string === 'stopped') break;
         continue;
       }
 
-      // Refresh task list in UI
-      const db = getDbForProject(projectId);
-      const allTasks = prdId
-        ? db.prepare(`SELECT * FROM tasks WHERE project_id = ? AND prd_id = ? ORDER BY "order" ASC`).all(projectId, prdId) as Record<string, unknown>[]
-        : db.prepare(`SELECT * FROM tasks WHERE project_id = ? ORDER BY "order" ASC`).all(projectId) as Record<string, unknown>[];
-      win.webContents.send('loop:tasksUpdated', allTasks.map(rowToTask));
+      // ── Task succeeded — refresh UI ──
+      refreshAndBroadcastTasks(projectId, prdId, win);
 
       // Check if the task is now in review — behaviour depends on effectiveBuildMode
+      const db = getDbForProject(projectId);
       const updatedTask = db.prepare('SELECT status, story_id, title FROM tasks WHERE id = ?').get(task.id) as Record<string, unknown> | undefined;
       if (updatedTask && updatedTask.status === 'review') {
         if (effectiveBuildMode === 'auto-commit') {
@@ -135,11 +207,7 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
           const commitPrefix = (store.get('commitPrefix') ?? 'feat') as string;
           const commitMsg = `${commitPrefix}(${updatedTask.story_id}): ${updatedTask.title}`;
           await autoCommitTask(projectId, task.id, commitMsg, win);
-          // Refresh task list after auto-commit
-          const refreshedTasks = prdId
-            ? db.prepare(`SELECT * FROM tasks WHERE project_id = ? AND prd_id = ? ORDER BY "order" ASC`).all(projectId, prdId) as Record<string, unknown>[]
-            : db.prepare(`SELECT * FROM tasks WHERE project_id = ? ORDER BY "order" ASC`).all(projectId) as Record<string, unknown>[];
-          win.webContents.send('loop:tasksUpdated', refreshedTasks.map(rowToTask));
+          refreshAndBroadcastTasks(projectId, prdId, win);
         } else if (effectiveBuildMode === 'continuous') {
           // Continuous: skip the pause, leave task in review status, continue to next
           win.webContents.send('agent:activity', {
@@ -152,7 +220,6 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
         } else {
           // Review mode (default): pause and wait for human
           loopState = 'paused';
-          win.webContents.send('loop:stateChange', { state: 'paused' });
           sendNotification('Review Needed', `"${task.title}" is ready for your review.`);
           win.webContents.send('agent:activity', {
             id: randomUUID(),
@@ -161,37 +228,21 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
             content: 'Paused: waiting for human review before continuing.',
             timestamp: new Date().toISOString(),
           });
-          // Wait for resume or stop
-          await new Promise<void>((resolve) => {
-            const check = setInterval(() => {
-              if (loopState !== 'paused') {
-                clearInterval(check);
-                resolve();
-              }
-            }, 200);
-          });
+          await waitForUnpause(win);
           if (loopState as string === 'stopped') break;
         }
       }
 
-      // Check if paused (manual pause)
+      // Check if paused (manual pause between tasks)
       if (loopState as string === 'paused') {
-        win.webContents.send('loop:stateChange', { state: 'paused' });
-        // Wait for resume or stop
-        await new Promise<void>((resolve) => {
-          const check = setInterval(() => {
-            if (loopState !== 'paused') {
-              clearInterval(check);
-              resolve();
-            }
-          }, 200);
-        });
+        await waitForUnpause(win);
       }
 
       if (loopState as string === 'stopped') break;
     }
   } finally {
     loopState = 'idle';
+    abortSignal = { aborted: false };
     win.webContents.send('loop:stateChange', { state: 'idle' });
     win.webContents.send('loop:taskChange', { taskId: null });
   }
@@ -200,6 +251,7 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
 export function pauseLoop(): void {
   if (loopState === 'running') {
     loopState = 'paused';
+    abortSignal.aborted = true;
   }
 }
 

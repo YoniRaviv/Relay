@@ -59,6 +59,11 @@ export function TaskCard({ task, isActive, onClick, onReview }: TaskCardProps) {
             }`}
         >
             <TaskCardContent task={task} />
+            {task.status === 'failed' && task.rejectionNotes && (
+                <div className="mt-2 px-2 py-1.5 rounded-md bg-rose-500/10 border border-rose-500/20">
+                    <p className="text-[11px] text-rose-600 dark:text-rose-400 line-clamp-2">{task.rejectionNotes}</p>
+                </div>
+            )}
             {task.status === 'review' && (
                 <button
                     onClick={(e) => {
