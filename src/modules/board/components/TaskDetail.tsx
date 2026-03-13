@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { X, Eye, GitCommit, ChevronDown } from 'lucide-react'
+import { X, Eye, GitCommit, ChevronDown, Pause } from 'lucide-react'
 import { ActionBlock } from '@/modules/agent/components/ActionBlock'
 import { TextBlock } from '@/modules/agent/components/TextBlock'
 import { groupActions } from '@/modules/agent/utils/parseActivity'
@@ -10,7 +10,7 @@ import { useRelayStore } from '@/store/useRelayStore'
 import { statusColors, statusLabels } from '@/shared/constants/statusMaps'
 
 export function TaskDetail() {
-    const { tasks, selectedTaskId, setSelectedTaskId, activityFeed, currentTaskId, setReviewingTaskId } = useRelayStore()
+    const { tasks, selectedTaskId, setSelectedTaskId, activityFeed, currentTaskId, setReviewingTaskId, loopState } = useRelayStore()
     const task = tasks.find((t) => t.id === selectedTaskId)
     const taskActivity = useMemo(
         () => task ? activityFeed.filter((a) => a.taskId === task.id) : [],
@@ -21,6 +21,7 @@ export function TaskDetail() {
     if (!task) return null
 
     const isActiveTask = task.id === currentTaskId
+    const isPausedInProgress = task.status === 'in_progress' && loopState === 'paused'
     const isCompleted = task.status === 'done' || task.status === 'approved'
 
     return (
@@ -28,10 +29,14 @@ export function TaskDetail() {
             <div className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-mono text-muted-foreground">{task.storyId}</span>
-                    <span className={`text-xs font-medium ${statusColors[task.status]}`}>
-                        {statusLabels[task.status]}
+                    <span className={`text-xs font-medium ${isPausedInProgress ? 'text-amber-600 dark:text-amber-400' : statusColors[task.status]}`}>
+                        {isPausedInProgress ? 'Paused' : statusLabels[task.status]}
                     </span>
-                    {isActiveTask && (
+                    {isPausedInProgress ? (
+                        <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                            <Pause className="h-3 w-3" />
+                        </span>
+                    ) : isActiveTask && (
                         <span className="flex items-center gap-1 text-xs text-teal-600 dark:text-teal-400">
                             <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
                             Active

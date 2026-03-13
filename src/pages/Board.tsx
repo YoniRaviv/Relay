@@ -198,7 +198,6 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                             )}
                             <BranchIndicator />
                             <ModelPicker />
-                            <ProjectContextBadge projectContext={projectContext} scanning={scanningProject} />
                         </div>
                         <LoopControls />
                     </div>
@@ -231,12 +230,15 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                                         <div className="flex-1 overflow-hidden">
                                             <KanbanBoard />
                                         </div>
-                                        <div className="h-56 bg-[var(--color-sidebar)] flex flex-col">
-                                            <div className="px-4 py-2 flex items-center gap-3">
+                                        <div className="h-56 bg-[var(--color-sidebar)] flex flex-col border-t border-border/50">
+                                            <div className="px-4 py-2 flex items-center gap-3 border-b border-border/30">
                                                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                                     Agent Activity
                                                 </span>
                                                 <BuildTimer />
+                                                <div className="ml-auto">
+                                                    <ProjectContextBadge projectContext={projectContext} scanning={scanningProject} />
+                                                </div>
                                             </div>
                                             <AgentActivityFeed />
                                         </div>

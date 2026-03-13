@@ -27,7 +27,7 @@ export function AgentActivityFeed() {
     return (
         <div className="flex flex-col flex-1 min-h-0">
             <LiveSummaryBar logs={activityFeed} />
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-auto bg-background/50">
                 {grouped.map((item) =>
                     isActionGroup(item) ? (
                         <ActionBlock key={item.id} action={item} />

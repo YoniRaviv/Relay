@@ -79,9 +79,12 @@ export function getLoopState(): typeof loopState {
 
 /**
  * Wait for the loop to leave the paused state (resume or stop).
+ * @param skipEmit - If true, skip emitting the paused state (already emitted by caller)
  */
-async function waitForUnpause(win: BrowserWindow): Promise<void> {
-  win.webContents.send('loop:stateChange', { state: 'paused' });
+async function waitForUnpause(win: BrowserWindow, skipEmit = false): Promise<void> {
+  if (!skipEmit) {
+    win.webContents.send('loop:stateChange', { state: 'paused' });
+  }
   await new Promise<void>((resolve) => {
     const check = setInterval(() => {
       if (loopState !== 'paused') {
@@ -125,18 +128,20 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
       if (abortSignal.aborted) {
         const db = getDbForProject(projectId);
         if (loopState as string === 'paused') {
-          // Pause interrupted the task — reset it to pending so it can be retried
-          db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
-            .run('pending', new Date().toISOString(), task.id);
+          // Keep task in_progress while paused (shows in Building column with pause icon)
           win.webContents.send('agent:activity', {
             id: randomUUID(),
             taskId: task.id,
             type: 'text',
-            content: 'Task paused and returned to pending.',
+            content: 'Task paused.',
             timestamp: new Date().toISOString(),
           });
           refreshAndBroadcastTasks(projectId, prdId, win);
-          await waitForUnpause(win);
+          await waitForUnpause(win, true); // skipEmit: pauseLoop already emitted
+          // After unpause: reset task to pending so it gets re-picked and rebuilt
+          db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
+            .run('pending', new Date().toISOString(), task.id);
+          refreshAndBroadcastTasks(projectId, prdId, win);
           if (loopState as string === 'stopped') break;
           // Reset abort signal for the next task
           abortSignal = { aborted: false };
@@ -202,7 +207,7 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
       const db = getDbForProject(projectId);
       const updatedTask = db.prepare('SELECT status, story_id, title FROM tasks WHERE id = ?').get(task.id) as Record<string, unknown> | undefined;
       if (updatedTask && updatedTask.status === 'review') {
-        if (effectiveBuildMode === 'auto-commit') {
+        if (effectiveBuildMode === 'auto-pilot' || effectiveBuildMode === ('auto-commit' as string)) {
           // Auto-approve: commit and mark as approved, then continue
           const commitPrefix = (store.get('commitPrefix') ?? 'feat') as string;
           const commitMsg = `${commitPrefix}(${updatedTask.story_id}): ${updatedTask.title}`;
@@ -248,20 +253,23 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
   }
 }
 
-export function pauseLoop(): void {
+export function pauseLoop(win?: BrowserWindow): void {
   if (loopState === 'running') {
     loopState = 'paused';
     abortSignal.aborted = true;
+    if (win) win.webContents.send('loop:stateChange', { state: 'paused' });
   }
 }
 
-export function resumeLoop(): void {
+export function resumeLoop(win?: BrowserWindow): void {
   if (loopState === 'paused') {
     loopState = 'running';
+    if (win) win.webContents.send('loop:stateChange', { state: 'running' });
   }
 }
 
-export function stopLoop(): void {
+export function stopLoop(win?: BrowserWindow): void {
   abortSignal.aborted = true;
   loopState = 'stopped';
+  if (win) win.webContents.send('loop:stateChange', { state: 'stopped' });
 }

@@ -76,9 +76,26 @@ function App() {
 
     if (!authStatus.valid) {
       setView('setup-key')
-    } else {
-      setView('setup-project')
+      return
     }
+
+    // Try to restore the last active project
+    if (settings.recentProjects.length > 0) {
+      const sorted = [...settings.recentProjects].sort(
+        (a, b) => new Date(b.lastOpened).getTime() - new Date(a.lastOpened).getTime()
+      )
+      try {
+        const project = await window.relayAPI.openProject(sorted[0].path)
+        if (project) {
+          await handleSetupComplete(project)
+          return
+        }
+      } catch {
+        // Project folder may have been deleted/moved — fall through to picker
+      }
+    }
+
+    setView('setup-project')
   }
 
   const loadFeatures = async (projectId: string) => {

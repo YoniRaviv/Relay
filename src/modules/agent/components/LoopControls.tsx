@@ -103,22 +103,18 @@ export function LoopControls() {
     }
 
     const handlePause = async () => {
-        setLoopState('paused')
         await window.relayAPI.pauseLoop()
     }
 
     const handleResume = async () => {
-        setLoopState('running')
         try {
             await window.relayAPI.resumeLoop()
         } catch (err) {
-            setLoopState('paused')
             toast.error('Failed to resume', { description: err instanceof Error ? err.message : 'Unknown error' })
         }
     }
 
     const handleStop = async () => {
-        setLoopState('stopped')
         await window.relayAPI.stopLoop()
     }
 
@@ -128,7 +124,7 @@ export function LoopControls() {
 
     const buildModeOptions: { mode: BuildMode; label: string; description: string }[] = [
         { mode: 'review', label: 'Pause for Review', description: 'Pauses after each task for you to approve or reject' },
-        { mode: 'auto-commit', label: 'Auto-Commit', description: 'Commits each task automatically and continues' },
+        { mode: 'auto-pilot', label: 'Auto-Pilot', description: 'Commits each task automatically and continues' },
         { mode: 'continuous', label: 'Continuous', description: 'Builds all tasks, leaves changes for batch review' },
     ]
 
