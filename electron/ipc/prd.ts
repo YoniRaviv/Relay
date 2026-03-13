@@ -1,7 +1,9 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
-import { buildPrdPrompt, buildDecomposePrompt, buildClarifyPrompt } from '../agent/prompts';
+import { buildPrdPrompt, buildDecomposePrompt, buildClarifyPrompt, buildContentBlocks } from '../agent/prompts';
+import type { ContentBlock } from '../agent/prompts';
 import { streamText, generateText } from '../agent/runner';
+import type { ImageAttachment } from '../../shared/types';
 import { openDb } from '../db/connection';
 import { store } from './settings';
 import { safeStorage } from 'electron';
@@ -75,13 +77,22 @@ function getCliQueryOptions(systemPrompt: string, stderrLines: string[]) {
   };
 }
 
+async function* toPromptIterable(content: ContentBlock[]): AsyncIterable<import('@anthropic-ai/claude-agent-sdk').SDKUserMessage> {
+  yield {
+    type: 'user' as const,
+    message: { role: 'user' as const, content } as import('@anthropic-ai/sdk/resources').MessageParam,
+    parent_tool_use_id: null,
+    session_id: '',
+  };
+}
+
 function sendStatus(win: BrowserWindow, status: string) {
   win.webContents.send('prd:status', { status });
 }
 
 async function cliStreamText(
   systemPrompt: string,
-  userMessage: string,
+  userMessage: string | ContentBlock[],
   win: BrowserWindow,
   channel: string,
 ): Promise<string> {
@@ -91,8 +102,12 @@ async function cliStreamText(
 
   sendStatus(win, 'Spawning Claude Code agent...');
 
+  const prompt = typeof userMessage === 'string'
+    ? userMessage
+    : toPromptIterable(userMessage);
+
   const session = query({
-    prompt: userMessage,
+    prompt,
     options: getCliQueryOptions(systemPrompt, stderrLines),
   });
 
@@ -139,7 +154,7 @@ async function cliStreamText(
 
 async function cliGenerateText(
   systemPrompt: string,
-  userMessage: string,
+  userMessage: string | ContentBlock[],
   win?: BrowserWindow,
 ): Promise<string> {
   let fullText = '';
@@ -147,8 +162,12 @@ async function cliGenerateText(
 
   if (win) sendStatus(win, 'Spawning Claude Code agent...');
 
+  const prompt = typeof userMessage === 'string'
+    ? userMessage
+    : toPromptIterable(userMessage);
+
   const session = query({
-    prompt: userMessage,
+    prompt,
     options: getCliQueryOptions(systemPrompt, stderrLines),
   });
 
@@ -179,34 +198,42 @@ async function cliGenerateText(
 }
 
 export function registerPrdHandlers(): void {
-  ipcMain.handle('prd:clarify', async (_event, description: string, projectContext?: string) => {
+  ipcMain.handle('prd:clarify', async (_event, description: string, projectContext?: string, attachments?: ImageAttachment[]) => {
     const win = BrowserWindow.getFocusedWindow();
     if (!win) throw new Error('No active window');
 
-    const prompt = buildClarifyPrompt(description, projectContext ?? undefined);
+    const hasAttachments = !!attachments?.length;
+    const prompt = buildClarifyPrompt(description, projectContext ?? undefined, hasAttachments);
     const systemPrompt = 'You are a senior product manager. Return only valid JSON.';
+    const contentBlocks = buildContentBlocks(prompt, attachments);
+
+    if (hasAttachments) sendStatus(win, `Analyzing ${attachments!.length} attached image${attachments!.length > 1 ? 's' : ''}...`);
 
     let result: string;
     if (getEngineMode() === 'claude-code') {
-      result = await cliGenerateText(systemPrompt, prompt, win);
+      result = await cliGenerateText(systemPrompt, contentBlocks, win);
     } else {
       const apiKey = getApiKey();
-      result = await generateText(apiKey, systemPrompt, prompt);
+      result = await generateText(apiKey, systemPrompt, contentBlocks);
     }
     return { status: 'ok', text: result };
   });
 
-  ipcMain.handle('prd:generate', async (_event, description: string, clarifications?: string, projectContext?: string) => {
+  ipcMain.handle('prd:generate', async (_event, description: string, clarifications?: string, projectContext?: string, attachments?: ImageAttachment[]) => {
     const win = BrowserWindow.getFocusedWindow();
     if (!win) throw new Error('No active window');
 
-    const prompt = buildPrdPrompt(description, clarifications, projectContext ?? undefined);
+    const hasAttachments = !!attachments?.length;
+    const prompt = buildPrdPrompt(description, clarifications, projectContext ?? undefined, hasAttachments);
+    const contentBlocks = buildContentBlocks(prompt, attachments);
+
+    if (hasAttachments) sendStatus(win, `Analyzing ${attachments!.length} attached image${attachments!.length > 1 ? 's' : ''}...`);
 
     if (getEngineMode() === 'claude-code') {
-      await cliStreamText('You are a senior product manager.', prompt, win, 'prd:stream');
+      await cliStreamText('You are a senior product manager.', contentBlocks, win, 'prd:stream');
     } else {
       const apiKey = getApiKey();
-      await streamText(apiKey, 'You are a senior product manager.', prompt, win, 'prd:stream');
+      await streamText(apiKey, 'You are a senior product manager.', contentBlocks, win, 'prd:stream');
     }
     return { status: 'ok' };
   });

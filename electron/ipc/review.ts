@@ -50,18 +50,29 @@ export function registerReviewHandlers(): void {
 
     // Stage all and commit
     await git.add('.');
-    const result = await git.commit(commitMessage);
-
-    // Push to remote
+    let commitHash: string | null = null;
     try {
-      const branchSummary = await git.branch();
-      await git.push('origin', branchSummary.current, ['--set-upstream']);
-    } catch {
-      // Push may fail if no remote configured — continue anyway
+      const result = await git.commit(commitMessage);
+      commitHash = result.commit || null;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      if (!msg.includes('nothing to commit') && !msg.includes('no changes added')) {
+        throw err; // Re-throw real errors
+      }
+      // Nothing to commit is OK — task still approved
+    }
+
+    // Push if we have a commit
+    if (commitHash) {
+      try {
+        const branchSummary = await git.branch();
+        await git.push('origin', branchSummary.current, ['--set-upstream']);
+      } catch {
+        // Push may fail if no remote configured — continue anyway
+      }
     }
 
     // Update task status to approved with commit hash
-    const commitHash = result.commit || null;
     db.prepare('UPDATE tasks SET status = ?, commit_hash = ?, updated_at = ? WHERE id = ?')
       .run('approved', commitHash, new Date().toISOString(), taskId);
 
@@ -72,7 +83,7 @@ export function registerReviewHandlers(): void {
         id: randomUUID(),
         taskId,
         type: 'text',
-        content: `Approved and committed: ${result.commit || 'done'}`,
+        content: commitHash ? `Approved and committed: ${commitHash}` : 'Approved (no file changes)',
         timestamp: new Date().toISOString(),
       });
 
@@ -87,7 +98,7 @@ export function registerReviewHandlers(): void {
       win.webContents.send('loop:tasksUpdated', allTasks.map(rowToTask));
     }
 
-    return { hash: result.commit, summary: result.summary };
+    return { hash: commitHash, summary: commitHash ? 'committed' : 'no changes' };
   });
 
   ipcMain.handle('review:reject', async (_event, projectId: string, taskId: string, notes: string) => {

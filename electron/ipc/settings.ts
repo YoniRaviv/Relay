@@ -134,7 +134,13 @@ export function registerSettingsHandlers(): void {
 
   // Build mode
   ipcMain.handle('cc:getBuildMode', async (): Promise<BuildMode> => {
-    return (store.get('buildMode') ?? 'review') as BuildMode;
+    const mode = (store.get('buildMode') ?? 'review') as string;
+    // Migrate legacy value
+    if (mode === 'auto-commit') {
+      store.set('buildMode', 'auto-pilot');
+      return 'auto-pilot';
+    }
+    return mode as BuildMode;
   });
 
   ipcMain.handle('cc:setBuildMode', async (_event, mode: BuildMode): Promise<void> => {

@@ -237,9 +237,11 @@ export const cliEngine: TaskEngine = {
         clearInterval(abortCheck);
       }
 
-      // Mark task as review
-      db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
-        .run('review', new Date().toISOString(), task.id);
+      // Mark task as review (only if not aborted)
+      if (!abortSignal.aborted) {
+        db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
+          .run('review', new Date().toISOString(), task.id);
+      }
 
       const durationMs = Date.now() - startTime;
 
@@ -265,27 +267,30 @@ export const cliEngine: TaskEngine = {
     } catch (err) {
       const durationMs = Date.now() - startTime;
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      const wasAborted = abortSignal.aborted;
 
-      try {
-        const db = getDbForProject(task.projectId);
-        db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
-          .run('failed', new Date().toISOString(), task.id);
-      } catch {
-        // ignore db errors during error handling
+      if (!wasAborted) {
+        try {
+          const db = getDbForProject(task.projectId);
+          db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
+            .run('failed', new Date().toISOString(), task.id);
+        } catch {
+          // ignore db errors during error handling
+        }
+
+        win.webContents.send('agent:activity', {
+          id: randomUUID(),
+          taskId: task.id,
+          type: 'error',
+          content: `Error: ${errorMsg}`,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Log the full error for debugging
+        console.error('[cliEngine] Task failed:', err);
       }
 
-      win.webContents.send('agent:activity', {
-        id: randomUUID(),
-        taskId: task.id,
-        type: 'error',
-        content: `Error: ${errorMsg}`,
-        timestamp: new Date().toISOString(),
-      });
-
-      // Log the full error for debugging
-      console.error('[cliEngine] Task failed:', err);
-
-      return { success: false, tokensIn, tokensOut, toolCalls, durationMs, model: detectedModel, error: errorMsg };
+      return { success: false, tokensIn, tokensOut, toolCalls, durationMs, model: detectedModel, error: wasAborted ? 'aborted' : errorMsg };
     }
   },
 };

@@ -23,6 +23,9 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         setFeatureDescription,
         prdMarkdown,
         setPrdMarkdown,
+        featureAttachments,
+        addFeatureAttachment,
+        removeFeatureAttachment,
     } = useRelayStore()
 
     const [streaming, setStreaming] = useState(false)
@@ -148,12 +151,17 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         setStreaming(true)
         setPrdMarkdown('')
         try {
-            await window.relayAPI.generatePrd(featureDescription, clarifications, projectContext ?? undefined)
+            await window.relayAPI.generatePrd(
+                featureDescription,
+                clarifications,
+                projectContext ?? undefined,
+                featureAttachments.length > 0 ? featureAttachments : undefined,
+            )
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to generate PRD')
             setStreaming(false)
         }
-    }, [featureDescription, setPrdMarkdown, projectContext])
+    }, [featureDescription, setPrdMarkdown, projectContext, featureAttachments])
 
     const decompose = useCallback(async () => {
         setError('')
@@ -295,6 +303,9 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                                 loading={streaming}
                                 projectContext={projectContext}
                                 scanningProject={scanningProject}
+                                attachments={featureAttachments}
+                                onAddAttachment={addFeatureAttachment}
+                                onRemoveAttachment={removeFeatureAttachment}
                             />
                         )}
 

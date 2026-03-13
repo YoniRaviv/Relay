@@ -1,8 +1,9 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Eye } from 'lucide-react'
+import { Eye, Pause } from 'lucide-react'
 import type { Task } from '@shared/types'
 import { priorityTextColors, statusDots } from '@/shared/constants/statusMaps'
+import { useRelayStore } from '@/store/useRelayStore'
 
 interface TaskCardProps {
     task: Task
@@ -11,7 +12,7 @@ interface TaskCardProps {
     onReview?: () => void
 }
 
-function TaskCardContent({ task }: { task: Task }) {
+function TaskCardContent({ task, isPaused }: { task: Task; isPaused?: boolean }) {
     return (
         <>
             <div className="flex items-center gap-2 mb-1.5">
@@ -19,7 +20,11 @@ function TaskCardContent({ task }: { task: Task }) {
                 <span className={`text-[11px] font-medium uppercase tracking-wide ${priorityTextColors[task.priority]}`}>
                     {task.priority}
                 </span>
-                <div className={`ml-auto w-2 h-2 rounded-full ${statusDots[task.status] || 'bg-stone-400'}`} />
+                {isPaused ? (
+                    <Pause className="ml-auto h-3 w-3 text-amber-500" />
+                ) : (
+                    <div className={`ml-auto w-2 h-2 rounded-full ${statusDots[task.status] || 'bg-stone-400'}`} />
+                )}
             </div>
             <p className="text-sm font-medium leading-tight">{task.title}</p>
         </>
@@ -27,6 +32,8 @@ function TaskCardContent({ task }: { task: Task }) {
 }
 
 export function TaskCard({ task, isActive, onClick, onReview }: TaskCardProps) {
+    const { loopState } = useRelayStore()
+    const isPausedInProgress = task.status === 'in_progress' && loopState === 'paused'
     const {
         attributes,
         listeners,
@@ -50,15 +57,22 @@ export function TaskCard({ task, isActive, onClick, onReview }: TaskCardProps) {
             onClick={onClick}
             className={`p-3 rounded-lg bg-card cursor-pointer transition-all hover:shadow-sm ${
                 isDragging ? 'opacity-0' : ''
-            } ${isActive && task.status === 'in_progress'
+            } ${isActive && task.status === 'in_progress' && !isPausedInProgress
                 ? 'ring-2 ring-emerald-500 building-glow'
-                : isActive
-                    ? 'ring-2 ring-primary ring-offset-1 ring-offset-background'
-                    : ''
+                : isPausedInProgress
+                    ? 'ring-2 ring-amber-500/60'
+                    : isActive
+                        ? 'ring-2 ring-primary ring-offset-1 ring-offset-background'
+                        : ''
             } ${task.status === 'review' ? 'ring-1 ring-amber-500/40' : ''
             }`}
         >
-            <TaskCardContent task={task} />
+            <TaskCardContent task={task} isPaused={isPausedInProgress} />
+            {task.status === 'failed' && task.rejectionNotes && (
+                <div className="mt-2 px-2 py-1.5 rounded-md bg-rose-500/10 border border-rose-500/20">
+                    <p className="text-[11px] text-rose-600 dark:text-rose-400 line-clamp-2">{task.rejectionNotes}</p>
+                </div>
+            )}
             {task.status === 'review' && (
                 <button
                     onClick={(e) => {

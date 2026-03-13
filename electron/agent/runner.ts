@@ -17,7 +17,7 @@ export function resetClient(): void {
 export async function streamText(
   apiKey: string,
   systemPrompt: string,
-  userMessage: string,
+  userMessage: string | Anthropic.MessageParam['content'],
   win: BrowserWindow,
   channel: string
 ): Promise<string> {
@@ -45,7 +45,7 @@ export async function streamText(
 export async function generateText(
   apiKey: string,
   systemPrompt: string,
-  userMessage: string,
+  userMessage: string | Anthropic.MessageParam['content'],
 ): Promise<string> {
   const anthropic = getClient(apiKey);
 

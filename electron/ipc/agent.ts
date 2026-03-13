@@ -11,18 +11,21 @@ export function registerAgentHandlers(): void {
     return { status: 'ok' };
   });
 
-  ipcMain.handle('loop:pause', async () => {
-    pauseLoop();
+  ipcMain.handle('loop:pause', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender) ?? undefined;
+    pauseLoop(win);
     return { status: 'ok' };
   });
 
-  ipcMain.handle('loop:resume', async () => {
-    resumeLoop();
+  ipcMain.handle('loop:resume', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender) ?? undefined;
+    resumeLoop(win);
     return { status: 'ok' };
   });
 
-  ipcMain.handle('loop:stop', async () => {
-    stopLoop();
+  ipcMain.handle('loop:stop', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender) ?? undefined;
+    stopLoop(win);
     return { status: 'ok' };
   });
 

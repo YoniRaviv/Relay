@@ -303,8 +303,10 @@ export const sdkEngine: TaskEngine = {
         }
       }
 
-      db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
-        .run('review', new Date().toISOString(), task.id);
+      if (!abortSignal.aborted) {
+        db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
+          .run('review', new Date().toISOString(), task.id);
+      }
 
       const durationMs = Date.now() - startTime;
 
@@ -330,24 +332,27 @@ export const sdkEngine: TaskEngine = {
     } catch (err) {
       const durationMs = Date.now() - startTime;
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      const wasAborted = abortSignal.aborted;
 
-      try {
-        const db = getDbForProject(task.projectId);
-        db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
-          .run('failed', new Date().toISOString(), task.id);
-      } catch {
-        // ignore db errors during error handling
+      if (!wasAborted) {
+        try {
+          const db = getDbForProject(task.projectId);
+          db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
+            .run('failed', new Date().toISOString(), task.id);
+        } catch {
+          // ignore db errors during error handling
+        }
+
+        win.webContents.send('agent:activity', {
+          id: randomUUID(),
+          taskId: task.id,
+          type: 'error',
+          content: `Error: ${errorMsg}`,
+          timestamp: new Date().toISOString(),
+        });
       }
 
-      win.webContents.send('agent:activity', {
-        id: randomUUID(),
-        taskId: task.id,
-        type: 'error',
-        content: `Error: ${errorMsg}`,
-        timestamp: new Date().toISOString(),
-      });
-
-      return { success: false, tokensIn, tokensOut, toolCalls, durationMs, model: (store.get('selectedModel') ?? DEFAULT_MODEL) as string, error: errorMsg };
+      return { success: false, tokensIn, tokensOut, toolCalls, durationMs, model: (store.get('selectedModel') ?? DEFAULT_MODEL) as string, error: wasAborted ? 'aborted' : errorMsg };
     }
   },
 };

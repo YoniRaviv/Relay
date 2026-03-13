@@ -343,10 +343,10 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
                             tooltip="Recommended — gives you full control over what gets committed"
                         />
                         <EngineOption
-                            selected={buildMode === 'auto-commit'}
-                            onSelect={() => handleBuildModeChange('auto-commit')}
+                            selected={buildMode === 'auto-pilot'}
+                            onSelect={() => handleBuildModeChange('auto-pilot')}
                             icon={<FastForward className="h-4 w-4" />}
-                            label="Auto-Commit"
+                            label="Auto-Pilot"
                             description="Automatically commits and moves to the next task"
                             tooltip="Fastest mode — tasks are committed without review. Use on low-risk work."
                         />

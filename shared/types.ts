@@ -16,7 +16,7 @@ export type TaskPriority = 'high' | 'medium' | 'low';
 
 export type LoopState = 'idle' | 'running' | 'paused' | 'stopped';
 
-export type BuildMode = 'review' | 'continuous' | 'auto-commit';
+export type BuildMode = 'review' | 'continuous' | 'auto-pilot';
 
 export type EngineMode = 'api-key' | 'claude-code';
 
@@ -83,6 +83,16 @@ export interface TaskMetric {
   toolCalls: number;
   passes: number;
   createdAt: string;
+}
+
+// ── Image Attachment ──
+
+export interface ImageAttachment {
+  id: string;
+  name: string;
+  mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+  base64Data: string;
+  sizeBytes: number;
 }
 
 // ── IPC Types ──
