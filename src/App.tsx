@@ -6,7 +6,7 @@ import { useRelayStore } from '@/store/useRelayStore'
 import { useIpcListener } from '@/shared/hooks/useIpcListener'
 import type { Project } from '@shared/types'
 
-type AppView = 'loading' | 'setup-key' | 'setup-project' | 'prd-wizard' | 'board'
+type AppView = 'loading' | 'setup' | 'setup-key' | 'setup-project' | 'prd-wizard' | 'board'
 
 function ViewTransition({ viewKey, children }: { viewKey: string; children: ReactNode }) {
   const [displayed, setDisplayed] = useState({ key: viewKey, children })
@@ -75,7 +75,16 @@ function App() {
     setRecentProjects(settings.recentProjects)
 
     if (!authStatus.valid) {
-      setView('setup-key')
+      // Check if engine mode was ever set — if not, show full setup from step 0
+      const engineMode = await window.relayAPI.getEngineMode()
+      const hasApiKey = settings.hasApiKey
+      if (!hasApiKey && engineMode === 'api-key') {
+        // Fresh install or no config — start from engine choice
+        setView('setup')
+      } else {
+        // Engine was chosen but auth failed (e.g. CLI not found) — go to config step
+        setView('setup-key')
+      }
       return
     }
 
@@ -214,10 +223,12 @@ function App() {
             <p className="text-muted-foreground">Loading...</p>
           </div>
         )
-      case 'setup-key':
+      case 'setup':
         return <Setup initialStep={0} onComplete={handleSetupComplete} />
-      case 'setup-project':
+      case 'setup-key':
         return <Setup initialStep={1} onComplete={handleSetupComplete} />
+      case 'setup-project':
+        return <Setup initialStep={2} onComplete={handleSetupComplete} />
       case 'prd-wizard':
         return <PRDWizard onComplete={handlePrdComplete} onBack={handleWizardBack} />
       case 'board':

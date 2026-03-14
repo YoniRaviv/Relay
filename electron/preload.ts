@@ -1,6 +1,9 @@
 import { ipcRenderer, contextBridge } from 'electron'
 
 const relayAPI = {
+  // App info
+  getAppInfo: () => ipcRenderer.invoke('cc:getAppInfo'),
+
   // Settings
   checkAuth: () => ipcRenderer.invoke('cc:checkAuth'),
   setApiKey: (key: string) => ipcRenderer.invoke('cc:setApiKey', key),
@@ -74,6 +77,11 @@ const relayAPI = {
   projectMetrics: (projectId: string, prdId?: string) => ipcRenderer.invoke('metrics:project', projectId, prdId),
   taskMetrics: (projectId: string, prdId?: string) => ipcRenderer.invoke('metrics:tasks', projectId, prdId),
   exportMetrics: (projectId: string) => ipcRenderer.invoke('metrics:export', projectId),
+
+  // Updater
+  checkForUpdates: () => ipcRenderer.invoke('updater:check'),
+  downloadUpdate: () => ipcRenderer.invoke('updater:download'),
+  installUpdate: () => ipcRenderer.invoke('updater:install'),
 
   // Event listeners
   on: (channel: string, callback: (...args: unknown[]) => void) => {

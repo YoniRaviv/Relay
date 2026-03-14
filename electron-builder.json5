@@ -11,15 +11,22 @@
   "directories": {
     "output": "release/${version}"
   },
+  "publish": {
+    "provider": "github",
+    "owner": "YoniRaviv",
+    "repo": "Relay"
+  },
   "files": [
     "dist",
     "dist-electron",
+    "LICENSE",
     "node_modules/better-sqlite3/**",
     "node_modules/@anthropic-ai/claude-agent-sdk/**"
   ],
   "mac": {
     "target": [
-      "dmg"
+      "dmg",
+      "zip"
     ],
     "artifactName": "${productName}-Mac-${version}-Installer.${ext}",
     "icon": "public/icon.icns"

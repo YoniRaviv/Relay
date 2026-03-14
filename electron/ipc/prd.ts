@@ -12,6 +12,9 @@ import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import type { EngineMode } from '../agent/engines/types';
 import { DEFAULT_MODEL } from '../../shared/pricing';
+import { app } from 'electron';
+
+const isDev = !app.isPackaged;
 
 let _claudePath: string | undefined;
 function getClaudePath(): string {
@@ -69,7 +72,7 @@ function getCliQueryOptions(systemPrompt: string, stderrLines: string[]) {
     persistSession: false,
     pathToClaudeCodeExecutable: getClaudePath(),
     env: buildCliEnv(),
-    debug: true,
+    debug: isDev,
     stderr: (data: string) => {
       console.error('[prd:cli:stderr]', data);
       stderrLines.push(data);
