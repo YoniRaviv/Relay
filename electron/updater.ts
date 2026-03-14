@@ -2,10 +2,14 @@ import { app, ipcMain, BrowserWindow } from 'electron'
 
 let autoUpdater: import('electron-updater').AppUpdater | null = null
 
-async function getUpdater(): Promise<import('electron-updater').AppUpdater> {
+async function getUpdater(): Promise<import('electron-updater').AppUpdater | null> {
     if (!autoUpdater) {
-        const pkg = await import('electron-updater')
-        autoUpdater = pkg.autoUpdater
+        try {
+            const pkg = await import('electron-updater')
+            autoUpdater = pkg.autoUpdater ?? null
+        } catch {
+            return null
+        }
     }
     return autoUpdater
 }
@@ -17,6 +21,7 @@ export function initAutoUpdater(): void {
     }
 
     getUpdater().then((updater) => {
+        if (!updater) return
         updater.autoDownload = false
         updater.autoInstallOnAppQuit = true
 
@@ -61,6 +66,7 @@ export function registerUpdaterHandlers(): void {
         if (!app.isPackaged) return null
         try {
             const updater = await getUpdater()
+            if (!updater) return null
             const result = await updater.checkForUpdates()
             return result?.updateInfo ? { version: result.updateInfo.version } : null
         } catch {
@@ -71,12 +77,14 @@ export function registerUpdaterHandlers(): void {
     ipcMain.handle('updater:download', async () => {
         if (!app.isPackaged) return
         const updater = await getUpdater()
+        if (!updater) return
         await updater.downloadUpdate()
     })
 
     ipcMain.handle('updater:install', async () => {
         if (!app.isPackaged) return
         const updater = await getUpdater()
+        if (!updater) return
         updater.quitAndInstall()
     })
 }
