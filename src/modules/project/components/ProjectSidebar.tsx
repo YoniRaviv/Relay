@@ -1,7 +1,9 @@
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, FileText, BarChart3, Settings, Plus, Check, FolderOpen } from 'lucide-react'
+import { LayoutDashboard, FileText, BarChart3, Settings, Plus, Check, FolderOpen, GitCommit, ChevronDown } from 'lucide-react'
 import { ThemeToggle } from '@/modules/settings'
 import { useRelayStore } from '@/store/useRelayStore'
+import { useIpcListener } from '@/shared/hooks/useIpcListener'
 
 export type SidebarView = 'board' | 'prd' | 'summary' | 'settings'
 
@@ -26,8 +28,44 @@ function extractTitle(description: string): string {
     return first || 'Untitled Feature'
 }
 
+function relativeTime(dateStr: string): string {
+    const now = Date.now()
+    const then = new Date(dateStr).getTime()
+    const diff = now - then
+    const mins = Math.floor(diff / 60000)
+    if (mins < 1) return 'just now'
+    if (mins < 60) return `${mins}m ago`
+    const hours = Math.floor(mins / 60)
+    if (hours < 24) return `${hours}h ago`
+    const days = Math.floor(hours / 24)
+    if (days < 30) return `${days}d ago`
+    return `${Math.floor(days / 30)}mo ago`
+}
+
+interface GitLogEntry {
+    hash: string
+    message: string
+    date: string
+    author: string
+}
+
 export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFeature, onSelectFeature, onSwitchProject }: ProjectSidebarProps) {
-    const { features, activePrdId } = useRelayStore()
+    const { features, activePrdId, activeProject } = useRelayStore()
+    const [gitHistory, setGitHistory] = useState<GitLogEntry[]>([])
+    const [historyOpen, setHistoryOpen] = useState(false)
+
+    const refreshCommits = useCallback(() => {
+        if (!activeProject) return
+        window.relayAPI.gitLog(activeProject.id)
+            .then((logs) => setGitHistory((logs as GitLogEntry[]).slice(0, 15)))
+            .catch(() => setGitHistory([]))
+    }, [activeProject])
+
+    useEffect(() => {
+        refreshCommits()
+    }, [refreshCommits])
+
+    useIpcListener('loop:tasksUpdated', refreshCommits, [refreshCommits])
 
     return (
         <div className="flex flex-col h-full p-4">
@@ -90,6 +128,36 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                             )
                         })}
                     </div>
+                </div>
+            )}
+
+            {gitHistory.length > 0 && (
+                <div className="mb-4">
+                    <button
+                        type="button"
+                        onClick={() => setHistoryOpen(!historyOpen)}
+                        className="flex items-center gap-1.5 mb-2 px-1 group w-full"
+                    >
+                        <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${historyOpen ? '' : '-rotate-90'}`} />
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider group-hover:text-foreground transition-colors">
+                            Git History
+                        </p>
+                    </button>
+                    {historyOpen && (
+                        <div className="space-y-0.5 max-h-[200px] overflow-auto">
+                            {gitHistory.map((entry) => (
+                                <div key={entry.hash} className="px-2 py-1 text-[11px] text-muted-foreground flex items-start gap-1.5">
+                                    <GitCommit className="h-3 w-3 shrink-0 mt-0.5" />
+                                    <div className="min-w-0 flex-1">
+                                        <span className="font-mono text-foreground">{entry.hash.slice(0, 7)}</span>
+                                        {' '}
+                                        <span className="truncate">{entry.message.split('\n')[0]}</span>
+                                        <span className="text-muted-foreground/60 ml-1">{relativeTime(entry.date)}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 

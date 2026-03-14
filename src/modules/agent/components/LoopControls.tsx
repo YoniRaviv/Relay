@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { useRelayStore } from '@/store/useRelayStore'
 import { UncommittedChangesDialog } from './UncommittedChangesDialog'
 import { BranchSetupDialog } from './BranchSetupDialog'
+import { GitInitDialog } from './GitInitDialog'
 import { useClickOutside } from '@/shared/hooks/useClickOutside'
 import type { FileChange } from '@/shared/types/review'
 import type { BuildMode } from '@shared/types'
@@ -13,6 +14,7 @@ export function LoopControls() {
     const { loopState, setLoopState, activeProject, clearActivity, setFeatureBranch, setBaseBranch, setCurrentBranch, buildMode, setBuildMode } = useRelayStore()
     const [showUncommitted, setShowUncommitted] = useState(false)
     const [showBranchSetup, setShowBranchSetup] = useState(false)
+    const [showGitInit, setShowGitInit] = useState(false)
     const [dirtyFiles, setDirtyFiles] = useState<FileChange[]>([])
 
     const startLoopDirectly = async () => {
@@ -35,23 +37,33 @@ export function LoopControls() {
         }
     }
 
-    const handleStart = async () => {
-        if (!activeProject) return
+    const checkBranchAndStart = async (): Promise<boolean> => {
+        if (!activeProject) return false
 
-        // Check for uncommitted changes first
+        // Check if the active PRD has a stored feature branch
         try {
-            const status = await window.relayAPI.gitStatus(activeProject.id)
-            if (!status.clean) {
-                setDirtyFiles(status.files)
-                setShowUncommitted(true)
-                return
+            const { activePrdId } = useRelayStore.getState()
+            if (activePrdId) {
+                const prd = await window.relayAPI.getPrd(activeProject.id)
+                const storedBranch = (prd as Record<string, unknown> | null)?.featureBranch as string | undefined
+                if (storedBranch) {
+                    const branchInfo = await window.relayAPI.gitBranch(activeProject.id)
+                    if (branchInfo.branches.includes(storedBranch)) {
+                        if (branchInfo.current !== storedBranch) {
+                            await window.relayAPI.gitCheckout(activeProject.id, storedBranch)
+                        }
+                        setFeatureBranch(storedBranch)
+                        setCurrentBranch(storedBranch)
+                        await startLoopDirectly()
+                        return true
+                    }
+                }
             }
         } catch {
-            // If git status fails (e.g. not a git repo), skip the check
+            // Fall through to git-based check
         }
 
         // Check if we're already on a feature branch (not a base branch)
-        // If so, skip branch setup — the branch was created in a previous session
         try {
             const baseBranches = ['main', 'master', 'develop']
             const branchInfo = await window.relayAPI.gitBranch(activeProject.id)
@@ -62,14 +74,66 @@ export function LoopControls() {
                 setFeatureBranch(currentBranch)
                 setCurrentBranch(currentBranch)
                 await startLoopDirectly()
-                return
+                return true
             }
         } catch {
             // If git branch check fails, fall through to branch setup
         }
 
+        return false
+    }
+
+    const handleStart = async () => {
+        if (!activeProject) return
+
+        // Check if git is initialized
+        try {
+            const { initialized } = await window.relayAPI.gitCheckInit(activeProject.id)
+            if (!initialized) {
+                setShowGitInit(true)
+                return
+            }
+        } catch {
+            // If check fails, continue — git handlers will surface errors
+        }
+
+        // Ensure .gitignore has .relay/
+        try {
+            await window.relayAPI.gitEnsureGitignore(activeProject.id)
+        } catch {
+            // Best effort
+        }
+
+        // Check for uncommitted changes first
+        try {
+            const status = await window.relayAPI.gitStatus(activeProject.id)
+            if (!status.clean) {
+                setDirtyFiles(status.files)
+                setShowUncommitted(true)
+                return
+            }
+        } catch {
+            // If git status fails, skip the check
+        }
+
+        // Try stored branch or current feature branch before showing dialog
+        if (await checkBranchAndStart()) return
+
         // No feature branch — show branch setup dialog
         setShowBranchSetup(true)
+    }
+
+    const handleGitInit = async () => {
+        if (!activeProject) return
+        try {
+            await window.relayAPI.gitInit(activeProject.id)
+            toast.success('Git repository initialized')
+            setShowGitInit(false)
+            // Continue the normal start flow
+            setShowBranchSetup(true)
+        } catch (err) {
+            toast.error('Failed to initialize git', { description: err instanceof Error ? err.message : 'Unknown error' })
+        }
     }
 
     const handleStash = async () => {
@@ -77,6 +141,8 @@ export function LoopControls() {
         await window.relayAPI.gitStash(activeProject.id)
         toast.success('Changes stashed')
         setShowUncommitted(false)
+        // Re-check branch — don't prompt if already on feature branch
+        if (await checkBranchAndStart()) return
         setShowBranchSetup(true)
     }
 
@@ -85,6 +151,8 @@ export function LoopControls() {
         await window.relayAPI.gitCommit(activeProject.id, message)
         toast.success('Changes committed')
         setShowUncommitted(false)
+        // Re-check branch — don't prompt if already on feature branch
+        if (await checkBranchAndStart()) return
         setShowBranchSetup(true)
     }
 
@@ -97,6 +165,16 @@ export function LoopControls() {
         setBaseBranch(baseBranch)
         setCurrentBranch(branchName)
         setShowBranchSetup(false)
+
+        // Persist branch to PRD so it survives stop/restart
+        const { activePrdId } = useRelayStore.getState()
+        if (activePrdId) {
+            try {
+                await window.relayAPI.prdSetFeatureBranch(activePrdId, branchName)
+            } catch {
+                // Best effort — non-critical
+            }
+        }
 
         // Now start the loop
         await startLoopDirectly()
@@ -225,6 +303,13 @@ export function LoopControls() {
                 <BranchSetupDialog
                     onConfirm={handleBranchConfirm}
                     onCancel={() => setShowBranchSetup(false)}
+                />
+            )}
+
+            {showGitInit && (
+                <GitInitDialog
+                    onConfirm={handleGitInit}
+                    onCancel={() => setShowGitInit(false)}
                 />
             )}
         </>

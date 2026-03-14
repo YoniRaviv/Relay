@@ -1,9 +1,12 @@
 import { ipcMain } from 'electron';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import fs from 'node:fs';
+import path from 'node:path';
 import simpleGit from 'simple-git';
 import { store } from './settings';
 import { openDb } from '../db/connection';
+import { withGitLock } from '../git/lock';
 
 const execFileAsync = promisify(execFile);
 
@@ -52,11 +55,13 @@ export function registerGitHandlers(): void {
   });
 
   ipcMain.handle('git:commit', async (_event, projectId: string, message: string) => {
-    const projectPath = getProjectPath(projectId);
-    const git = simpleGit(projectPath);
-    await git.add('.');
-    const result = await git.commit(message);
-    return { hash: result.commit, summary: result.summary };
+    return withGitLock(async () => {
+      const projectPath = getProjectPath(projectId);
+      const git = simpleGit(projectPath);
+      await git.add('.');
+      const result = await git.commit(message);
+      return { hash: result.commit, summary: result.summary };
+    });
   });
 
   ipcMain.handle('git:log', async (_event, projectId: string, count = 20) => {
@@ -102,13 +107,15 @@ export function registerGitHandlers(): void {
   });
 
   ipcMain.handle('git:discardAll', async (_event, projectId: string) => {
-    const projectPath = getProjectPath(projectId);
-    const git = simpleGit(projectPath);
-    // Discard all changes: reset staged, checkout tracked, clean untracked
-    await git.reset(['HEAD']);
-    await git.checkout(['--', '.']);
-    await git.clean('f', ['-d']);
-    return { status: 'ok' };
+    return withGitLock(async () => {
+      const projectPath = getProjectPath(projectId);
+      const git = simpleGit(projectPath);
+      // Discard all changes: reset staged, checkout tracked, clean untracked
+      await git.reset(['HEAD']);
+      await git.checkout(['--', '.']);
+      await git.clean('f', ['-d']);
+      return { status: 'ok' };
+    });
   });
 
   ipcMain.handle('git:checkout', async (_event, projectId: string, branch: string) => {
@@ -126,32 +133,38 @@ export function registerGitHandlers(): void {
   });
 
   ipcMain.handle('git:createBranch', async (_event, projectId: string, branchName: string, baseBranch: string) => {
-    const projectPath = getProjectPath(projectId);
-    const git = simpleGit(projectPath);
-    // Checkout base, pull latest, create new branch
-    await git.checkout(baseBranch);
-    try {
-      await git.pull();
-    } catch {
-      // pull may fail if no remote tracking — continue anyway
-    }
-    await git.checkoutLocalBranch(branchName);
-    return { status: 'ok', branch: branchName };
+    return withGitLock(async () => {
+      const projectPath = getProjectPath(projectId);
+      const git = simpleGit(projectPath);
+      // Checkout base, pull latest, create new branch
+      await git.checkout(baseBranch);
+      try {
+        await git.pull();
+      } catch {
+        // pull may fail if no remote tracking — continue anyway
+      }
+      await git.checkoutLocalBranch(branchName);
+      return { status: 'ok', branch: branchName };
+    });
   });
 
   ipcMain.handle('git:push', async (_event, projectId: string) => {
-    const projectPath = getProjectPath(projectId);
-    const git = simpleGit(projectPath);
-    const branchSummary = await git.branch();
-    await git.push('origin', branchSummary.current, ['--set-upstream']);
-    return { status: 'ok' };
+    return withGitLock(async () => {
+      const projectPath = getProjectPath(projectId);
+      const git = simpleGit(projectPath);
+      const branchSummary = await git.branch();
+      await git.push('origin', branchSummary.current, ['--set-upstream']);
+      return { status: 'ok' };
+    });
   });
 
   ipcMain.handle('git:stash', async (_event, projectId: string) => {
-    const projectPath = getProjectPath(projectId);
-    const git = simpleGit(projectPath);
-    await git.stash();
-    return { status: 'ok' };
+    return withGitLock(async () => {
+      const projectPath = getProjectPath(projectId);
+      const git = simpleGit(projectPath);
+      await git.stash();
+      return { status: 'ok' };
+    });
   });
 
   ipcMain.handle('git:createPr', async (_event, projectId: string, title: string, body: string, baseBranch: string) => {
@@ -166,4 +179,41 @@ export function registerGitHandlers(): void {
     const prUrl = stdout.trim();
     return { url: prUrl };
   });
+
+  ipcMain.handle('git:checkInit', async (_event, projectId: string) => {
+    const projectPath = getProjectPath(projectId);
+    const gitDir = path.join(projectPath, '.git');
+    return { initialized: fs.existsSync(gitDir) };
+  });
+
+  ipcMain.handle('git:init', async (_event, projectId: string) => {
+    return withGitLock(async () => {
+      const projectPath = getProjectPath(projectId);
+      const git = simpleGit(projectPath);
+      await git.init();
+      ensureGitignore(projectPath);
+      await git.add('.');
+      await git.commit('Initial commit');
+      return { status: 'ok' };
+    });
+  });
+
+  ipcMain.handle('git:ensureGitignore', async (_event, projectId: string) => {
+    const projectPath = getProjectPath(projectId);
+    ensureGitignore(projectPath);
+    return { status: 'ok' };
+  });
+}
+
+function ensureGitignore(projectPath: string): void {
+  const gitignorePath = path.join(projectPath, '.gitignore');
+  try {
+    const content = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf-8') : '';
+    if (!content.includes('.relay/')) {
+      const newContent = content.endsWith('\n') || content === '' ? content : content + '\n';
+      fs.writeFileSync(gitignorePath, newContent + '.relay/\n', 'utf-8');
+    }
+  } catch {
+    // Best effort — don't block on gitignore issues
+  }
 }

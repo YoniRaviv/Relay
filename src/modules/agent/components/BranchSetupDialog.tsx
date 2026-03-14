@@ -11,13 +11,16 @@ interface BranchSetupDialogProps {
 }
 
 function slugify(text: string): string {
-    return text
+    const slug = text
         .toLowerCase()
         .replace(/[^a-z0-9\s-]/g, '')
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-')
         .replace(/^-|-$/g, '')
-        .slice(0, 60)
+    if (slug.length <= 40) return slug
+    const truncated = slug.slice(0, 40)
+    const lastDash = truncated.lastIndexOf('-')
+    return lastDash > 10 ? truncated.slice(0, lastDash) : truncated
 }
 
 export function BranchSetupDialog({ onConfirm, onCancel }: BranchSetupDialogProps) {

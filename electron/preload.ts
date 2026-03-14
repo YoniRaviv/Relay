@@ -43,6 +43,7 @@ const relayAPI = {
   getPrd: (projectId: string) => ipcRenderer.invoke('prd:get', projectId),
   listPrds: (projectId: string) => ipcRenderer.invoke('prd:list', projectId),
   deletePrd: (prdId: string) => ipcRenderer.invoke('prd:delete', prdId),
+  prdSetFeatureBranch: (prdId: string, branch: string) => ipcRenderer.invoke('prd:setFeatureBranch', prdId, branch),
 
   // Tasks
   listTasks: (projectId: string, prdId?: string) => ipcRenderer.invoke('tasks:list', projectId, prdId),
@@ -67,6 +68,9 @@ const relayAPI = {
   gitPush: (projectId: string) => ipcRenderer.invoke('git:push', projectId),
   gitStash: (projectId: string) => ipcRenderer.invoke('git:stash', projectId),
   gitCreatePr: (projectId: string, title: string, body: string, baseBranch: string) => ipcRenderer.invoke('git:createPr', projectId, title, body, baseBranch),
+  gitCheckInit: (projectId: string) => ipcRenderer.invoke('git:checkInit', projectId),
+  gitInit: (projectId: string) => ipcRenderer.invoke('git:init', projectId),
+  gitEnsureGitignore: (projectId: string) => ipcRenderer.invoke('git:ensureGitignore', projectId),
 
   // Review
   reviewGetDiff: (projectId: string) => ipcRenderer.invoke('review:getDiff', projectId),

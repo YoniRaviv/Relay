@@ -61,7 +61,7 @@ export function TaskCard({ task, isActive, onClick, onReview }: TaskCardProps) {
                 ? 'ring-2 ring-emerald-500 building-glow'
                 : isPausedInProgress
                     ? 'ring-2 ring-amber-500/60'
-                    : isActive
+                    : isActive && task.status === 'in_progress'
                         ? 'ring-2 ring-primary ring-offset-1 ring-offset-background'
                         : ''
             } ${task.status === 'review' ? 'ring-1 ring-amber-500/40' : ''

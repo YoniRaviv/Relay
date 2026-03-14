@@ -55,6 +55,7 @@ interface RelayAPI {
   getPrd(projectId: string): Promise<import('../shared/types').PRD | null>
   listPrds(projectId: string): Promise<Array<import('../shared/types').PRD & { taskCount: number; doneCount: number }>>
   deletePrd(prdId: string): Promise<unknown>
+  prdSetFeatureBranch(prdId: string, branch: string): Promise<{ status: string }>
 
   // Tasks
   listTasks(projectId: string, prdId?: string): Promise<import('../shared/types').Task[]>
@@ -79,6 +80,9 @@ interface RelayAPI {
   gitPush(projectId: string): Promise<{ status: string }>
   gitStash(projectId: string): Promise<{ status: string }>
   gitCreatePr(projectId: string, title: string, body: string, baseBranch: string): Promise<{ url: string }>
+  gitCheckInit(projectId: string): Promise<{ initialized: boolean }>
+  gitInit(projectId: string): Promise<{ status: string }>
+  gitEnsureGitignore(projectId: string): Promise<{ status: string }>
 
   // Review
   reviewGetDiff(projectId: string): Promise<string>

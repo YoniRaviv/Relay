@@ -50,6 +50,9 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                 .then(setTasks)
                 .catch(() => toast.error('Failed to load tasks'))
                 .finally(() => setLoading(false))
+
+            // Ensure .gitignore has .relay/ entry for existing projects
+            window.relayAPI.gitEnsureGitignore(activeProject.id).catch(() => {})
         }
     }, [activeProject, activePrdId, setTasks])
 
