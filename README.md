@@ -22,9 +22,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/YoniRaviv/Relay/releases/latest/download/Relay-Mac-Installer.dmg"><img src="https://img.shields.io/badge/Download-Mac%20(dmg)-000?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Mac" /></a>&nbsp;
-  <a href="https://github.com/YoniRaviv/Relay/releases/latest/download/Relay-Windows-Setup.exe"><img src="https://img.shields.io/badge/Download-Windows%20(exe)-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows" /></a>&nbsp;
-  <a href="https://github.com/YoniRaviv/Relay/releases/latest/download/Relay-Linux.AppImage"><img src="https://img.shields.io/badge/Download-Linux%20(AppImage)-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Download for Linux" /></a>
+  <a href="https://github.com/YoniRaviv/Relay/releases/latest/download/Relay-Mac-Installer.dmg"><img src="https://img.shields.io/badge/Download-Mac%20(dmg)-000?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Mac" /></a>
 </p>
 
 ---
