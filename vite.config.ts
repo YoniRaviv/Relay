@@ -38,8 +38,8 @@ export default defineConfig({
       renderer: process.env.NODE_ENV === 'test' ? undefined : {},
     }),
     sentryVitePlugin({
-      org: 'relay-app',
-      project: 'relay',
+      org: 'relay-app-jz',
+      project: 'electron',
       authToken: process.env.SENTRY_AUTH_TOKEN,
       release: { name: `relay@${version}` },
       sourcemaps: { assets: ['./dist/**'] },
