@@ -1,3 +1,4 @@
+import './sentry'
 import { app, BrowserWindow, dialog, nativeImage } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -65,6 +66,7 @@ function createWindow() {
   } else {
     win.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
+
 }
 
 registerAllHandlers()

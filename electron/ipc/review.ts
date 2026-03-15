@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { store } from './settings';
 import { openDb } from '../db/connection';
 import { withGitLock } from '../git/lock';
+import { withSentry } from './withSentry';
 
 function getProjectPath(projectId: string): string {
   const projects = store.get('recentProjects', []) as Array<{ path: string }>;
@@ -46,7 +47,7 @@ export function registerReviewHandlers(): void {
     });
   });
 
-  ipcMain.handle('review:approve', async (_event, projectId: string, taskId: string, commitMessage: string) => {
+  ipcMain.handle('review:approve', withSentry('review:approve', async (_event, projectId: string, taskId: string, commitMessage: string) => {
     return withGitLock(async () => {
       const projectPath = getProjectPath(projectId);
       const git = simpleGit(projectPath);
@@ -104,9 +105,9 @@ export function registerReviewHandlers(): void {
 
       return { hash: commitHash, summary: commitHash ? 'committed' : 'no changes' };
     });
-  });
+  }));
 
-  ipcMain.handle('review:reject', async (_event, projectId: string, taskId: string, notes: string) => {
+  ipcMain.handle('review:reject', withSentry('review:reject', async (_event, projectId: string, taskId: string, notes: string) => {
     return withGitLock(async () => {
       const projectPath = getProjectPath(projectId);
       const git = simpleGit(projectPath);
@@ -152,7 +153,7 @@ export function registerReviewHandlers(): void {
 
       return { status: 'ok' };
     });
-  });
+  }));
 }
 
 function rowToTask(row: Record<string, unknown>) {

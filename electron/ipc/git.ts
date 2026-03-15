@@ -7,6 +7,7 @@ import simpleGit from 'simple-git';
 import { store } from './settings';
 import { openDb } from '../db/connection';
 import { withGitLock } from '../git/lock';
+import { withSentry } from './withSentry';
 
 const execFileAsync = promisify(execFile);
 
@@ -54,7 +55,7 @@ export function registerGitHandlers(): void {
     return (stagedDiff || diff || '') + untrackedDiff;
   });
 
-  ipcMain.handle('git:commit', async (_event, projectId: string, message: string) => {
+  ipcMain.handle('git:commit', withSentry('git:commit', async (_event, projectId: string, message: string) => {
     return withGitLock(async () => {
       const projectPath = getProjectPath(projectId);
       const git = simpleGit(projectPath);
@@ -62,7 +63,7 @@ export function registerGitHandlers(): void {
       const result = await git.commit(message);
       return { hash: result.commit, summary: result.summary };
     });
-  });
+  }));
 
   ipcMain.handle('git:log', async (_event, projectId: string, count = 20) => {
     const projectPath = getProjectPath(projectId);
@@ -167,7 +168,7 @@ export function registerGitHandlers(): void {
     });
   });
 
-  ipcMain.handle('git:createPr', async (_event, projectId: string, title: string, body: string, baseBranch: string) => {
+  ipcMain.handle('git:createPr', withSentry('git:createPr', async (_event, projectId: string, title: string, body: string, baseBranch: string) => {
     const projectPath = getProjectPath(projectId);
     try {
       // Push branch to remote first
@@ -211,7 +212,7 @@ export function registerGitHandlers(): void {
       const short = detail.length > 200 ? detail.slice(0, 200) + '...' : detail;
       throw new Error(`PR creation failed: ${short}`);
     }
-  });
+  }));
 
   ipcMain.handle('git:addRemote', async (_event, projectId: string, url: string) => {
     const projectPath = getProjectPath(projectId);
