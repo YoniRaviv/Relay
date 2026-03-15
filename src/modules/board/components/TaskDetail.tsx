@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Button } from '@/components/ui/button'
-import { X, Eye, GitCommit, ChevronDown, Pause, CheckCircle2, AlertTriangle, Circle, SquareCheck } from 'lucide-react'
+import { X, Eye, GitCommit, Pause, CheckCircle2, AlertTriangle, Circle, SquareCheck } from 'lucide-react'
 import { ActionBlock } from '@/modules/agent/components/ActionBlock'
 import { TextBlock } from '@/modules/agent/components/TextBlock'
 import { groupActions } from '@/modules/agent/utils/parseActivity'
 import { isActionGroup } from '@/shared/types/activity'
+import { FormattedDescription } from './FormattedDescription'
 import { CompletedTaskSummary } from './CompletedTaskSummary'
+import { CollapsibleSection } from '@/shared/components/CollapsibleSection'
 import { useRelayStore } from '@/store/useRelayStore'
 import { statusLabels, priorityBadgeColors } from '@/shared/constants/statusMaps'
 
@@ -23,56 +25,6 @@ function parseCriteria(text: string): string[] {
         .split('\n')
         .map((line) => line.replace(/^[\s]*[-–•*]\s*/, '').trim())
         .filter(Boolean)
-}
-
-/** Render description text with inline `code` highlighted and sentences as visual paragraphs */
-function FormattedDescription({ text }: { text: string }) {
-    // Split on explicit newlines first, then split long paragraphs into sentences
-    const paragraphs = text.split(/\n{2,}/).filter(Boolean)
-    const blocks = paragraphs.flatMap((para) => {
-        // If the paragraph is short or already has newlines, keep as-is
-        if (para.length < 120) return [para.trim()]
-        // Split long paragraphs into sentences for breathing room
-        const sentences = para.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g)
-        if (!sentences || sentences.length <= 2) return [para.trim()]
-        // Group every 2 sentences into a block
-        const groups: string[] = []
-        for (let i = 0; i < sentences.length; i += 2) {
-            groups.push(sentences.slice(i, i + 2).join('').trim())
-        }
-        return groups
-    })
-
-    return (
-        <div className="space-y-2.5">
-            {blocks.map((block, i) => (
-                <p key={i}>
-                    <InlineCode text={block} />
-                </p>
-            ))}
-        </div>
-    )
-}
-
-/** Render backtick-wrapped segments as styled <code> elements */
-function InlineCode({ text }: { text: string }) {
-    const parts = text.split(/(`[^`]+`)/)
-    return (
-        <>
-            {parts.map((part, i) =>
-                part.startsWith('`') && part.endsWith('`') ? (
-                    <code
-                        key={i}
-                        className="text-[12px] font-mono bg-muted/70 text-primary/90 px-1 py-0.5 rounded"
-                    >
-                        {part.slice(1, -1)}
-                    </code>
-                ) : (
-                    <span key={i}>{part}</span>
-                )
-            )}
-        </>
-    )
 }
 
 export function TaskDetail() {
@@ -243,29 +195,5 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
             {children}
         </h3>
-    )
-}
-
-function CollapsibleSection({ title, children, defaultOpen = true }: {
-    title: string
-    children: React.ReactNode
-    defaultOpen?: boolean
-}) {
-    const [open, setOpen] = useState(defaultOpen)
-
-    return (
-        <div>
-            <button
-                type="button"
-                className="flex items-center gap-1.5 mb-2 group"
-                onClick={() => setOpen(!open)}
-            >
-                <ChevronDown className={`h-3 w-3 text-muted-foreground/60 transition-transform duration-150 ${open ? '' : '-rotate-90'}`} />
-                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 group-hover:text-muted-foreground transition-colors">
-                    {title}
-                </h3>
-            </button>
-            {open && children}
-        </div>
     )
 }

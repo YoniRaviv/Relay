@@ -106,12 +106,12 @@ Centralized pricing in `shared/pricing.ts` with per-model token costs. Aggregate
 
 Components are organized into feature-based modules under `src/modules/`, each with a `components/` dir and barrel `index.ts`:
 
-- **`src/modules/board/`** — KanbanBoard, KanbanColumn, TaskCard, TaskDetail
-- **`src/modules/agent/`** — LoopControls, AgentActivityFeed, ActivityMessage
+- **`src/modules/board/`** — KanbanBoard, KanbanColumn, TaskCard, TaskDetail, FormattedDescription
+- **`src/modules/agent/`** — LoopControls, AgentActivityFeed, ActivityMessage, FeatureCompleteActions
 - **`src/modules/review/`** — ReviewPanel, FileChangeList, DiffViewer, CommitDialog
-- **`src/modules/prd/`** — PRDPreview, PRDEditor, FeatureInput, StepIndicator, TaskReview
+- **`src/modules/prd/`** — PRDPreview, PRDEditor, FeatureInput, StepIndicator, TaskReview, TaskEditDialog, TaskReviewCard
 - **`src/modules/settings/`** — SettingsView, ModelPicker, ApiKeyInput, ThemeToggle
-- **`src/modules/project/`** — ProjectSelector, ProjectSummary, ProjectSidebar
+- **`src/modules/project/`** — ProjectSelector, ProjectSummary, ProjectSidebar, GitHistoryPanel
 - **`src/modules/metrics/`** — TaskMetricsTable, MetricCard
 
 Shared code lives in `src/shared/`:
@@ -119,7 +119,7 @@ Shared code lives in `src/shared/`:
 - **`constants/statusMaps.ts`** — `statusColors`, `statusLabels`, `statusDots`, `priorityTextColors`, `priorityBadgeColors`, `tierColors`
 - **`hooks/`** — `useClickOutside`, `useIpcListener`
 - **`types/`** — `ProjectMetrics`, `TaskMetricRow`, `FileChange`, `DecomposedTask`
-- **`components/`** — AppShell, ErrorBoundary, LoadingSkeleton, EmptyState, StreamingText, BranchIndicator
+- **`components/`** — AppShell, ErrorBoundary, LoadingSkeleton, EmptyState, StreamingText, BranchIndicator, CollapsibleSection
 
 `src/components/ui/` contains only shadcn/ui primitives (unchanged).
 
@@ -141,3 +141,4 @@ Shared code lives in `src/shared/`:
 
 ## Conventions
 - **Indentation**: 4 spaces for all files in `src/modules/`, `src/shared/`, `src/pages/`
+- **Component modularity**: Every distinct UI component must live in its own file under its module's `components/` directory. Do not define secondary components (>10 lines of JSX) inline in a parent component file. Small helpers (<10 lines, no state) like `SectionLabel` may stay inline. Utility/formatting functions go in a `utils/` file within the module.
