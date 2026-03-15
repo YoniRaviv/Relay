@@ -8,6 +8,14 @@ declare namespace NodeJS {
 }
 
 interface RelayAPI {
+  // App info
+  getAppInfo(): Promise<{ version: string; electron: string; node: string }>
+
+  // Updater
+  checkForUpdates(): Promise<{ version: string } | null>
+  downloadUpdate(): Promise<void>
+  installUpdate(): Promise<void>
+
   // Settings
   checkAuth(): Promise<import('../shared/types').AuthStatus>
   setApiKey(key: string): Promise<import('../shared/types').AuthStatus>
@@ -19,7 +27,7 @@ interface RelayAPI {
   setEngineMode(mode: import('../shared/types').EngineMode): Promise<void>
   getCliToolsPreset(): Promise<import('../shared/types').CliToolsPreset>
   setCliToolsPreset(preset: import('../shared/types').CliToolsPreset): Promise<void>
-  checkCliAvailable(): Promise<{ available: boolean; error?: string }>
+  checkCliAvailable(): Promise<{ available: boolean; path?: string; error?: string }>
   getSelectedModel(): Promise<string>
   setSelectedModel(model: string): Promise<void>
   getMaxPasses(): Promise<number>
@@ -47,6 +55,7 @@ interface RelayAPI {
   getPrd(projectId: string): Promise<import('../shared/types').PRD | null>
   listPrds(projectId: string): Promise<Array<import('../shared/types').PRD & { taskCount: number; doneCount: number }>>
   deletePrd(prdId: string): Promise<unknown>
+  prdSetFeatureBranch(prdId: string, branch: string): Promise<{ status: string }>
 
   // Tasks
   listTasks(projectId: string, prdId?: string): Promise<import('../shared/types').Task[]>
@@ -71,6 +80,12 @@ interface RelayAPI {
   gitPush(projectId: string): Promise<{ status: string }>
   gitStash(projectId: string): Promise<{ status: string }>
   gitCreatePr(projectId: string, title: string, body: string, baseBranch: string): Promise<{ url: string }>
+  gitAddRemote(projectId: string, url: string): Promise<{ status: string }>
+  gitHasRemote(projectId: string): Promise<{ hasRemote: boolean }>
+  gitGetPrUrl(projectId: string): Promise<{ url: string | null; state: string | null }>
+  gitCheckInit(projectId: string): Promise<{ initialized: boolean }>
+  gitInit(projectId: string): Promise<{ status: string }>
+  gitEnsureGitignore(projectId: string): Promise<{ status: string }>
 
   // Review
   reviewGetDiff(projectId: string): Promise<string>

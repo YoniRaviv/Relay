@@ -50,6 +50,9 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                 .then(setTasks)
                 .catch(() => toast.error('Failed to load tasks'))
                 .finally(() => setLoading(false))
+
+            // Ensure .gitignore has .relay/ entry for existing projects
+            window.relayAPI.gitEnsureGitignore(activeProject.id).catch(() => {})
         }
     }, [activeProject, activePrdId, setTasks])
 
@@ -289,7 +292,10 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
             })()}
 
             {showPrDialog && (
-                <PrCreationDialog onClose={() => setShowPrDialog(false)} />
+                <PrCreationDialog onClose={(createdUrl?: string) => {
+                    setShowPrDialog(false)
+                    if (createdUrl) useRelayStore.getState().setPrUrl(createdUrl)
+                }} />
             )}
         </AppShell>
     )

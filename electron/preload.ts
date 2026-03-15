@@ -1,6 +1,9 @@
 import { ipcRenderer, contextBridge } from 'electron'
 
 const relayAPI = {
+  // App info
+  getAppInfo: () => ipcRenderer.invoke('cc:getAppInfo'),
+
   // Settings
   checkAuth: () => ipcRenderer.invoke('cc:checkAuth'),
   setApiKey: (key: string) => ipcRenderer.invoke('cc:setApiKey', key),
@@ -40,6 +43,7 @@ const relayAPI = {
   getPrd: (projectId: string) => ipcRenderer.invoke('prd:get', projectId),
   listPrds: (projectId: string) => ipcRenderer.invoke('prd:list', projectId),
   deletePrd: (prdId: string) => ipcRenderer.invoke('prd:delete', prdId),
+  prdSetFeatureBranch: (prdId: string, branch: string) => ipcRenderer.invoke('prd:setFeatureBranch', prdId, branch),
 
   // Tasks
   listTasks: (projectId: string, prdId?: string) => ipcRenderer.invoke('tasks:list', projectId, prdId),
@@ -64,6 +68,12 @@ const relayAPI = {
   gitPush: (projectId: string) => ipcRenderer.invoke('git:push', projectId),
   gitStash: (projectId: string) => ipcRenderer.invoke('git:stash', projectId),
   gitCreatePr: (projectId: string, title: string, body: string, baseBranch: string) => ipcRenderer.invoke('git:createPr', projectId, title, body, baseBranch),
+  gitAddRemote: (projectId: string, url: string) => ipcRenderer.invoke('git:addRemote', projectId, url),
+  gitHasRemote: (projectId: string) => ipcRenderer.invoke('git:hasRemote', projectId),
+  gitGetPrUrl: (projectId: string) => ipcRenderer.invoke('git:getPrUrl', projectId),
+  gitCheckInit: (projectId: string) => ipcRenderer.invoke('git:checkInit', projectId),
+  gitInit: (projectId: string) => ipcRenderer.invoke('git:init', projectId),
+  gitEnsureGitignore: (projectId: string) => ipcRenderer.invoke('git:ensureGitignore', projectId),
 
   // Review
   reviewGetDiff: (projectId: string) => ipcRenderer.invoke('review:getDiff', projectId),
@@ -74,6 +84,11 @@ const relayAPI = {
   projectMetrics: (projectId: string, prdId?: string) => ipcRenderer.invoke('metrics:project', projectId, prdId),
   taskMetrics: (projectId: string, prdId?: string) => ipcRenderer.invoke('metrics:tasks', projectId, prdId),
   exportMetrics: (projectId: string) => ipcRenderer.invoke('metrics:export', projectId),
+
+  // Updater
+  checkForUpdates: () => ipcRenderer.invoke('updater:check'),
+  downloadUpdate: () => ipcRenderer.invoke('updater:download'),
+  installUpdate: () => ipcRenderer.invoke('updater:install'),
 
   // Event listeners
   on: (channel: string, callback: (...args: unknown[]) => void) => {

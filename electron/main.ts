@@ -1,9 +1,11 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, dialog, nativeImage } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import fs from 'node:fs'
 import { registerAllHandlers } from './ipc/register'
 import { closeAllDbs } from './db/connection'
 import { buildAppMenu } from './menu'
+import { initAutoUpdater, registerUpdaterHandlers } from './updater'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -15,10 +17,29 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
 
+// Global error handlers — surface crashes instead of failing silently
+process.on('uncaughtException', (error) => {
+  // Suppress EPIPE errors — these occur when writing to a closed pipe (e.g. during agent pause/stop)
+  if (error.message?.includes('EPIPE') || (error as NodeJS.ErrnoException).code === 'EPIPE') {
+    console.warn('[Relay] Suppressed EPIPE error:', error.message)
+    return
+  }
+  console.error('[Relay] Uncaught exception:', error)
+  dialog.showErrorBox('Unexpected Error', `${error.message}\n\n${error.stack ?? ''}`)
+})
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[Relay] Unhandled rejection:', reason)
+})
+
 app.setName('Relay')
 
 if (process.platform === 'darwin' && app.dock) {
-  app.dock.setIcon(path.join(process.env.VITE_PUBLIC!, 'icon.png'))
+  // Use nativeImage.createFromPath with the .icns for proper macOS dock icon sizing
+  const icnsPath = path.join(process.env.VITE_PUBLIC!, 'icon.icns')
+  const pngPath = path.join(process.env.VITE_PUBLIC!, 'icon.png')
+  const iconPath = fs.existsSync(icnsPath) ? icnsPath : pngPath
+  app.dock.setIcon(nativeImage.createFromPath(iconPath))
 }
 
 let win: BrowserWindow | null
@@ -33,6 +54,9 @@ function createWindow() {
     icon: path.join(process.env.VITE_PUBLIC!, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
+      sandbox: true,
+      nodeIntegration: false,
+      contextIsolation: true,
     },
   })
 
@@ -44,6 +68,7 @@ function createWindow() {
 }
 
 registerAllHandlers()
+registerUpdaterHandlers()
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -65,4 +90,5 @@ app.on('before-quit', () => {
 app.whenReady().then(() => {
   buildAppMenu()
   createWindow()
+  initAutoUpdater()
 })

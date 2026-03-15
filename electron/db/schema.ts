@@ -76,4 +76,10 @@ export function initializeDatabase(db: Database.Database): void {
   if (!taskColumns.some(c => c.name === 'commit_hash')) {
     db.exec(`ALTER TABLE tasks ADD COLUMN commit_hash TEXT`);
   }
+
+  // Migration: add feature_branch column to prd table
+  const prdColumns = db.pragma('table_info(prd)') as Array<{ name: string }>;
+  if (!prdColumns.some(c => c.name === 'feature_branch')) {
+    db.exec(`ALTER TABLE prd ADD COLUMN feature_branch TEXT`);
+  }
 }

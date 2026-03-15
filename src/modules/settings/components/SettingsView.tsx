@@ -4,10 +4,12 @@ import {
     FolderSync, ChevronRight, Cpu, Terminal, Shield, Zap, Sparkles,
     Key, CheckCircle, Loader2, Sun, Moon, Bell, BellOff, GitCommitHorizontal,
     RotateCcw, Play, Pause, FastForward, Info, Database, Download,
+    RefreshCw, Scale,
 } from 'lucide-react'
 import { AVAILABLE_MODELS } from '@shared/pricing'
 import { tierColors } from '@/shared/constants/statusMaps'
 import { getStoredTheme, applyTheme } from '@/lib/theme'
+import { useIpcListener } from '@/shared/hooks/useIpcListener'
 import type { EngineMode, CliToolsPreset, BuildMode } from '@shared/types'
 
 type Theme = 'light' | 'dark' | 'system'
@@ -171,6 +173,26 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
     const [commitPrefix, setCommitPrefix] = useState('feat')
     const [commitPrefixInput, setCommitPrefixInput] = useState('')
     const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+    const [appVersion, setAppVersion] = useState('')
+    const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'up-to-date'>('idle')
+    const [downloadProgress, setDownloadProgress] = useState(0)
+    const [updateVersion, setUpdateVersion] = useState('')
+
+    useIpcListener('updater:checking', () => setUpdateStatus('checking'), [])
+    useIpcListener('updater:available', (data: unknown) => {
+        const info = data as { version: string }
+        setUpdateStatus('available')
+        setUpdateVersion(info.version)
+    }, [])
+    useIpcListener('updater:not-available', () => setUpdateStatus('up-to-date'), [])
+    useIpcListener('updater:progress', (data: unknown) => {
+        const info = data as { percent: number }
+        setUpdateStatus('downloading')
+        setDownloadProgress(info.percent)
+    }, [])
+    useIpcListener('updater:downloaded', () => setUpdateStatus('ready'), [])
+    useIpcListener('updater:error', () => setUpdateStatus('idle'), [])
+    useIpcListener('menu:checkForUpdates', () => handleCheckForUpdates(), [])
 
     useEffect(() => {
         window.relayAPI.getEngineMode().then(setEngineMode)
@@ -185,6 +207,7 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
             setCommitPrefixInput(p)
         })
         window.relayAPI.getNotificationsEnabled().then(setNotificationsEnabled)
+        window.relayAPI.getAppInfo().then(info => setAppVersion(info.version))
     }, [])
 
     useEffect(() => {
@@ -238,6 +261,17 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
         setCommitPrefix(trimmed)
         setCommitPrefixInput(trimmed)
         await window.relayAPI.setCommitPrefix(trimmed)
+    }
+
+    const handleCheckForUpdates = async () => {
+        setUpdateStatus('checking')
+        const result = await window.relayAPI.checkForUpdates()
+        if (result) {
+            setUpdateStatus('available')
+            setUpdateVersion(result.version)
+        } else if (updateStatus === 'checking') {
+            setUpdateStatus('up-to-date')
+        }
     }
 
     const handleNotificationsToggle = async () => {
@@ -503,6 +537,53 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
                             description="Export tasks and metrics as JSON from the Summary page"
                             tooltip="Navigate to the Summary page and click Export to download project data"
                         />
+                    </SettingsSection>
+
+                    <SettingsSection title="About">
+                        <SettingsRow
+                            icon={<Info className="h-4 w-4" />}
+                            label={`Relay v${appVersion || '...'}`}
+                            description="By Yoni Raviv"
+                        />
+                        <SettingsRow
+                            icon={<Scale className="h-4 w-4" />}
+                            label="License: GPL-3.0"
+                            description="Free and open source software"
+                        />
+                    </SettingsSection>
+
+                    <SettingsSection title="Updates">
+                        <SettingsRow
+                            icon={<RefreshCw className={`h-4 w-4 ${updateStatus === 'checking' ? 'animate-spin' : ''}`} />}
+                            label={
+                                updateStatus === 'checking' ? 'Checking for updates...' :
+                                updateStatus === 'available' ? `Update v${updateVersion} Available` :
+                                updateStatus === 'downloading' ? `Downloading... ${Math.round(downloadProgress)}%` :
+                                updateStatus === 'ready' ? 'Update Ready' :
+                                updateStatus === 'up-to-date' ? 'You\'re up to date' :
+                                'Check for Updates'
+                            }
+                            description={
+                                updateStatus === 'available' ? 'Click to download' :
+                                updateStatus === 'ready' ? 'Restart to apply the update' :
+                                undefined
+                            }
+                            onClick={
+                                updateStatus === 'idle' || updateStatus === 'up-to-date' ? handleCheckForUpdates :
+                                updateStatus === 'available' ? () => window.relayAPI.downloadUpdate() :
+                                updateStatus === 'ready' ? () => window.relayAPI.installUpdate() :
+                                undefined
+                            }
+                        >
+                            {updateStatus === 'downloading' && (
+                                <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
+                                    <div
+                                        className="h-full bg-foreground rounded-full transition-all"
+                                        style={{ width: `${downloadProgress}%` }}
+                                    />
+                                </div>
+                            )}
+                        </SettingsRow>
                     </SettingsSection>
                 </div>
             </div>

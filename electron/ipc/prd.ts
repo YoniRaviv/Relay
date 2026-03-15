@@ -12,6 +12,9 @@ import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import type { EngineMode } from '../agent/engines/types';
 import { DEFAULT_MODEL } from '../../shared/pricing';
+import { app } from 'electron';
+
+const isDev = !app.isPackaged;
 
 let _claudePath: string | undefined;
 function getClaudePath(): string {
@@ -69,7 +72,7 @@ function getCliQueryOptions(systemPrompt: string, stderrLines: string[]) {
     persistSession: false,
     pathToClaudeCodeExecutable: getClaudePath(),
     env: buildCliEnv(),
-    debug: true,
+    debug: isDev,
     stderr: (data: string) => {
       console.error('[prd:cli:stderr]', data);
       stderrLines.push(data);
@@ -319,6 +322,7 @@ export function registerPrdHandlers(): void {
             description: row.description,
             markdown: row.markdown,
             status: row.status,
+            featureBranch: row.feature_branch ?? null,
             createdAt: row.created_at,
             updatedAt: row.updated_at,
           };
@@ -380,6 +384,24 @@ export function registerPrdHandlers(): void {
         db.prepare('DELETE FROM tasks WHERE prd_id = ?').run(prdId);
         db.prepare('DELETE FROM prd WHERE id = ?').run(prdId);
 
+        return { status: 'ok' };
+      } catch {
+        continue;
+      }
+    }
+    throw new Error('PRD not found');
+  });
+
+  ipcMain.handle('prd:setFeatureBranch', async (_event, prdId: string, branch: string) => {
+    const projects = store.get('recentProjects', []) as Array<{ path: string }>;
+    for (const p of projects) {
+      try {
+        const db = openDb(p.path);
+        const row = db.prepare('SELECT id FROM prd WHERE id = ?').get(prdId);
+        if (!row) continue;
+
+        db.prepare('UPDATE prd SET feature_branch = ?, updated_at = ? WHERE id = ?')
+          .run(branch, new Date().toISOString(), prdId);
         return { status: 'ok' };
       } catch {
         continue;

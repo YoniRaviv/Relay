@@ -1,5 +1,6 @@
 import { BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { getClient } from '../runner';
 import { buildTaskPrompt } from '../promptBuilder';
 import { openDb } from '../../db/connection';
@@ -9,6 +10,14 @@ import type { Task, PRD } from '../../../shared/types';
 import type Anthropic from '@anthropic-ai/sdk';
 import { DEFAULT_MODEL } from '../../../shared/pricing';
 import type { TaskEngine, TaskRunResult } from './types';
+
+function safeSend(win: BrowserWindow, channel: string, ...args: unknown[]): void {
+  try {
+    if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+      win.webContents.send(channel, ...args);
+    }
+  } catch { /* suppress EPIPE / write-after-destroy */ }
+}
 
 function getApiKey(): string {
   const encrypted = store.get('apiKey');
@@ -122,6 +131,49 @@ async function executeTool(
         return { output: `Error: Directory not found: ${input.path || '.'}` };
       }
     }
+    case 'edit_file': {
+      const filePath = resolve(input.path as string);
+      const oldStr = input.old_string as string;
+      const newStr = input.new_string as string;
+      try {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const idx = content.indexOf(oldStr);
+        if (idx === -1) {
+          return { output: `Error: old_string not found in ${input.path}. Make sure it matches exactly (including whitespace and indentation).` };
+        }
+        if (content.indexOf(oldStr, idx + 1) !== -1) {
+          return { output: `Error: old_string appears multiple times in ${input.path}. Provide more surrounding context to make it unique.` };
+        }
+        const updated = content.slice(0, idx) + newStr + content.slice(idx + oldStr.length);
+        fs.writeFileSync(filePath, updated, 'utf-8');
+        return { output: `Edited: ${input.path}` };
+      } catch {
+        return { output: `Error: File not found: ${input.path}` };
+      }
+    }
+    case 'search_files': {
+      const pattern = input.pattern as string;
+      const searchPath = resolve((input.path as string) || '.');
+      try {
+        const args = ['--no-heading', '-n', '--color', 'never', '-l'];
+        if (input.include) args.push('--glob', input.include as string);
+        args.push(pattern, searchPath);
+        const result = execFileSync('rg', args, { encoding: 'utf-8', maxBuffer: 1024 * 1024, timeout: 10000 });
+        const lines = result.trim().split('\n').slice(0, 50);
+        return { output: lines.map((l: string) => l.replace(projectPath + '/', '')).join('\n') || 'No matches found.' };
+      } catch (err) {
+        // rg returns exit code 1 for no matches
+        if ((err as { status?: number }).status === 1) return { output: 'No matches found.' };
+        // Fallback to simple grep if rg not available
+        try {
+          const result = execFileSync('grep', ['-r', '-l', '--include=*', pattern, searchPath], { encoding: 'utf-8', maxBuffer: 1024 * 1024, timeout: 10000 });
+          const lines = result.trim().split('\n').slice(0, 50);
+          return { output: lines.map((l: string) => l.replace(projectPath + '/', '')).join('\n') || 'No matches found.' };
+        } catch {
+          return { output: 'No matches found.' };
+        }
+      }
+    }
     case 'task_complete': {
       return { output: `Task marked complete: ${input.summary}` };
     }
@@ -152,7 +204,7 @@ export const sdkEngine: TaskEngine = {
       db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
         .run('in_progress', new Date().toISOString(), task.id);
 
-      win.webContents.send('agent:activity', {
+      safeSend(win,'agent:activity', {
         id: randomUUID(),
         taskId: task.id,
         type: 'text',
@@ -172,7 +224,15 @@ export const sdkEngine: TaskEngine = {
         const response = await anthropic.messages.create({
           model: modelId,
           max_tokens: 16384,
-          system: 'You are an expert software engineer completing a coding task. Use the provided tools to read, edit, and create files as needed. Work methodically through the acceptance criteria.',
+          system: `You are an expert software engineer completing a coding task. Work methodically:
+1. First explore the project structure with list_files and search_files to understand the codebase
+2. Read relevant files before making changes
+3. Use edit_file for precise changes to existing files (preferred over write_file for existing files)
+4. Use write_file only for new files or when rewriting an entire file
+5. After making changes, read the file back to verify correctness
+6. Call task_complete when all acceptance criteria are met
+
+If a tool call fails, analyze the error and try a different approach. Do not give up.`,
           messages,
           tools: [
             {
@@ -188,25 +248,51 @@ export const sdkEngine: TaskEngine = {
             },
             {
               name: 'write_file',
-              description: 'Write content to a file (creates or overwrites)',
+              description: 'Write content to a file (creates or overwrites the entire file). For modifying existing files, prefer edit_file instead.',
               input_schema: {
                 type: 'object' as const,
                 properties: {
                   path: { type: 'string', description: 'Relative file path to write' },
-                  content: { type: 'string', description: 'File content to write' },
+                  content: { type: 'string', description: 'Full file content to write' },
                 },
                 required: ['path', 'content'],
               },
             },
             {
+              name: 'edit_file',
+              description: 'Make a targeted edit to an existing file by replacing a specific string. The old_string must match exactly (including whitespace). This is preferred over write_file for modifying existing files.',
+              input_schema: {
+                type: 'object' as const,
+                properties: {
+                  path: { type: 'string', description: 'Relative file path to edit' },
+                  old_string: { type: 'string', description: 'The exact string to find and replace (must be unique in the file)' },
+                  new_string: { type: 'string', description: 'The replacement string' },
+                },
+                required: ['path', 'old_string', 'new_string'],
+              },
+            },
+            {
               name: 'list_files',
-              description: 'List files in a directory',
+              description: 'List files and directories in a given path. Excludes hidden files and node_modules.',
               input_schema: {
                 type: 'object' as const,
                 properties: {
                   path: { type: 'string', description: 'Directory path to list (default: .)' },
                 },
                 required: [],
+              },
+            },
+            {
+              name: 'search_files',
+              description: 'Search for a text pattern across files in the project. Returns matching file paths. Use this to find where code is defined or used.',
+              input_schema: {
+                type: 'object' as const,
+                properties: {
+                  pattern: { type: 'string', description: 'Text or regex pattern to search for' },
+                  path: { type: 'string', description: 'Directory to search in (default: project root)' },
+                  include: { type: 'string', description: 'Glob pattern to filter files (e.g. "*.ts", "*.tsx")' },
+                },
+                required: ['pattern'],
               },
             },
             {
@@ -232,7 +318,7 @@ export const sdkEngine: TaskEngine = {
         for (const block of response.content) {
           if (block.type === 'text') {
             assistantContent.push({ type: 'text', text: block.text });
-            win.webContents.send('agent:activity', {
+            safeSend(win,'agent:activity', {
               id: randomUUID(),
               taskId: task.id,
               type: 'text',
@@ -250,7 +336,7 @@ export const sdkEngine: TaskEngine = {
 
             const toolInput = block.input as Record<string, unknown>;
             const filePath = (toolInput.path ?? toolInput.file_path) as string | undefined;
-            win.webContents.send('agent:activity', {
+            safeSend(win,'agent:activity', {
               id: randomUUID(),
               taskId: task.id,
               type: 'tool_use',
@@ -272,7 +358,7 @@ export const sdkEngine: TaskEngine = {
 
             if (block.name === 'task_complete') {
               continueLoop = false;
-              win.webContents.send('agent:activity', {
+              safeSend(win,'agent:activity', {
                 id: randomUUID(),
                 taskId: task.id,
                 type: 'text',
@@ -282,7 +368,7 @@ export const sdkEngine: TaskEngine = {
               });
             }
 
-            win.webContents.send('agent:activity', {
+            safeSend(win,'agent:activity', {
               id: randomUUID(),
               taskId: task.id,
               type: 'tool_result',
@@ -320,7 +406,7 @@ export const sdkEngine: TaskEngine = {
          VALUES (?, ?, 'text', ?, ?)`
       ).run(randomUUID(), task.id, `Completed in ${Math.round(durationMs / 1000)}s — ${toolCalls} tool calls, ${tokensIn + tokensOut} tokens`, new Date().toISOString());
 
-      win.webContents.send('agent:activity', {
+      safeSend(win,'agent:activity', {
         id: randomUUID(),
         taskId: task.id,
         type: 'text',
@@ -331,8 +417,13 @@ export const sdkEngine: TaskEngine = {
       return { success: true, tokensIn, tokensOut, toolCalls, durationMs, model: modelId };
     } catch (err) {
       const durationMs = Date.now() - startTime;
-      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      let errorMsg = err instanceof Error ? err.message : (typeof err === 'string' ? err : JSON.stringify(err) ?? 'Unknown error');
       const wasAborted = abortSignal.aborted;
+
+      // Surface model-not-found errors clearly
+      if (errorMsg.includes('model') || errorMsg.includes('404') || errorMsg.includes('not_found')) {
+        errorMsg = `Model "${(store.get('selectedModel') ?? DEFAULT_MODEL) as string}" is not available. Try a different model in Settings. (${errorMsg})`;
+      }
 
       if (!wasAborted) {
         try {
@@ -343,7 +434,7 @@ export const sdkEngine: TaskEngine = {
           // ignore db errors during error handling
         }
 
-        win.webContents.send('agent:activity', {
+        safeSend(win,'agent:activity', {
           id: randomUUID(),
           taskId: task.id,
           type: 'error',

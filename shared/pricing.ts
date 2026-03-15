@@ -9,7 +9,7 @@ export interface ModelPricing {
 export const MODEL_PRICING: Record<string, ModelPricing> = {
   'claude-haiku-4-5-20251001': { inputPer1M: 0.80, outputPer1M: 4, label: 'Haiku 4.5', tier: 'fast' },
   'claude-sonnet-4-20250514': { inputPer1M: 3, outputPer1M: 15, label: 'Sonnet 4', tier: 'balanced' },
-  'claude-sonnet-4-5-20250514': { inputPer1M: 3, outputPer1M: 15, label: 'Sonnet 4.5', tier: 'balanced' },
+  'claude-sonnet-4-6': { inputPer1M: 3, outputPer1M: 15, label: 'Sonnet 4.6', tier: 'balanced' },
   'claude-opus-4-6': { inputPer1M: 15, outputPer1M: 75, label: 'Opus 4.6', tier: 'powerful' },
 }
 

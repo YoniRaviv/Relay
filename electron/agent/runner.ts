@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { BrowserWindow } from 'electron';
+import { store } from '../ipc/settings';
+import { DEFAULT_MODEL } from '../../shared/pricing';
 
 let client: Anthropic | null = null;
 
@@ -14,6 +16,10 @@ export function resetClient(): void {
   client = null;
 }
 
+function getModel(): string {
+  return (store.get('selectedModel') ?? DEFAULT_MODEL) as string;
+}
+
 export async function streamText(
   apiKey: string,
   systemPrompt: string,
@@ -25,7 +31,7 @@ export async function streamText(
   let fullText = '';
 
   const stream = anthropic.messages.stream({
-    model: 'claude-sonnet-4-20250514',
+    model: getModel(),
     max_tokens: 8192,
     system: systemPrompt,
     messages: [{ role: 'user', content: userMessage }],
@@ -34,11 +40,15 @@ export async function streamText(
   for await (const event of stream) {
     if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
       fullText += event.delta.text;
-      win.webContents.send(channel, { type: 'delta', text: event.delta.text });
+      try {
+        if (!win.isDestroyed()) win.webContents.send(channel, { type: 'delta', text: event.delta.text });
+      } catch { /* suppress EPIPE */ }
     }
   }
 
-  win.webContents.send(channel, { type: 'done', text: fullText });
+  try {
+    if (!win.isDestroyed()) win.webContents.send(channel, { type: 'done', text: fullText });
+  } catch { /* suppress EPIPE */ }
   return fullText;
 }
 
@@ -50,7 +60,7 @@ export async function generateText(
   const anthropic = getClient(apiKey);
 
   const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: getModel(),
     max_tokens: 8192,
     system: systemPrompt,
     messages: [{ role: 'user', content: userMessage }],

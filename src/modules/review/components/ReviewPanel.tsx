@@ -6,6 +6,7 @@ import { FileChangeList } from './FileChangeList'
 import { CommitDialog } from './CommitDialog'
 import { useRelayStore } from '@/store/useRelayStore'
 import { X, Check, RotateCcw, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import type { Task } from '@shared/types'
 import type { FileChange } from '@/shared/types/review'
 
@@ -34,6 +35,14 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
         if (!activeProject) return
         setLoading(true)
         try {
+            // Auto-pause loop to avoid git lock conflicts (skip in continuous mode — loop keeps running)
+            const { loopState: currentLoopState, buildMode } = useRelayStore.getState()
+            if (currentLoopState === 'running' && buildMode !== 'continuous') {
+                await window.relayAPI.pauseLoop()
+                // Brief wait for engine to release git locks
+                await new Promise(r => setTimeout(r, 500))
+            }
+
             const [diff, status] = await Promise.all([
                 window.relayAPI.reviewGetDiff(activeProject.id),
                 window.relayAPI.gitStatus(activeProject.id),
@@ -41,7 +50,8 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
             setDiffString(diff as string)
             setFiles((status as { files: FileChange[] }).files)
         } catch (err) {
-            console.error('Failed to load diff:', err)
+            const msg = err instanceof Error ? err.message : 'Failed to load diff'
+            toast.error('Failed to load diff', { description: msg })
         } finally {
             setLoading(false)
         }

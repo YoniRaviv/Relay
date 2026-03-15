@@ -20,7 +20,7 @@ export function TaskDetail() {
 
     if (!task) return null
 
-    const isActiveTask = task.id === currentTaskId
+    const isActiveTask = task.id === currentTaskId && task.status === 'in_progress'
     const isPausedInProgress = task.status === 'in_progress' && loopState === 'paused'
     const isCompleted = task.status === 'done' || task.status === 'approved'
 

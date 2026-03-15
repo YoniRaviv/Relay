@@ -1,4 +1,6 @@
 import { ipcMain, safeStorage, app } from 'electron';
+import { execFileSync } from 'node:child_process';
+import os from 'node:os';
 import Store from 'electron-store';
 import type { AuthStatus, EngineMode, CliToolsPreset, BuildMode } from '../../shared/types';
 
@@ -16,12 +18,36 @@ const store = new Store<{
 
 const isDev = !app.isPackaged;
 
+function findClaudeBinary(): { found: boolean; path?: string; error?: string } {
+  // Try `which claude` first
+  try {
+    const homedir = os.homedir();
+    const extraPaths = [
+      `${homedir}/.local/bin`,
+      `${homedir}/.nvm/versions/node/current/bin`,
+      '/usr/local/bin',
+      '/opt/homebrew/bin',
+    ];
+    const envPath = [...extraPaths, process.env.PATH ?? ''].join(':');
+    const claudePath = execFileSync('which', ['claude'], {
+      encoding: 'utf-8',
+      env: { ...process.env, PATH: envPath },
+    }).trim();
+    return { found: true, path: claudePath };
+  } catch {
+    return { found: false, error: 'Claude Code CLI not found. Install it with: npm install -g @anthropic-ai/claude-code' };
+  }
+}
+
 export function registerSettingsHandlers(): void {
   ipcMain.handle('cc:checkAuth', async (): Promise<AuthStatus> => {
-    // In CLI engine mode, no API key needed
+    // In CLI engine mode, verify the CLI is actually available
     const engineMode = (store.get('engineMode') ?? 'api-key') as EngineMode;
     if (engineMode === 'claude-code') {
-      return { valid: true };
+      const cliCheck = findClaudeBinary();
+      return cliCheck.found
+        ? { valid: true }
+        : { valid: false, error: 'Claude Code CLI not found. Install it or switch to API Key mode.' };
     }
 
     // In dev mode, allow a dummy key for testing without a real API key
@@ -79,6 +105,14 @@ export function registerSettingsHandlers(): void {
     }
   });
 
+  ipcMain.handle('cc:getAppInfo', async () => {
+    return {
+      version: app.getVersion(),
+      electron: process.versions.electron,
+      node: process.versions.node,
+    };
+  });
+
   ipcMain.handle('cc:getSettings', async () => {
     return {
       hasApiKey: !!store.get('apiKey'),
@@ -113,14 +147,12 @@ export function registerSettingsHandlers(): void {
     store.set('selectedModel', model);
   });
 
-  // Check if Claude Code CLI SDK is available
-  ipcMain.handle('cc:checkCliAvailable', async (): Promise<{ available: boolean; error?: string }> => {
-    try {
-      await import('@anthropic-ai/claude-agent-sdk');
-      return { available: true };
-    } catch {
-      return { available: false, error: 'Claude Code SDK not available. Run `claude login` in your terminal first.' };
-    }
+  // Check if Claude Code CLI binary is installed and reachable
+  ipcMain.handle('cc:checkCliAvailable', async (): Promise<{ available: boolean; path?: string; error?: string }> => {
+    const result = findClaudeBinary();
+    return result.found
+      ? { available: true, path: result.path }
+      : { available: false, error: result.error };
   });
 
   // Max passes per task

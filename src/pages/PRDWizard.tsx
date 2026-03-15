@@ -163,10 +163,19 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         }
     }, [featureDescription, setPrdMarkdown, projectContext, featureAttachments])
 
+    const [estimatedTaskCount, setEstimatedTaskCount] = useState(6)
+
     const decompose = useCallback(async () => {
         setError('')
         setAgentStatus('')
         setDecomposing(true)
+
+        // Estimate task count from PRD structure for skeleton UI
+        const headings = (prdMarkdown.match(/^#{2,3}\s+/gm) || []).length
+        const bullets = (prdMarkdown.match(/^[-*]\s+/gm) || []).length
+        const estimate = Math.max(4, Math.min(15, headings > 3 ? headings + Math.floor(bullets / 4) : Math.floor(bullets / 2) || 6))
+        setEstimatedTaskCount(estimate)
+
         try {
             await window.relayAPI.decomposePrd(prdMarkdown, projectContext ?? undefined)
         } catch (err) {
@@ -329,9 +338,44 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
 
                         {(wizardStep === 3 || decomposing) && (
                             decomposing ? (
-                                <div className="flex flex-col items-center gap-3 py-16">
-                                    <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                                    <p className="text-sm text-muted-foreground">{agentStatus || 'Decomposing PRD into tasks...'}</p>
+                                <div className="space-y-6">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                        <p className="text-sm text-muted-foreground">{agentStatus || 'Decomposing PRD into tasks...'}</p>
+                                    </div>
+                                    <div className="flex gap-5 items-start">
+                                        {(() => {
+                                            // Distribute estimated tasks across priority columns
+                                            const total = estimatedTaskCount
+                                            const highCount = Math.max(1, Math.round(total * 0.3))
+                                            const lowCount = Math.max(1, Math.round(total * 0.15))
+                                            const medCount = Math.max(1, total - highCount - lowCount)
+                                            return [
+                                                { label: 'High Priority', count: highCount },
+                                                { label: 'Medium Priority', count: medCount },
+                                                { label: 'Low Priority', count: lowCount },
+                                            ]
+                                        })().map(({ label, count }) => (
+                                            <div key={label} className="flex-1 min-w-0 flex flex-col">
+                                                <div className="flex items-center gap-2 mb-3 px-1">
+                                                    <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {Array.from({ length: count }).map((_, i) => (
+                                                        <div key={i} className="p-3 rounded-lg border border-border bg-card space-y-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="h-3 w-12 bg-muted rounded animate-pulse" />
+                                                                <div className="h-3 w-16 bg-muted rounded animate-pulse" />
+                                                            </div>
+                                                            <div className="h-4 w-3/4 bg-muted rounded animate-pulse" />
+                                                            <div className="h-3 w-full bg-muted/60 rounded animate-pulse" />
+                                                            <div className="h-3 w-2/3 bg-muted/60 rounded animate-pulse" />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             ) : (
                                 <TaskReview
