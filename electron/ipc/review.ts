@@ -24,13 +24,13 @@ export function registerReviewHandlers(): void {
     return withGitLock(async () => {
       const projectPath = getProjectPath(projectId);
       const git = simpleGit(projectPath);
-      const diff = await git.diff();
-      const stagedDiff = await git.diff(['--cached']);
+      const diff = await git.diff(['--', '.', ':!.relay/']);
+      const stagedDiff = await git.diff(['--cached', '--', '.', ':!.relay/']);
       const status = await git.status();
 
-      // Include untracked files
+      // Include untracked files (exclude .relay/)
       let untrackedDiff = '';
-      for (const file of status.not_added) {
+      for (const file of status.not_added.filter(f => !f.startsWith('.relay/') && !f.startsWith('.relay\\'))) {
         try {
           const fs = await import('node:fs');
           const path = await import('node:path');
