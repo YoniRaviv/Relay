@@ -1,21 +1,66 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
-import { Play, Pause, Square, ChevronDown, Check } from 'lucide-react'
+import { Play, Pause, Square, ChevronDown, Check, GitPullRequest, ExternalLink, Globe, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRelayStore } from '@/store/useRelayStore'
 import { UncommittedChangesDialog } from './UncommittedChangesDialog'
 import { BranchSetupDialog } from './BranchSetupDialog'
 import { GitInitDialog } from './GitInitDialog'
+import { PrCreationDialog } from '@/modules/review/components/PrCreationDialog'
 import { useClickOutside } from '@/shared/hooks/useClickOutside'
 import type { FileChange } from '@/shared/types/review'
 import type { BuildMode } from '@shared/types'
 
 export function LoopControls() {
-    const { loopState, setLoopState, activeProject, clearActivity, setFeatureBranch, setBaseBranch, setCurrentBranch, buildMode, setBuildMode } = useRelayStore()
+    const { loopState, setLoopState, activeProject, clearActivity, setFeatureBranch, setBaseBranch, setCurrentBranch, buildMode, setBuildMode, tasks, prUrl, setPrUrl } = useRelayStore()
     const [showUncommitted, setShowUncommitted] = useState(false)
     const [showBranchSetup, setShowBranchSetup] = useState(false)
     const [showGitInit, setShowGitInit] = useState(false)
     const [dirtyFiles, setDirtyFiles] = useState<FileChange[]>([])
+    const [hasRemote, setHasRemote] = useState<boolean | null>(null)
+    const [prChecked, setPrChecked] = useState(false)
+    const [showRemoteInput, setShowRemoteInput] = useState(false)
+    const [remoteUrl, setRemoteUrl] = useState('')
+    const [addingRemote, setAddingRemote] = useState(false)
+
+    const allComplete = useMemo(() => {
+        return tasks.length > 0 && tasks.every(t => t.status === 'done' || t.status === 'approved')
+    }, [tasks])
+
+    const featureComplete = allComplete && (loopState === 'idle' || loopState === 'stopped')
+
+    // Check remote & PR status when feature completes
+    useEffect(() => {
+        if (!featureComplete || !activeProject) {
+            setPrChecked(false)
+            return
+        }
+        let cancelled = false
+        const check = async () => {
+            try {
+                const { hasRemote: remote } = await window.relayAPI.gitHasRemote(activeProject.id)
+                if (cancelled) return
+                setHasRemote(remote)
+                if (remote && !prUrl) {
+                    const { url, state } = await window.relayAPI.gitGetPrUrl(activeProject.id)
+                    if (cancelled) return
+                    if (url) {
+                        setPrUrl(url)
+                        // If merged, we could mark the feature as done
+                        if (state === 'merged') {
+                            toast.success('PR was merged!')
+                        }
+                    }
+                }
+            } catch {
+                if (!cancelled) setHasRemote(null)
+            } finally {
+                if (!cancelled) setPrChecked(true)
+            }
+        }
+        check()
+        return () => { cancelled = true }
+    }, [featureComplete, activeProject]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const startLoopDirectly = async () => {
         if (!activeProject) return
@@ -222,72 +267,178 @@ export function LoopControls() {
         stopped: 'bg-rose-500',
     }
 
+    const handleViewPr = () => {
+        if (prUrl) window.open(prUrl, '_blank')
+    }
+
+    const handleCreatePr = () => {
+        setShowPrDialog(true)
+    }
+
+    const [showPrDialog, setShowPrDialog] = useState(false)
+
+    const renderFeatureCompleteButtons = () => {
+        if (!prChecked) return null
+
+        if (prUrl) {
+            return (
+                <Button
+                    size="sm"
+                    className="h-7 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    onClick={handleViewPr}
+                >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    View PR
+                </Button>
+            )
+        }
+
+        if (hasRemote === false) {
+            return (
+                <div className="relative">
+                    <Button
+                        size="sm"
+                        className="h-7 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => setShowRemoteInput(!showRemoteInput)}
+                    >
+                        <Globe className="h-3.5 w-3.5" />
+                        Add Remote
+                    </Button>
+                    {showRemoteInput && (
+                        <form
+                            className="absolute top-full right-0 mt-1 w-80 rounded-lg bg-card border border-border shadow-xl z-50 p-3 space-y-2"
+                            onSubmit={async (e) => {
+                                e.preventDefault()
+                                if (!activeProject || !remoteUrl.trim()) return
+                                setAddingRemote(true)
+                                try {
+                                    await window.relayAPI.gitAddRemote(activeProject.id, remoteUrl.trim())
+                                    setHasRemote(true)
+                                    setShowRemoteInput(false)
+                                    setRemoteUrl('')
+                                    toast.success('Remote added')
+                                } catch (err) {
+                                    toast.error('Failed to add remote', { description: err instanceof Error ? err.message : 'Unknown error' })
+                                } finally {
+                                    setAddingRemote(false)
+                                }
+                            }}
+                        >
+                            <p className="text-[11px] font-medium text-muted-foreground">Repository URL</p>
+                            <input
+                                type="text"
+                                value={remoteUrl}
+                                onChange={(e) => setRemoteUrl(e.target.value)}
+                                placeholder="https://github.com/user/repo.git"
+                                className="h-8 w-full rounded-md border border-border bg-background px-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                                autoFocus
+                            />
+                            <div className="flex justify-end gap-1.5">
+                                <Button size="sm" variant="ghost" className="h-7 text-xs" type="button" onClick={() => { setShowRemoteInput(false); setRemoteUrl('') }}>
+                                    Cancel
+                                </Button>
+                                <Button size="sm" type="submit" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" disabled={!remoteUrl.trim() || addingRemote}>
+                                    {addingRemote ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Add Remote'}
+                                </Button>
+                            </div>
+                        </form>
+                    )}
+                </div>
+            )
+        }
+
+        return (
+            <Button
+                size="sm"
+                className="h-7 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={handleCreatePr}
+            >
+                <GitPullRequest className="h-3.5 w-3.5" />
+                Create PR
+            </Button>
+        )
+    }
+
+    const renderLoopButtons = () => (
+        <>
+            <div ref={modeRef} className="relative">
+                <button
+                    onClick={() => setModeOpen(!modeOpen)}
+                    className="h-7 rounded-md border border-border bg-card px-2.5 text-xs font-medium text-foreground shadow-sm cursor-pointer flex items-center gap-1.5 hover:bg-accent/50 transition-colors"
+                >
+                    {currentModeOption.label}
+                    <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${modeOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {modeOpen && (
+                    <div className="absolute top-full right-0 mt-1 w-72 rounded-lg bg-card border border-border shadow-xl z-50 overflow-hidden">
+                        {buildModeOptions.map(({ mode, label, description }) => (
+                            <button
+                                key={mode}
+                                onClick={() => { setBuildMode(mode); setModeOpen(false) }}
+                                className={`flex items-start gap-2.5 w-full px-3 py-2.5 text-left transition-colors ${
+                                    buildMode === mode ? 'bg-accent/60' : 'hover:bg-accent/30'
+                                }`}
+                            >
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium">{label}</p>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5">{description}</p>
+                                </div>
+                                {buildMode === mode && (
+                                    <Check className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+            <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={handleStart}>
+                <Play className="h-3.5 w-3.5" />
+                Start
+            </Button>
+        </>
+    )
+
     return (
         <>
             <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${stateColor[loopState]}`} />
-                <span className="text-xs text-muted-foreground">{stateLabel[loopState]}</span>
+                {featureComplete ? (
+                    <>
+                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Complete</span>
+                        {renderFeatureCompleteButtons()}
+                    </>
+                ) : (
+                    <>
+                        <div className={`w-2 h-2 rounded-full ${stateColor[loopState]}`} />
+                        <span className="text-xs text-muted-foreground">{stateLabel[loopState]}</span>
 
-                {loopState === 'idle' || loopState === 'stopped' ? (
-                    <>
-                        <div ref={modeRef} className="relative">
-                            <button
-                                onClick={() => setModeOpen(!modeOpen)}
-                                className="h-7 rounded-md border border-border bg-card px-2.5 text-xs font-medium text-foreground shadow-sm cursor-pointer flex items-center gap-1.5 hover:bg-accent/50 transition-colors"
-                            >
-                                {currentModeOption.label}
-                                <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${modeOpen ? 'rotate-180' : ''}`} />
-                            </button>
-                            {modeOpen && (
-                                <div className="absolute top-full right-0 mt-1 w-72 rounded-lg bg-card border border-border shadow-xl z-50 overflow-hidden">
-                                    {buildModeOptions.map(({ mode, label, description }) => (
-                                        <button
-                                            key={mode}
-                                            onClick={() => { setBuildMode(mode); setModeOpen(false) }}
-                                            className={`flex items-start gap-2.5 w-full px-3 py-2.5 text-left transition-colors ${
-                                                buildMode === mode ? 'bg-accent/60' : 'hover:bg-accent/30'
-                                            }`}
-                                        >
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-medium">{label}</p>
-                                                <p className="text-[11px] text-muted-foreground mt-0.5">{description}</p>
-                                            </div>
-                                            {buildMode === mode && (
-                                                <Check className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-                                            )}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={handleStart}>
-                            <Play className="h-3.5 w-3.5" />
-                            Start
-                        </Button>
+                        {loopState === 'idle' || loopState === 'stopped' ? (
+                            renderLoopButtons()
+                        ) : loopState === 'running' ? (
+                            <>
+                                <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={handlePause}>
+                                    <Pause className="h-3.5 w-3.5" />
+                                    Pause
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={handleStop}>
+                                    <Square className="h-3.5 w-3.5" />
+                                    Stop
+                                </Button>
+                            </>
+                        ) : loopState === 'paused' ? (
+                            <>
+                                <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={handleResume}>
+                                    <Play className="h-3.5 w-3.5" />
+                                    Resume
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={handleStop}>
+                                    <Square className="h-3.5 w-3.5" />
+                                    Stop
+                                </Button>
+                            </>
+                        ) : null}
                     </>
-                ) : loopState === 'running' ? (
-                    <>
-                        <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={handlePause}>
-                            <Pause className="h-3.5 w-3.5" />
-                            Pause
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={handleStop}>
-                            <Square className="h-3.5 w-3.5" />
-                            Stop
-                        </Button>
-                    </>
-                ) : loopState === 'paused' ? (
-                    <>
-                        <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={handleResume}>
-                            <Play className="h-3.5 w-3.5" />
-                            Resume
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={handleStop}>
-                            <Square className="h-3.5 w-3.5" />
-                            Stop
-                        </Button>
-                    </>
-                ) : null}
+                )}
             </div>
 
             {showUncommitted && (
@@ -310,6 +461,15 @@ export function LoopControls() {
                 <GitInitDialog
                     onConfirm={handleGitInit}
                     onCancel={() => setShowGitInit(false)}
+                />
+            )}
+
+            {showPrDialog && (
+                <PrCreationDialog
+                    onClose={(createdUrl?: string) => {
+                        setShowPrDialog(false)
+                        if (createdUrl) setPrUrl(createdUrl)
+                    }}
                 />
             )}
         </>

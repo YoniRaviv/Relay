@@ -14,6 +14,7 @@
   <img src="https://img.shields.io/badge/electron-30-teal" alt="Electron" />
   <img src="https://img.shields.io/badge/react-18-61dafb" alt="React" />
   <img src="https://img.shields.io/badge/typescript-strict-blue" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/license-GPL--3.0-green" alt="License" />
 </p>
 
 ---
@@ -30,18 +31,24 @@ Relay is a desktop application that wraps Claude's AI capabilities into a struct
 4. **Task decomposition** — The PRD is broken into a structured backlog on a Kanban board
 5. **Build loop** — Start the agent and watch it build each task, streaming progress in real time
 6. **Review gate** — For each completed task, review the diff — approve to commit, or reject with notes to retry
-7. **Track progress** — Cost, tokens, build time, and first-pass success rate in the Summary view
+7. **Create PR** — When all tasks complete, create a pull request directly from the app
+8. **Track progress** — Cost, tokens, build time, and first-pass success rate in the Summary view
 
 ## Features
 
 - **PRD Wizard** — AI-generated product specs with streaming preview, clarification questions, image attachment support, and manual editing
-- **Kanban Board** — Drag-and-drop task management across Pending, Building, and Complete columns
+- **Kanban Board** — Drag-and-drop task management across Pending, Building, Human Review, and Complete columns
 - **Agent Loop** — Autonomous code generation with play/pause/stop controls and three build modes:
   - **Pause for Review** — Pauses after each task for human approve/reject
   - **Auto-Pilot** — Commits each task automatically and continues
-  - **Continuous** — Builds all tasks, leaves changes for batch review
+  - **Continuous** — Builds all tasks without pausing; review tasks at your own pace while the agent keeps building
 - **Human Review Gate** — Syntax-highlighted diff viewer with file tree, approve/reject flow, and git integration
-- **Git Integration** — Automatic branch creation, .gitignore management, commit on approve, push to remote, PR creation
+- **Smart Review Detection** — Tasks with no file changes are auto-approved and skip the review gate
+- **Git Integration** — Automatic branch creation, .gitignore management, commit on approve, push to remote, and PR creation
+- **Post-Build Actions** — When all tasks complete, the loop controls switch to contextual actions:
+  - **Add Remote** — Dropdown to add a git remote URL directly from the app
+  - **Create PR** — Open a PR creation dialog with auto-generated title and body
+  - **View PR** — Quick link to an existing open pull request
 - **Project Context Scanning** — Analyzes your codebase so the agent understands existing patterns
 - **Multi-Feature Support** — Multiple PRDs per project with independent task backlogs
 - **Build Timer** — Live elapsed timer while a task is being built
@@ -51,18 +58,12 @@ Relay is a desktop application that wraps Claude's AI capabilities into a struct
 - **Auto-Updates** — Built-in update checker for new releases
 - **Per-Project SQLite** — All data stored locally in `.relay/relay.db` inside your project folder
 
-## Model Options
+## Engine Modes
 
-| Model | ID | Tier | Input / Output (per 1M tokens) |
-|-------|-----|------|-------------------------------|
-| Haiku 4.5 | `claude-haiku-4-5-20251001` | Fast | $0.80 / $4 |
-| Sonnet 4 | `claude-sonnet-4-20250514` | Balanced | $3 / $15 |
-| Sonnet 4.5 | `claude-sonnet-4-5-latest` | Balanced | $3 / $15 |
-| Opus 4.6 | `claude-opus-4-6` | Powerful | $15 / $75 |
+Relay supports two engine modes, selectable in the board header:
 
-Select your model in the board header. Relay supports two engine modes:
-- **API Key** — Direct SDK calls via `@anthropic-ai/sdk`
-- **Claude Code** — Uses the Claude CLI via `@anthropic-ai/claude-agent-sdk` (requires `claude` CLI installed)
+- **API Key** — Direct SDK calls via `@anthropic-ai/sdk` with built-in file tools
+- **Claude Code** — Uses the Claude CLI via `@anthropic-ai/claude-agent-sdk` (requires `claude` CLI installed) with full tool access
 
 ## Tech Stack
 
@@ -134,7 +135,8 @@ npm run lint
 6. **Select your model** and build mode, then click **Start**
 7. **Watch the agent work** — each task streams activity in the feed below the board
 8. **Approve or reject** — review diffs, commit approved work, reject with notes to retry
-9. **Check the Summary** tab for cost and performance metrics
+9. **Create a PR** — when all tasks are done, use the green button to add a remote or create a PR
+10. **Check the Summary** tab for cost and performance metrics
 
 ## Project Structure
 
@@ -154,7 +156,7 @@ src/
   modules/             # Feature-based component modules
     board/             # KanbanBoard, KanbanColumn, TaskCard, TaskDetail
     agent/             # LoopControls, AgentActivityFeed, ActivityMessage, BuildTimer
-    review/            # ReviewPanel, DiffViewer, FileChangeList, CommitDialog
+    review/            # ReviewPanel, DiffViewer, FileChangeList, CommitDialog, PrCreationDialog
     prd/               # PRDPreview, PRDEditor, FeatureInput, StepIndicator, TaskReview
     settings/          # SettingsView, ModelPicker, ApiKeyInput, ThemeToggle
     project/           # ProjectSelector, ProjectSummary, ProjectSidebar
@@ -174,4 +176,4 @@ src/
 
 ## License
 
-MIT
+This project is licensed under the [GNU General Public License v3.0](LICENSE).

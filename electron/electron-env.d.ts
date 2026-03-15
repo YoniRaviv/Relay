@@ -80,6 +80,9 @@ interface RelayAPI {
   gitPush(projectId: string): Promise<{ status: string }>
   gitStash(projectId: string): Promise<{ status: string }>
   gitCreatePr(projectId: string, title: string, body: string, baseBranch: string): Promise<{ url: string }>
+  gitAddRemote(projectId: string, url: string): Promise<{ status: string }>
+  gitHasRemote(projectId: string): Promise<{ hasRemote: boolean }>
+  gitGetPrUrl(projectId: string): Promise<{ url: string | null; state: string | null }>
   gitCheckInit(projectId: string): Promise<{ initialized: boolean }>
   gitInit(projectId: string): Promise<{ status: string }>
   gitEnsureGitignore(projectId: string): Promise<{ status: string }>

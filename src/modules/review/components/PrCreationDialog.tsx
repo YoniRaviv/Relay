@@ -7,7 +7,7 @@ import { useRelayStore } from '@/store/useRelayStore'
 import type { Task } from '@shared/types'
 
 interface PrCreationDialogProps {
-    onClose: () => void
+    onClose: (createdUrl?: string) => void
 }
 
 function generatePrBody(tasks: Task[]): string {
@@ -52,7 +52,7 @@ export function PrCreationDialog({ onClose }: PrCreationDialogProps) {
                             {prUrl ? 'Pull Request Created' : 'Create Pull Request'}
                         </h3>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onClose()}>
                         <X className="h-4 w-4" />
                     </Button>
                 </div>
@@ -81,7 +81,7 @@ export function PrCreationDialog({ onClose }: PrCreationDialogProps) {
                             </div>
                         </div>
                         <div className="flex justify-end">
-                            <Button size="sm" onClick={onClose}>Done</Button>
+                            <Button size="sm" onClick={() => onClose(prUrl ?? undefined)}>Done</Button>
                         </div>
                     </div>
                 ) : (
@@ -124,7 +124,7 @@ export function PrCreationDialog({ onClose }: PrCreationDialogProps) {
                         </div>
 
                         <div className="flex justify-end gap-2 px-5 py-3 border-t border-border">
-                            <Button variant="outline" size="sm" onClick={onClose} disabled={loading}>
+                            <Button variant="outline" size="sm" onClick={() => onClose()} disabled={loading}>
                                 Skip
                             </Button>
                             <Button size="sm" onClick={handleCreate} disabled={!title.trim() || loading}>

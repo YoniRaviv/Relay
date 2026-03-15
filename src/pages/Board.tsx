@@ -292,7 +292,10 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
             })()}
 
             {showPrDialog && (
-                <PrCreationDialog onClose={() => setShowPrDialog(false)} />
+                <PrCreationDialog onClose={(createdUrl?: string) => {
+                    setShowPrDialog(false)
+                    if (createdUrl) useRelayStore.getState().setPrUrl(createdUrl)
+                }} />
             )}
         </AppShell>
     )

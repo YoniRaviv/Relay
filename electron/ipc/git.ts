@@ -213,6 +213,37 @@ export function registerGitHandlers(): void {
     }
   });
 
+  ipcMain.handle('git:addRemote', async (_event, projectId: string, url: string) => {
+    const projectPath = getProjectPath(projectId);
+    const git = simpleGit(projectPath);
+    await git.addRemote('origin', url);
+    return { status: 'ok' };
+  });
+
+  ipcMain.handle('git:hasRemote', async (_event, projectId: string) => {
+    const projectPath = getProjectPath(projectId);
+    const git = simpleGit(projectPath);
+    try {
+      const remotes = await git.getRemotes();
+      return { hasRemote: remotes.length > 0 };
+    } catch {
+      return { hasRemote: false };
+    }
+  });
+
+  ipcMain.handle('git:getPrUrl', async (_event, projectId: string) => {
+    const projectPath = getProjectPath(projectId);
+    try {
+      const { stdout } = await execFileAsync('gh', [
+        'pr', 'view', '--json', 'url,state', '--jq', '.url + "|" + .state',
+      ], { cwd: projectPath });
+      const [url, state] = stdout.trim().split('|');
+      return { url: url || null, state: (state || '').toLowerCase() };
+    } catch {
+      return { url: null, state: null };
+    }
+  });
+
   ipcMain.handle('git:checkInit', async (_event, projectId: string) => {
     const projectPath = getProjectPath(projectId);
     const gitDir = path.join(projectPath, '.git');
