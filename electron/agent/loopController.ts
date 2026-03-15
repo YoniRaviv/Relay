@@ -1,10 +1,22 @@
 import { BrowserWindow, Notification } from 'electron';
 import { randomUUID } from 'node:crypto';
+import simpleGit from 'simple-git';
 import { getEngine } from './engines';
 import { openDb } from '../db/connection';
 import { store } from '../ipc/settings';
 import { autoCommitTask } from './autoCommit';
 import type { Task, BuildMode } from '../../shared/types';
+
+/** Safe wrapper for webContents.send — silently drops messages if window is destroyed */
+function safeSend(win: BrowserWindow, channel: string, ...args: unknown[]): void {
+  try {
+    if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+      win.webContents.send(channel, ...args);
+    }
+  } catch {
+    // Suppress EPIPE / write-after-destroy errors
+  }
+}
 
 function sendNotification(title: string, body: string): void {
   if (store.get('notificationsEnabled', true) && Notification.isSupported()) {
@@ -14,6 +26,20 @@ function sendNotification(title: string, body: string): void {
 
 let loopState: 'idle' | 'running' | 'paused' | 'stopped' = 'idle';
 let abortSignal = { aborted: false };
+
+function getProjectPath(projectId: string): string {
+  const projects = store.get('recentProjects', []) as Array<{ path: string }>;
+  for (const p of projects) {
+    try {
+      const db = openDb(p.path);
+      const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
+      if (row) return p.path;
+    } catch {
+      continue;
+    }
+  }
+  throw new Error('Project not found');
+}
 
 function getDbForProject(projectId: string) {
   const projects = store.get('recentProjects', []) as Array<{ path: string }>;
@@ -70,7 +96,7 @@ function refreshAndBroadcastTasks(projectId: string, prdId: string | undefined, 
   const rows = prdId
     ? db.prepare(`SELECT * FROM tasks WHERE project_id = ? AND prd_id = ? ORDER BY "order" ASC`).all(projectId, prdId) as Record<string, unknown>[]
     : db.prepare(`SELECT * FROM tasks WHERE project_id = ? ORDER BY "order" ASC`).all(projectId) as Record<string, unknown>[];
-  win.webContents.send('loop:tasksUpdated', rows.map(rowToTask));
+  safeSend(win, 'loop:tasksUpdated', rows.map(rowToTask));
 }
 
 export function getLoopState(): typeof loopState {
@@ -83,7 +109,7 @@ export function getLoopState(): typeof loopState {
  */
 async function waitForUnpause(win: BrowserWindow, skipEmit = false): Promise<void> {
   if (!skipEmit) {
-    win.webContents.send('loop:stateChange', { state: 'paused' });
+    safeSend(win,'loop:stateChange', { state: 'paused' });
   }
   await new Promise<void>((resolve) => {
     const check = setInterval(() => {
@@ -101,26 +127,26 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
 
   loopState = 'running';
   abortSignal = { aborted: false };
-  win.webContents.send('loop:stateChange', { state: 'running' });
+  safeSend(win,'loop:stateChange', { state: 'running' });
 
   try {
     while (loopState as string === 'running') {
       const task = getNextPendingTask(projectId, prdId);
       if (!task) {
-        win.webContents.send('agent:activity', {
+        safeSend(win,'agent:activity', {
           id: randomUUID(),
           taskId: null,
           type: 'text',
           content: 'All tasks complete. Loop finished.',
           timestamp: new Date().toISOString(),
         });
-        win.webContents.send('loop:allTasksComplete', { projectId });
+        safeSend(win,'loop:allTasksComplete', { projectId });
         sendNotification('Build Complete', 'All tasks have been completed.');
         break;
       }
 
       // Notify UI of current task
-      win.webContents.send('loop:taskChange', { taskId: task.id });
+      safeSend(win,'loop:taskChange', { taskId: task.id });
 
       const result = await getEngine().runTask(task, win, abortSignal);
 
@@ -129,7 +155,7 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
         const db = getDbForProject(projectId);
         if (loopState as string === 'paused') {
           // Keep task in_progress while paused (shows in Building column with pause icon)
-          win.webContents.send('agent:activity', {
+          safeSend(win,'agent:activity', {
             id: randomUUID(),
             taskId: task.id,
             type: 'text',
@@ -168,7 +194,7 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
           // Exceeded max attempts — mark as permanently failed
           db.prepare('UPDATE tasks SET status = ?, passes = ?, rejection_notes = ?, updated_at = ? WHERE id = ?')
             .run('failed', currentPasses, `Failed after ${currentPasses} attempts. Last error: ${errorMsg}`, new Date().toISOString(), task.id);
-          win.webContents.send('agent:activity', {
+          safeSend(win,'agent:activity', {
             id: randomUUID(),
             taskId: task.id,
             type: 'error',
@@ -180,7 +206,7 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
           // Reset to pending for retry with incremented pass count and error context
           db.prepare('UPDATE tasks SET status = ?, passes = ?, rejection_notes = ?, updated_at = ? WHERE id = ?')
             .run('pending', currentPasses, `Attempt ${currentPasses} failed: ${errorMsg}`, new Date().toISOString(), task.id);
-          win.webContents.send('agent:activity', {
+          safeSend(win,'agent:activity', {
             id: randomUUID(),
             taskId: task.id,
             type: 'error',
@@ -207,6 +233,27 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
       const db = getDbForProject(projectId);
       const updatedTask = db.prepare('SELECT status, story_id, title FROM tasks WHERE id = ?').get(task.id) as Record<string, unknown> | undefined;
       if (updatedTask && updatedTask.status === 'review') {
+        // Auto-approve tasks with no file changes — nothing to review
+        try {
+          const projectPath = getProjectPath(projectId);
+          const git = simpleGit(projectPath);
+          const status = await git.status();
+          if (status.isClean()) {
+            db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
+              .run('approved', new Date().toISOString(), task.id);
+            safeSend(win, 'agent:activity', {
+              id: randomUUID(),
+              taskId: task.id,
+              type: 'text',
+              content: 'No file changes detected — auto-approved.',
+              timestamp: new Date().toISOString(),
+            });
+            refreshAndBroadcastTasks(projectId, prdId, win);
+            continue;
+          }
+        } catch {
+          // Git check failed — proceed with normal review flow
+        }
         if (effectiveBuildMode === 'auto-pilot' || effectiveBuildMode === ('auto-commit' as string)) {
           // Auto-approve: commit and mark as approved, then continue
           const commitPrefix = (store.get('commitPrefix') ?? 'feat') as string;
@@ -215,7 +262,7 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
           refreshAndBroadcastTasks(projectId, prdId, win);
         } else if (effectiveBuildMode === 'continuous') {
           // Continuous: skip the pause, leave task in review status, continue to next
-          win.webContents.send('agent:activity', {
+          safeSend(win,'agent:activity', {
             id: randomUUID(),
             taskId: task.id,
             type: 'text',
@@ -226,7 +273,7 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
           // Review mode (default): pause and wait for human
           loopState = 'paused';
           sendNotification('Review Needed', `"${task.title}" is ready for your review.`);
-          win.webContents.send('agent:activity', {
+          safeSend(win,'agent:activity', {
             id: randomUUID(),
             taskId: task.id,
             type: 'text',
@@ -248,8 +295,8 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
   } finally {
     loopState = 'idle';
     abortSignal = { aborted: false };
-    win.webContents.send('loop:stateChange', { state: 'idle' });
-    win.webContents.send('loop:taskChange', { taskId: null });
+    safeSend(win,'loop:stateChange', { state: 'idle' });
+    safeSend(win,'loop:taskChange', { taskId: null });
   }
 }
 
@@ -257,19 +304,19 @@ export function pauseLoop(win?: BrowserWindow): void {
   if (loopState === 'running') {
     loopState = 'paused';
     abortSignal.aborted = true;
-    if (win) win.webContents.send('loop:stateChange', { state: 'paused' });
+    if (win) safeSend(win,'loop:stateChange', { state: 'paused' });
   }
 }
 
 export function resumeLoop(win?: BrowserWindow): void {
   if (loopState === 'paused') {
     loopState = 'running';
-    if (win) win.webContents.send('loop:stateChange', { state: 'running' });
+    if (win) safeSend(win,'loop:stateChange', { state: 'running' });
   }
 }
 
 export function stopLoop(win?: BrowserWindow): void {
   abortSignal.aborted = true;
   loopState = 'stopped';
-  if (win) win.webContents.send('loop:stateChange', { state: 'stopped' });
+  if (win) safeSend(win,'loop:stateChange', { state: 'stopped' });
 }

@@ -19,6 +19,11 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 
 // Global error handlers — surface crashes instead of failing silently
 process.on('uncaughtException', (error) => {
+  // Suppress EPIPE errors — these occur when writing to a closed pipe (e.g. during agent pause/stop)
+  if (error.message?.includes('EPIPE') || (error as NodeJS.ErrnoException).code === 'EPIPE') {
+    console.warn('[Relay] Suppressed EPIPE error:', error.message)
+    return
+  }
   console.error('[Relay] Uncaught exception:', error)
   dialog.showErrorBox('Unexpected Error', `${error.message}\n\n${error.stack ?? ''}`)
 })

@@ -10,6 +10,14 @@ import type { Task, PRD } from '../../../shared/types';
 import { DEFAULT_MODEL } from '../../../shared/pricing';
 import type { TaskEngine, TaskRunResult, CliToolsPreset } from './types';
 
+function safeSend(win: BrowserWindow, channel: string, ...args: unknown[]): void {
+  try {
+    if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+      safeSend(win,channel, ...args);
+    }
+  } catch { /* suppress EPIPE / write-after-destroy */ }
+}
+
 let _claudePath: string | undefined;
 function getClaudePath(): string {
   if (!_claudePath) {
@@ -108,7 +116,7 @@ export const cliEngine: TaskEngine = {
       db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
         .run('in_progress', new Date().toISOString(), task.id);
 
-      win.webContents.send('agent:activity', {
+      safeSend(win,'agent:activity', {
         id: randomUUID(),
         taskId: task.id,
         type: 'text',
@@ -177,7 +185,7 @@ export const cliEngine: TaskEngine = {
             // Process content blocks from the assistant message
             for (const block of message.message.content) {
               if (block.type === 'text') {
-                win.webContents.send('agent:activity', {
+                safeSend(win,'agent:activity', {
                   id: randomUUID(),
                   taskId: task.id,
                   type: 'text',
@@ -188,7 +196,7 @@ export const cliEngine: TaskEngine = {
                 toolCalls++;
                 const toolInput = block.input as Record<string, unknown>;
                 const filePath = (toolInput.path ?? toolInput.file_path) as string | undefined;
-                win.webContents.send('agent:activity', {
+                safeSend(win,'agent:activity', {
                   id: randomUUID(),
                   taskId: task.id,
                   type: 'tool_use',
@@ -223,7 +231,7 @@ export const cliEngine: TaskEngine = {
           } else if (message.type === 'system') {
             const sysMsg = message as { content?: string };
             if (sysMsg.content) {
-              win.webContents.send('agent:activity', {
+              safeSend(win,'agent:activity', {
                 id: randomUUID(),
                 taskId: task.id,
                 type: 'text',
@@ -255,7 +263,7 @@ export const cliEngine: TaskEngine = {
          VALUES (?, ?, 'text', ?, ?)`
       ).run(randomUUID(), task.id, `Completed in ${Math.round(durationMs / 1000)}s — ${toolCalls} tool calls, ${tokensIn + tokensOut} tokens (CLI engine)`, new Date().toISOString());
 
-      win.webContents.send('agent:activity', {
+      safeSend(win,'agent:activity', {
         id: randomUUID(),
         taskId: task.id,
         type: 'text',
@@ -266,7 +274,7 @@ export const cliEngine: TaskEngine = {
       return { success: true, tokensIn, tokensOut, toolCalls, durationMs, model: detectedModel };
     } catch (err) {
       const durationMs = Date.now() - startTime;
-      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      const errorMsg = err instanceof Error ? err.message : (typeof err === 'string' ? err : JSON.stringify(err) ?? 'Unknown error');
       const wasAborted = abortSignal.aborted;
 
       if (!wasAborted) {
@@ -278,7 +286,7 @@ export const cliEngine: TaskEngine = {
           // ignore db errors during error handling
         }
 
-        win.webContents.send('agent:activity', {
+        safeSend(win,'agent:activity', {
           id: randomUUID(),
           taskId: task.id,
           type: 'error',

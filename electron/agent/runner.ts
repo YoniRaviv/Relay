@@ -40,11 +40,15 @@ export async function streamText(
   for await (const event of stream) {
     if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
       fullText += event.delta.text;
-      win.webContents.send(channel, { type: 'delta', text: event.delta.text });
+      try {
+        if (!win.isDestroyed()) win.webContents.send(channel, { type: 'delta', text: event.delta.text });
+      } catch { /* suppress EPIPE */ }
     }
   }
 
-  win.webContents.send(channel, { type: 'done', text: fullText });
+  try {
+    if (!win.isDestroyed()) win.webContents.send(channel, { type: 'done', text: fullText });
+  } catch { /* suppress EPIPE */ }
   return fullText;
 }
 

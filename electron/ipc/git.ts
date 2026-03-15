@@ -169,15 +169,48 @@ export function registerGitHandlers(): void {
 
   ipcMain.handle('git:createPr', async (_event, projectId: string, title: string, body: string, baseBranch: string) => {
     const projectPath = getProjectPath(projectId);
-    const { stdout } = await execFileAsync('gh', [
-      'pr', 'create',
-      '--title', title,
-      '--body', body,
-      '--base', baseBranch,
-    ], { cwd: projectPath });
-    // gh pr create prints the PR URL to stdout
-    const prUrl = stdout.trim();
-    return { url: prUrl };
+    try {
+      // Push branch to remote first
+      const git = simpleGit(projectPath);
+      const branchSummary = await git.branch();
+      await git.push('origin', branchSummary.current, ['--set-upstream']);
+    } catch (pushErr) {
+      const msg = pushErr instanceof Error ? pushErr.message : String(pushErr);
+      if (msg.includes('does not appear to be a git repository') || msg.includes('No configured push destination') || msg.includes("'origin' does not appear")) {
+        throw new Error('No remote repository configured. Add one with: git remote add origin <url>');
+      }
+      // Other push errors — let PR creation attempt anyway
+    }
+    try {
+      const { stdout } = await execFileAsync('gh', [
+        'pr', 'create',
+        '--title', title,
+        '--body', body,
+        '--base', baseBranch,
+      ], { cwd: projectPath });
+      const prUrl = stdout.trim();
+      return { url: prUrl };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const stderr = (err as { stderr?: string }).stderr ?? '';
+      const detail = stderr || msg;
+
+      if (detail.includes('no git remotes found') || detail.includes('does not appear to be a git repository')) {
+        throw new Error('No remote repository configured. Add one with: git remote add origin <url>');
+      }
+      if (detail.includes('gh auth login') || detail.includes('not logged')) {
+        throw new Error('GitHub CLI not authenticated. Run: gh auth login');
+      }
+      if (detail.includes('could not find')) {
+        throw new Error(`Command 'gh' not found. Install it from https://cli.github.com`);
+      }
+      if (detail.includes('already exists')) {
+        throw new Error('A pull request already exists for this branch.');
+      }
+      // Fallback — truncate long messages
+      const short = detail.length > 200 ? detail.slice(0, 200) + '...' : detail;
+      throw new Error(`PR creation failed: ${short}`);
+    }
   });
 
   ipcMain.handle('git:checkInit', async (_event, projectId: string) => {

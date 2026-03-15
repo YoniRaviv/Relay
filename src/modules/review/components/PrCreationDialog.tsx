@@ -117,7 +117,9 @@ export function PrCreationDialog({ onClose }: PrCreationDialogProps) {
                             </div>
 
                             {error && (
-                                <p className="text-xs text-destructive">{error}</p>
+                                <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
+                                    <p className="text-xs text-destructive font-medium">{error}</p>
+                                </div>
                             )}
                         </div>
 

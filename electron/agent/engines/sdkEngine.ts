@@ -11,6 +11,14 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { DEFAULT_MODEL } from '../../../shared/pricing';
 import type { TaskEngine, TaskRunResult } from './types';
 
+function safeSend(win: BrowserWindow, channel: string, ...args: unknown[]): void {
+  try {
+    if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+      win.webContents.send(channel, ...args);
+    }
+  } catch { /* suppress EPIPE / write-after-destroy */ }
+}
+
 function getApiKey(): string {
   const encrypted = store.get('apiKey');
   if (!encrypted) throw new Error('No API key configured. Go to Settings and enter your Anthropic API key.');
@@ -196,7 +204,7 @@ export const sdkEngine: TaskEngine = {
       db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
         .run('in_progress', new Date().toISOString(), task.id);
 
-      win.webContents.send('agent:activity', {
+      safeSend(win,'agent:activity', {
         id: randomUUID(),
         taskId: task.id,
         type: 'text',
@@ -310,7 +318,7 @@ If a tool call fails, analyze the error and try a different approach. Do not giv
         for (const block of response.content) {
           if (block.type === 'text') {
             assistantContent.push({ type: 'text', text: block.text });
-            win.webContents.send('agent:activity', {
+            safeSend(win,'agent:activity', {
               id: randomUUID(),
               taskId: task.id,
               type: 'text',
@@ -328,7 +336,7 @@ If a tool call fails, analyze the error and try a different approach. Do not giv
 
             const toolInput = block.input as Record<string, unknown>;
             const filePath = (toolInput.path ?? toolInput.file_path) as string | undefined;
-            win.webContents.send('agent:activity', {
+            safeSend(win,'agent:activity', {
               id: randomUUID(),
               taskId: task.id,
               type: 'tool_use',
@@ -350,7 +358,7 @@ If a tool call fails, analyze the error and try a different approach. Do not giv
 
             if (block.name === 'task_complete') {
               continueLoop = false;
-              win.webContents.send('agent:activity', {
+              safeSend(win,'agent:activity', {
                 id: randomUUID(),
                 taskId: task.id,
                 type: 'text',
@@ -360,7 +368,7 @@ If a tool call fails, analyze the error and try a different approach. Do not giv
               });
             }
 
-            win.webContents.send('agent:activity', {
+            safeSend(win,'agent:activity', {
               id: randomUUID(),
               taskId: task.id,
               type: 'tool_result',
@@ -398,7 +406,7 @@ If a tool call fails, analyze the error and try a different approach. Do not giv
          VALUES (?, ?, 'text', ?, ?)`
       ).run(randomUUID(), task.id, `Completed in ${Math.round(durationMs / 1000)}s — ${toolCalls} tool calls, ${tokensIn + tokensOut} tokens`, new Date().toISOString());
 
-      win.webContents.send('agent:activity', {
+      safeSend(win,'agent:activity', {
         id: randomUUID(),
         taskId: task.id,
         type: 'text',
@@ -409,7 +417,7 @@ If a tool call fails, analyze the error and try a different approach. Do not giv
       return { success: true, tokensIn, tokensOut, toolCalls, durationMs, model: modelId };
     } catch (err) {
       const durationMs = Date.now() - startTime;
-      let errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      let errorMsg = err instanceof Error ? err.message : (typeof err === 'string' ? err : JSON.stringify(err) ?? 'Unknown error');
       const wasAborted = abortSignal.aborted;
 
       // Surface model-not-found errors clearly
@@ -426,7 +434,7 @@ If a tool call fails, analyze the error and try a different approach. Do not giv
           // ignore db errors during error handling
         }
 
-        win.webContents.send('agent:activity', {
+        safeSend(win,'agent:activity', {
           id: randomUUID(),
           taskId: task.id,
           type: 'error',

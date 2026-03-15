@@ -35,9 +35,9 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
         if (!activeProject) return
         setLoading(true)
         try {
-            // Auto-pause loop to avoid git lock conflicts
-            const currentLoopState = useRelayStore.getState().loopState
-            if (currentLoopState === 'running') {
+            // Auto-pause loop to avoid git lock conflicts (skip in continuous mode — loop keeps running)
+            const { loopState: currentLoopState, buildMode } = useRelayStore.getState()
+            if (currentLoopState === 'running' && buildMode !== 'continuous') {
                 await window.relayAPI.pauseLoop()
                 // Brief wait for engine to release git locks
                 await new Promise(r => setTimeout(r, 500))

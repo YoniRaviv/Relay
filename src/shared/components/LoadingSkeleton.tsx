@@ -3,12 +3,13 @@ function Skeleton({ className = '' }: { className?: string }) {
 }
 
 export function BoardSkeleton() {
+    const columnCards = [4, 2, 1, 0]
     return (
-        <div className="flex gap-4 p-6 h-full">
-            {[0, 1, 2].map(col => (
-                <div key={col} className="flex-1 space-y-3">
+        <div className="flex gap-4 p-6 h-full w-full">
+            {columnCards.map((count, col) => (
+                <div key={col} className="flex-1 min-w-0 space-y-3">
                     <Skeleton className="h-8 w-24" />
-                    {Array.from({ length: col === 0 ? 4 : col === 1 ? 2 : 1 }).map((_, i) => (
+                    {Array.from({ length: count }).map((_, i) => (
                         <Skeleton key={i} className="h-20 w-full" />
                     ))}
                 </div>
