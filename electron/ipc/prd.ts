@@ -13,6 +13,7 @@ import { execFileSync } from 'node:child_process';
 import type { EngineMode } from '../agent/engines/types';
 import { DEFAULT_MODEL } from '../../shared/pricing';
 import { app } from 'electron';
+import { withSentry } from './withSentry';
 
 const isDev = !app.isPackaged;
 
@@ -222,7 +223,7 @@ export function registerPrdHandlers(): void {
     return { status: 'ok', text: result };
   });
 
-  ipcMain.handle('prd:generate', async (_event, description: string, clarifications?: string, projectContext?: string, attachments?: ImageAttachment[]) => {
+  ipcMain.handle('prd:generate', withSentry('prd:generate', async (_event, description: string, clarifications?: string, projectContext?: string, attachments?: ImageAttachment[]) => {
     const win = BrowserWindow.getFocusedWindow();
     if (!win) throw new Error('No active window');
 
@@ -239,9 +240,9 @@ export function registerPrdHandlers(): void {
       await streamText(apiKey, 'You are a senior product manager.', contentBlocks, win, 'prd:stream');
     }
     return { status: 'ok' };
-  });
+  }));
 
-  ipcMain.handle('prd:decompose', async (_event, prdMarkdown: string, projectContext?: string) => {
+  ipcMain.handle('prd:decompose', withSentry('prd:decompose', async (_event, prdMarkdown: string, projectContext?: string) => {
     const win = BrowserWindow.getFocusedWindow();
     if (!win) throw new Error('No active window');
 
@@ -256,7 +257,7 @@ export function registerPrdHandlers(): void {
       win.webContents.send('prd:decomposeStream', { type: 'done', text: result });
     }
     return { status: 'ok' };
-  });
+  }));
 
   ipcMain.handle('prd:save', async (_event, data: {
     projectId: string;

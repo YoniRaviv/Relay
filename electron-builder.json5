@@ -5,7 +5,8 @@
   "asar": true,
   "asarUnpack": [
     "node_modules/better-sqlite3/**",
-    "node_modules/@anthropic-ai/claude-agent-sdk/**"
+    "node_modules/@anthropic-ai/claude-agent-sdk/**",
+    "node_modules/@sentry/electron/**"
   ],
   "productName": "Relay",
   "directories": {
@@ -21,7 +22,9 @@
     "dist-electron",
     "LICENSE",
     "node_modules/better-sqlite3/**",
-    "node_modules/@anthropic-ai/claude-agent-sdk/**"
+    "node_modules/@anthropic-ai/claude-agent-sdk/**",
+    "node_modules/@sentry/electron/**",
+    "!**/*.map"
   ],
   "mac": {
     "target": [

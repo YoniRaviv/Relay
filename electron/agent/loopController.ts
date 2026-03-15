@@ -1,6 +1,7 @@
 import { BrowserWindow, Notification } from 'electron';
 import { randomUUID } from 'node:crypto';
 import simpleGit from 'simple-git';
+import * as Sentry from '@sentry/electron/main';
 import { getEngine } from './engines';
 import { openDb } from '../db/connection';
 import { store } from '../ipc/settings';
@@ -194,6 +195,11 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
           // Exceeded max attempts — mark as permanently failed
           db.prepare('UPDATE tasks SET status = ?, passes = ?, rejection_notes = ?, updated_at = ? WHERE id = ?')
             .run('failed', currentPasses, `Failed after ${currentPasses} attempts. Last error: ${errorMsg}`, new Date().toISOString(), task.id);
+          Sentry.captureMessage(`Task exceeded max attempts`, {
+            level: 'warning',
+            tags: { taskId: task.id, projectId },
+            extra: { passes: currentPasses, lastError: errorMsg },
+          });
           safeSend(win,'agent:activity', {
             id: randomUUID(),
             taskId: task.id,
@@ -292,6 +298,11 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
 
       if (loopState as string === 'stopped') break;
     }
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: { component: 'agentLoop', projectId },
+    });
+    throw error;
   } finally {
     loopState = 'idle';
     abortSignal = { aborted: false };
