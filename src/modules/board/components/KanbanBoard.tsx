@@ -19,7 +19,7 @@ const COLUMNS: { id: string; title: string; statuses: TaskStatus[] }[] = [
     { id: 'pending', title: 'Pending', statuses: ['pending'] },
     { id: 'building', title: 'Building', statuses: ['in_progress', 'failed'] },
     { id: 'review', title: 'Human Review', statuses: ['review'] },
-    { id: 'complete', title: 'Complete', statuses: ['done', 'approved'] },
+    { id: 'complete', title: 'Complete', statuses: ['done'] },
 ]
 
 function getColumnForStatus(status: TaskStatus): string {

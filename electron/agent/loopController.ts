@@ -240,12 +240,12 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
           const status = await git.status();
           if (status.isClean()) {
             db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
-              .run('approved', new Date().toISOString(), task.id);
+              .run('done', new Date().toISOString(), task.id);
             safeSend(win, 'agent:activity', {
               id: randomUUID(),
               taskId: task.id,
               type: 'text',
-              content: 'No file changes detected — auto-approved.',
+              content: 'No file changes detected — marked done.',
               timestamp: new Date().toISOString(),
             });
             refreshAndBroadcastTasks(projectId, prdId, win);
@@ -255,7 +255,7 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
           // Git check failed — proceed with normal review flow
         }
         if (effectiveBuildMode === 'auto-pilot' || effectiveBuildMode === ('auto-commit' as string)) {
-          // Auto-approve: commit and mark as approved, then continue
+          // Auto-commit and mark as done, then continue
           const commitPrefix = (store.get('commitPrefix') ?? 'feat') as string;
           const commitMsg = `${commitPrefix}(${updatedTask.story_id}): ${updatedTask.title}`;
           await autoCommitTask(projectId, task.id, commitMsg, win);

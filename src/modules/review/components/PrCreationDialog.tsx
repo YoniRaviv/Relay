@@ -11,7 +11,7 @@ interface PrCreationDialogProps {
 }
 
 function generatePrBody(tasks: Task[]): string {
-    const completed = tasks.filter(t => t.status === 'approved' || t.status === 'done')
+    const completed = tasks.filter(t => t.status === 'done')
     const lines = completed.map(t => `- **${t.storyId}**: ${t.title}`)
     return `## Summary\n\nThis PR implements the following tasks:\n\n${lines.join('\n')}\n\n## Changes\n\n${completed.length} task${completed.length !== 1 ? 's' : ''} completed and reviewed.\n`
 }

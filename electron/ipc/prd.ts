@@ -345,7 +345,7 @@ export function registerPrdHandlers(): void {
         const rows = db.prepare(
           `SELECT p.*,
             (SELECT COUNT(*) FROM tasks t WHERE t.prd_id = p.id) as task_count,
-            (SELECT COUNT(*) FROM tasks t WHERE t.prd_id = p.id AND t.status IN ('done', 'approved')) as done_count
+            (SELECT COUNT(*) FROM tasks t WHERE t.prd_id = p.id AND t.status = 'done') as done_count
            FROM prd p WHERE p.project_id = ? ORDER BY p.created_at DESC`
         ).all(projectId) as Record<string, unknown>[];
 

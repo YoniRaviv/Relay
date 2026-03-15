@@ -4,7 +4,6 @@ export const statusColors: Record<string, string> = {
         review: 'text-amber-600 dark:text-amber-400',
         failed: 'text-rose-600 dark:text-rose-400',
         done: 'text-emerald-600 dark:text-emerald-400',
-        approved: 'text-emerald-600 dark:text-emerald-400',
 }
 
 export const statusLabels: Record<string, string> = {
@@ -13,7 +12,6 @@ export const statusLabels: Record<string, string> = {
         review: 'Review',
         failed: 'Failed',
         done: 'Done',
-        approved: 'Approved',
 }
 
 export const statusDots: Record<string, string> = {
@@ -22,7 +20,6 @@ export const statusDots: Record<string, string> = {
         review: 'bg-amber-500',
         failed: 'bg-rose-500',
         done: 'bg-emerald-500',
-        approved: 'bg-emerald-600',
 }
 
 export const priorityTextColors = {

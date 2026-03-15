@@ -39,7 +39,7 @@ export async function autoCommitTask(
         if (!msg.includes('nothing to commit') && !msg.includes('no changes added')) {
             throw err; // Re-throw real errors
         }
-        // Nothing to commit is OK — task still approved
+        // Nothing to commit is OK — task still done
     }
 
     // Push if we have a commit
@@ -52,16 +52,16 @@ export async function autoCommitTask(
         }
     }
 
-    // Update task status to approved with commit hash
+    // Update task status to done with commit hash
     db.prepare('UPDATE tasks SET status = ?, commit_hash = ?, updated_at = ? WHERE id = ?')
-        .run('approved', commitHash, new Date().toISOString(), taskId);
+        .run('done', commitHash, new Date().toISOString(), taskId);
 
     // Notify UI
     win.webContents.send('agent:activity', {
         id: randomUUID(),
         taskId,
         type: 'text',
-        content: commitHash ? `Auto-committed: ${commitHash}` : 'Auto-approved (no file changes)',
+        content: commitHash ? `Auto-committed: ${commitHash}` : 'Done (no file changes)',
         timestamp: new Date().toISOString(),
     });
 

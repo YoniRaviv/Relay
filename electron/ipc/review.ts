@@ -63,7 +63,7 @@ export function registerReviewHandlers(): void {
         if (!msg.includes('nothing to commit') && !msg.includes('no changes added')) {
           throw err; // Re-throw real errors
         }
-        // Nothing to commit is OK — task still approved
+        // Nothing to commit is OK — task still done
       }
 
       // Push if we have a commit
@@ -76,9 +76,9 @@ export function registerReviewHandlers(): void {
         }
       }
 
-      // Update task status to approved with commit hash
+      // Update task status to done with commit hash
       db.prepare('UPDATE tasks SET status = ?, commit_hash = ?, updated_at = ? WHERE id = ?')
-        .run('approved', commitHash, new Date().toISOString(), taskId);
+        .run('done', commitHash, new Date().toISOString(), taskId);
 
     // Notify UI
     const win = BrowserWindow.getFocusedWindow();
@@ -87,7 +87,7 @@ export function registerReviewHandlers(): void {
         id: randomUUID(),
         taskId,
         type: 'text',
-        content: commitHash ? `Approved and committed: ${commitHash}` : 'Approved (no file changes)',
+        content: commitHash ? `Done — committed: ${commitHash}` : 'Done (no file changes)',
         timestamp: new Date().toISOString(),
       });
 

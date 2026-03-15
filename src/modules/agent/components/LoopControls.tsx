@@ -24,7 +24,7 @@ export function LoopControls() {
     const [addingRemote, setAddingRemote] = useState(false)
 
     const allComplete = useMemo(() => {
-        return tasks.length > 0 && tasks.every(t => t.status === 'done' || t.status === 'approved')
+        return tasks.length > 0 && tasks.every(t => t.status === 'done')
     }, [tasks])
 
     const featureComplete = allComplete && (loopState === 'idle' || loopState === 'stopped')
