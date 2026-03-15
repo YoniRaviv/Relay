@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue" alt="Platform" />
+  <img src="https://img.shields.io/badge/platform-macOS" alt="Platform" />
   <img src="https://img.shields.io/badge/electron-30-teal" alt="Electron" />
   <img src="https://img.shields.io/badge/react-18-61dafb" alt="React" />
   <img src="https://img.shields.io/badge/typescript-strict-blue" alt="TypeScript" />
