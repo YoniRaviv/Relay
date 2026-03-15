@@ -18,11 +18,11 @@
 </p>
 
 <p align="center">
-  <img src="public/screenshots/Kanban-build-loop.png" alt="Relay — Kanban Build Loop" width="800" />
+  <a href="https://github.com/YoniRaviv/Relay/releases/latest/download/Relay-Mac-Installer.dmg"><img src="https://img.shields.io/badge/Download-Mac%20(dmg)-000?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Mac" /></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/YoniRaviv/Relay/releases/latest/download/Relay-Mac-Installer.dmg"><img src="https://img.shields.io/badge/Download-Mac%20(dmg)-000?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Mac" /></a>
+  <img src="public/screenshots/Kanban-build-loop.png" alt="Relay — Kanban Build Loop" width="800" />
 </p>
 
 ---
