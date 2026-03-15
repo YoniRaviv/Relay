@@ -63,6 +63,7 @@
   --color-input: #d9d2c8;
   --color-ring: #167a6f;
   --color-sidebar: #eee9e2;
+
   --radius: 0.5rem;
 }
 
@@ -90,6 +91,7 @@
   --color-input: #3d3833;
   --color-ring: #2ec4a6;
   --color-sidebar: #211f1b;
+
 }
 
 /* ── Building task glow animation ── */

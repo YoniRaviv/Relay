@@ -9,8 +9,7 @@ export type TaskStatus =
   | 'in_progress'
   | 'review'
   | 'failed'
-  | 'done'
-  | 'approved';
+  | 'done';
 
 export type TaskPriority = 'high' | 'medium' | 'low';
 

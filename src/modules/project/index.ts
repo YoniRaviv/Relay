@@ -1,4 +1,5 @@
 export { ProjectSelector } from './components/ProjectSelector'
 export { ProjectSummary } from './components/ProjectSummary'
 export { ProjectSidebar } from './components/ProjectSidebar'
+export { GitHistoryPanel } from './components/GitHistoryPanel'
 export type { SidebarView } from './components/ProjectSidebar'

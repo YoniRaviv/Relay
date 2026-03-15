@@ -34,7 +34,7 @@ export function KanbanColumn({ id, title, tasks, activeTaskId, onTaskClick, onTa
             <div
                 ref={setNodeRef}
                 className={`flex-1 p-2 rounded-lg transition-colors space-y-2 min-h-[200px] ${
-                    isOver ? 'bg-primary/5' : ''
+                    isOver ? 'bg-primary/8' : ''
                 }`}
             >
                 <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>

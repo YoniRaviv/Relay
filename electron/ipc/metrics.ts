@@ -58,7 +58,7 @@ export function registerMetricsHandlers(): void {
     const taskCounts = db.prepare(`
       SELECT
         COUNT(*) as total,
-        SUM(CASE WHEN status IN ('done', 'approved') THEN 1 ELSE 0 END) as completed,
+        SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as completed,
         SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
         SUM(CASE WHEN status IN ('in_progress', 'review', 'failed') THEN 1 ELSE 0 END) as in_progress
       FROM tasks WHERE project_id = ?${prdFilter}
@@ -84,7 +84,7 @@ export function registerMetricsHandlers(): void {
 
     const firstPassCount = db.prepare(`
       SELECT COUNT(*) as count FROM tasks
-      WHERE project_id = ? AND status IN ('done', 'approved') AND passes <= 1${prdFilter.replace('AND prd_id', 'AND prd_id')}
+      WHERE project_id = ? AND status = 'done' AND passes <= 1${prdFilter.replace('AND prd_id', 'AND prd_id')}
     `).get(...prdParams) as { count: number };
 
     const completedCount = taskCounts.completed || 0;

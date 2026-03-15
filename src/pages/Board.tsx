@@ -110,7 +110,7 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
 
         // Fix 3: Update feature counter after task status changes
         if (currentPrdId && currentFeatures.length > 0) {
-            const doneCount = filtered.filter(t => t.status === 'done' || t.status === 'approved').length
+            const doneCount = filtered.filter(t => t.status === 'done').length
             const updated = currentFeatures.map(f =>
                 f.id === currentPrdId ? { ...f, doneCount, taskCount: filtered.length } : f
             )

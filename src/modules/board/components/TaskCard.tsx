@@ -55,7 +55,7 @@ export function TaskCard({ task, isActive, onClick, onReview }: TaskCardProps) {
             {...attributes}
             {...listeners}
             onClick={onClick}
-            className={`p-3 rounded-lg bg-card cursor-pointer transition-all hover:shadow-sm ${
+            className={`p-3 rounded-lg bg-card cursor-pointer transition-all shadow-sm hover:shadow-md ${
                 isDragging ? 'opacity-0' : ''
             } ${isActive && task.status === 'in_progress' && !isPausedInProgress
                 ? 'ring-2 ring-emerald-500 building-glow'
