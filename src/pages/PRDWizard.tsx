@@ -278,7 +278,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
             {/* ── Content Area ── */}
             <main className="flex-1 overflow-auto">
                 <div className={`mx-auto px-10 py-10 transition-all duration-300 ${
-                    effectiveStep === 3 && !decomposing ? 'max-w-6xl' : 'max-w-3xl'
+                    effectiveStep === 3 || decomposing ? 'max-w-6xl' : 'max-w-3xl'
                 }`}>
                     {/* Step title */}
                     <div className="mb-8">
@@ -345,16 +345,16 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                                     </div>
                                     <div className="flex gap-5 items-start">
                                         {(() => {
-                                            // Distribute estimated tasks across priority columns
+                                            // Distribute estimated tasks across priority columns (capped to avoid scroll)
                                             const total = estimatedTaskCount
-                                            const highCount = Math.max(1, Math.round(total * 0.3))
-                                            const lowCount = Math.max(1, Math.round(total * 0.15))
-                                            const medCount = Math.max(1, total - highCount - lowCount)
+                                            const highCount = Math.min(4, Math.max(1, Math.round(total * 0.3)))
+                                            const lowCount = Math.min(3, Math.max(1, Math.round(total * 0.15)))
+                                            const medCount = Math.min(3, Math.max(1, total - highCount - lowCount))
                                             return [
                                                 { label: 'High Priority', count: highCount },
                                                 { label: 'Medium Priority', count: medCount },
                                                 { label: 'Low Priority', count: lowCount },
-                                            ]
+                                            ].filter(col => col.count > 0)
                                         })().map(({ label, count }) => (
                                             <div key={label} className="flex-1 min-w-0 flex flex-col">
                                                 <div className="flex items-center gap-2 mb-3 px-1">

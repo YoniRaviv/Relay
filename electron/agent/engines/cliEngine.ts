@@ -13,7 +13,7 @@ import type { TaskEngine, TaskRunResult, CliToolsPreset } from './types';
 function safeSend(win: BrowserWindow, channel: string, ...args: unknown[]): void {
   try {
     if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
-      safeSend(win,channel, ...args);
+      win.webContents.send(channel, ...args);
     }
   } catch { /* suppress EPIPE / write-after-destroy */ }
 }

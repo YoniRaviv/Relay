@@ -106,23 +106,6 @@ export function LoopControls() {
             // Fall through to git-based check
         }
 
-        // Check if we're already on a feature branch (not a base branch)
-        try {
-            const baseBranches = ['main', 'master', 'develop']
-            const branchInfo = await window.relayAPI.gitBranch(activeProject.id)
-            const currentBranch = branchInfo.current
-
-            if (currentBranch && !baseBranches.includes(currentBranch)) {
-                // Already on a feature branch — restore state and start directly
-                setFeatureBranch(currentBranch)
-                setCurrentBranch(currentBranch)
-                await startLoopDirectly()
-                return true
-            }
-        } catch {
-            // If git branch check fails, fall through to branch setup
-        }
-
         return false
     }
 
