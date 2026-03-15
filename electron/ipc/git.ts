@@ -69,7 +69,9 @@ export function registerGitHandlers(): void {
     const projectPath = getProjectPath(projectId);
     const git = simpleGit(projectPath);
     try {
-      const log = await git.log({ maxCount: count });
+      const branchSummary = await git.branch();
+      const currentBranch = branchSummary.current;
+      const log = await git.log([`--max-count=${count}`, ...(currentBranch ? [currentBranch] : [])]);
       return log.all.map(entry => ({
         hash: entry.hash,
         message: entry.message,
@@ -159,12 +161,36 @@ export function registerGitHandlers(): void {
     });
   });
 
-  ipcMain.handle('git:stash', async (_event, projectId: string) => {
+  ipcMain.handle('git:stash', async (_event, projectId: string, message?: string) => {
     return withGitLock(async () => {
       const projectPath = getProjectPath(projectId);
       const git = simpleGit(projectPath);
-      await git.stash();
+      if (message) {
+        await git.stash(['push', '-m', message]);
+      } else {
+        await git.stash();
+      }
       return { status: 'ok' };
+    });
+  });
+
+  ipcMain.handle('git:stashPop', async (_event, projectId: string, branch?: string) => {
+    return withGitLock(async () => {
+      const projectPath = getProjectPath(projectId);
+      const git = simpleGit(projectPath);
+      if (branch) {
+        // Find the stash entry matching this branch
+        const list = await git.stash(['list']);
+        const lines = list.split('\n').filter(Boolean);
+        const idx = lines.findIndex(l => l.includes(`relay:${branch}`));
+        if (idx >= 0) {
+          await git.stash(['pop', `stash@{${idx}}`]);
+          return { status: 'ok', popped: true };
+        }
+        return { status: 'ok', popped: false };
+      }
+      await git.stash(['pop']);
+      return { status: 'ok', popped: true };
     });
   });
 
@@ -270,13 +296,137 @@ export function registerGitHandlers(): void {
   });
 }
 
+/** Common gitignore patterns by project type, keyed by signature file */
+const GITIGNORE_RULES: Record<string, { label: string; patterns: string[] }> = {
+  'package.json': {
+    label: 'Node / JS',
+    patterns: [
+      'node_modules/',
+      'dist/',
+      'build/',
+      '.next/',
+      '.nuxt/',
+      '.output/',
+      '.cache/',
+      '.turbo/',
+      'coverage/',
+      '.env',
+      '.env.local',
+      '.env*.local',
+      '*.tsbuildinfo',
+      'npm-debug.log*',
+      'yarn-debug.log*',
+      'yarn-error.log*',
+      '.pnpm-debug.log*',
+    ],
+  },
+  'Cargo.toml': {
+    label: 'Rust',
+    patterns: ['target/', '*.pdb'],
+  },
+  'go.mod': {
+    label: 'Go',
+    patterns: ['bin/', 'vendor/'],
+  },
+  'requirements.txt': {
+    label: 'Python',
+    patterns: [
+      '__pycache__/',
+      '*.py[cod]',
+      '*$py.class',
+      '.venv/',
+      'venv/',
+      'env/',
+      '.env',
+      'dist/',
+      'build/',
+      '*.egg-info/',
+      '.eggs/',
+    ],
+  },
+  'pyproject.toml': {
+    label: 'Python',
+    patterns: [
+      '__pycache__/',
+      '*.py[cod]',
+      '*$py.class',
+      '.venv/',
+      'venv/',
+      'env/',
+      '.env',
+      'dist/',
+      'build/',
+      '*.egg-info/',
+      '.eggs/',
+    ],
+  },
+  'Gemfile': {
+    label: 'Ruby',
+    patterns: ['vendor/bundle/', '.bundle/', 'log/', 'tmp/'],
+  },
+  'pom.xml': {
+    label: 'Java / Maven',
+    patterns: ['target/', '*.class', '*.jar', '*.war'],
+  },
+  'build.gradle': {
+    label: 'Java / Gradle',
+    patterns: ['build/', '.gradle/', '*.class', '*.jar', '*.war'],
+  },
+  'pubspec.yaml': {
+    label: 'Dart / Flutter',
+    patterns: ['.dart_tool/', 'build/', '.flutter-plugins', '.flutter-plugins-dependencies'],
+  },
+  'Package.swift': {
+    label: 'Swift',
+    patterns: ['.build/', 'DerivedData/', '*.xcuserstate'],
+  },
+  'composer.json': {
+    label: 'PHP',
+    patterns: ['vendor/', '.env'],
+  },
+};
+
+/** Universal patterns that should always be ignored */
+const UNIVERSAL_PATTERNS = [
+  '.relay/',
+  '.DS_Store',
+  'Thumbs.db',
+  '*.log',
+  '*.swp',
+  '*.swo',
+  '.idea/',
+  '.vscode/',
+  '*.sublime-workspace',
+];
+
 function ensureGitignore(projectPath: string): void {
   const gitignorePath = path.join(projectPath, '.gitignore');
   try {
-    const content = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf-8') : '';
-    if (!content.includes('.relay/')) {
-      const newContent = content.endsWith('\n') || content === '' ? content : content + '\n';
-      fs.writeFileSync(gitignorePath, newContent + '.relay/\n', 'utf-8');
+    const existing = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf-8') : '';
+    const lines = new Set(existing.split('\n').map(l => l.trim()));
+
+    // Collect patterns to add
+    const toAdd: string[] = [];
+
+    // Always add universal patterns
+    for (const pattern of UNIVERSAL_PATTERNS) {
+      if (!lines.has(pattern)) toAdd.push(pattern);
+    }
+
+    // Detect project type and add ecosystem-specific patterns
+    for (const [signatureFile, { patterns }] of Object.entries(GITIGNORE_RULES)) {
+      if (fs.existsSync(path.join(projectPath, signatureFile))) {
+        for (const pattern of patterns) {
+          if (!lines.has(pattern)) toAdd.push(pattern);
+        }
+      }
+    }
+
+    if (toAdd.length > 0) {
+      // Deduplicate additions
+      const unique = [...new Set(toAdd)];
+      const base = existing.endsWith('\n') || existing === '' ? existing : existing + '\n';
+      fs.writeFileSync(gitignorePath, base + unique.join('\n') + '\n', 'utf-8');
     }
   } catch {
     // Best effort — don't block on gitignore issues

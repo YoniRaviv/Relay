@@ -115,12 +115,41 @@ function App() {
 
   const selectFeature = async (projectId: string, prdId: string) => {
     setActivePrdId(prdId)
-    const features = useRelayStore.getState().features
-    const feature = features.find(f => f.id === prdId)
+
+    // Re-fetch features to ensure we have up-to-date featureBranch data
+    const freshFeatures = await loadFeatures(projectId)
+    const feature = freshFeatures.find((f: { id: string }) => f.id === prdId)
     if (feature) {
       setPrd(feature)
       setPrdMarkdown(feature.markdown)
     }
+
+    // Checkout the feature's branch if it has one
+    const branch = (feature as unknown as Record<string, unknown> | undefined)?.featureBranch as string | undefined
+    if (branch) {
+      try {
+        const branchInfo = await window.relayAPI.gitBranch(projectId)
+        if (branchInfo.branches.includes(branch) && branchInfo.current !== branch) {
+          // Stash uncommitted changes tagged with the current branch name
+          const status = await window.relayAPI.gitStatus(projectId)
+          if (!status.clean) {
+            await window.relayAPI.gitStash(projectId, `relay:${branchInfo.current}`)
+          }
+          await window.relayAPI.gitCheckout(projectId, branch)
+          // Restore any previously stashed changes for this branch
+          try {
+            await window.relayAPI.gitStashPop(projectId, branch)
+          } catch {
+            // No stash to pop — that's fine
+          }
+        }
+        useRelayStore.getState().setFeatureBranch(branch)
+        useRelayStore.getState().setCurrentBranch(branch)
+      } catch {
+        // Branch checkout failed — don't block feature switch
+      }
+    }
+
     const tasks = await window.relayAPI.listTasks(projectId, prdId)
     setTasks(tasks)
   }

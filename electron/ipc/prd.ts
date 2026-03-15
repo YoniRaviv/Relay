@@ -208,7 +208,7 @@ export function registerPrdHandlers(): void {
 
     const hasAttachments = !!attachments?.length;
     const prompt = buildClarifyPrompt(description, projectContext ?? undefined, hasAttachments);
-    const systemPrompt = 'You are a senior product manager. Return only valid JSON.';
+    const systemPrompt = 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent". Return only valid JSON.';
     const contentBlocks = buildContentBlocks(prompt, attachments);
 
     if (hasAttachments) sendStatus(win, `Analyzing ${attachments!.length} attached image${attachments!.length > 1 ? 's' : ''}...`);
@@ -234,10 +234,10 @@ export function registerPrdHandlers(): void {
     if (hasAttachments) sendStatus(win, `Analyzing ${attachments!.length} attached image${attachments!.length > 1 ? 's' : ''}...`);
 
     if (getEngineMode() === 'claude-code') {
-      await cliStreamText('You are a senior product manager.', contentBlocks, win, 'prd:stream');
+      await cliStreamText('You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent".', contentBlocks, win, 'prd:stream');
     } else {
       const apiKey = getApiKey();
-      await streamText(apiKey, 'You are a senior product manager.', contentBlocks, win, 'prd:stream');
+      await streamText(apiKey, 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent".', contentBlocks, win, 'prd:stream');
     }
     return { status: 'ok' };
   }));
@@ -356,6 +356,7 @@ export function registerPrdHandlers(): void {
           description: row.description,
           markdown: row.markdown,
           status: row.status,
+          featureBranch: row.feature_branch ?? null,
           createdAt: row.created_at,
           updatedAt: row.updated_at,
           taskCount: row.task_count as number,

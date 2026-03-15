@@ -25,7 +25,7 @@ interface GitLogEntry {
 }
 
 export function GitHistoryPanel() {
-    const { activeProject } = useRelayStore()
+    const { activeProject, currentBranch } = useRelayStore()
     const [gitHistory, setGitHistory] = useState<GitLogEntry[]>([])
     const [historyOpen, setHistoryOpen] = useState(false)
 
@@ -34,7 +34,7 @@ export function GitHistoryPanel() {
         window.relayAPI.gitLog(activeProject.id)
             .then((logs) => setGitHistory((logs as GitLogEntry[]).slice(0, 15)))
             .catch(() => setGitHistory([]))
-    }, [activeProject])
+    }, [activeProject, currentBranch])
 
     useEffect(() => {
         refreshCommits()

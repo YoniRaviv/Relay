@@ -17,6 +17,16 @@
   <img src="https://img.shields.io/badge/license-GPL--3.0-green" alt="License" />
 </p>
 
+<p align="center">
+  <img src="public/screenshots/Kanban-build-loop.png" alt="Relay — Kanban Build Loop" width="800" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/YoniRaviv/Relay/releases/latest/download/Relay-Mac-Installer.dmg"><img src="https://img.shields.io/badge/Download-Mac%20(dmg)-000?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Mac" /></a>&nbsp;
+  <a href="https://github.com/YoniRaviv/Relay/releases/latest/download/Relay-Windows-Setup.exe"><img src="https://img.shields.io/badge/Download-Windows%20(exe)-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows" /></a>&nbsp;
+  <a href="https://github.com/YoniRaviv/Relay/releases/latest/download/Relay-Linux.AppImage"><img src="https://img.shields.io/badge/Download-Linux%20(AppImage)-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Download for Linux" /></a>
+</p>
+
 ---
 
 ## What is Relay?
@@ -131,12 +141,31 @@ npm run lint
 2. **Create or open a project** — point to any folder on your machine
 3. **Click "New Feature"** — describe what you want built
 4. **Review the PRD** — the AI generates a detailed spec; edit as needed, then approve
-5. **Review tasks** — the PRD is decomposed into ordered tasks on the Kanban board
+
+<p align="center">
+  <img src="public/screenshots/prd-creation.png" alt="PRD Creation" width="800" />
+</p>
+
+5. **Review tasks** — the PRD is decomposed into ordered tasks grouped by priority
+
+<p align="center">
+  <img src="public/screenshots/generated-tasks.png" alt="Generated Tasks" width="800" />
+</p>
+
 6. **Select your model** and build mode, then click **Start**
 7. **Watch the agent work** — each task streams activity in the feed below the board
 8. **Approve or reject** — review diffs, commit approved work, reject with notes to retry
+
+<p align="center">
+  <img src="public/screenshots/Kanban-build-loop.png" alt="Kanban Build Loop" width="800" />
+</p>
+
 9. **Create a PR** — when all tasks are done, use the green button to add a remote or create a PR
 10. **Check the Summary** tab for cost and performance metrics
+
+<p align="center">
+  <img src="public/screenshots/Project-summary.png" alt="Project Summary" width="800" />
+</p>
 
 ## Project Structure
 
