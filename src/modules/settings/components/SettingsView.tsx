@@ -160,7 +160,7 @@ function EngineOption({
 }
 
 export function SettingsView({ onSwitchProject }: SettingsViewProps) {
-    const [engineMode, setEngineMode] = useState<EngineMode>('api-key')
+    const [engineMode, setEngineMode] = useState<EngineMode>('claude-code')
     const [toolsPreset, setToolsPreset] = useState<CliToolsPreset>('conservative')
     const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-20250514')
     const [cliAvailable, setCliAvailable] = useState<{ available: boolean; error?: string } | null>(null)

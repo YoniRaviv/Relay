@@ -27,9 +27,9 @@ function getApiKey(): string {
       return safeStorage.decryptString(Buffer.from(encrypted as string, 'base64'));
     }
     return encrypted as string;
-  } catch {
-    store.delete('apiKey');
-    throw new Error('Stored API key was corrupted and has been cleared. Please re-enter your API key in Settings.');
+  } catch (err) {
+    console.error('[sdkEngine] API key decryption failed:', err);
+    throw new Error('Failed to decrypt API key. If this persists, re-enter your key in Settings.');
   }
 }
 
@@ -95,7 +95,13 @@ async function executeTool(
   }
   if (!projectPath) return { output: 'Error: Project path not found' };
 
-  const resolve = (p: string) => path.resolve(projectPath, p);
+  const resolve = (p: string) => {
+    const resolved = path.resolve(projectPath, p);
+    if (!resolved.startsWith(path.resolve(projectPath) + path.sep) && resolved !== path.resolve(projectPath)) {
+      throw new Error(`Path traversal blocked: "${p}" resolves outside the project directory`);
+    }
+    return resolved;
+  };
 
   switch (name) {
     case 'read_file': {

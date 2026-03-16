@@ -43,12 +43,17 @@ export async function autoCommitTask(
     }
 
     // Push if we have a commit
+    let pushWarning: string | null = null;
     if (commitHash) {
         try {
             const branchSummary = await git.branch();
             await git.push('origin', branchSummary.current, ['--set-upstream']);
-        } catch {
-            // Push may fail if no remote configured — continue anyway
+        } catch (pushErr) {
+            const pushMsg = pushErr instanceof Error ? pushErr.message : String(pushErr);
+            pushWarning = pushMsg.includes('remote') || pushMsg.includes('origin')
+                ? 'Push failed — no remote configured. Commit saved locally.'
+                : `Push failed: ${pushMsg}. Commit saved locally.`;
+            console.warn('[autoCommit] Push failed:', pushMsg);
         }
     }
 
@@ -57,13 +62,19 @@ export async function autoCommitTask(
         .run('done', commitHash, new Date().toISOString(), taskId);
 
     // Notify UI
-    win.webContents.send('agent:activity', {
-        id: randomUUID(),
-        taskId,
-        type: 'text',
-        content: commitHash ? `Auto-committed: ${commitHash}` : 'Done (no file changes)',
-        timestamp: new Date().toISOString(),
-    });
+    try {
+        if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+            win.webContents.send('agent:activity', {
+                id: randomUUID(),
+                taskId,
+                type: pushWarning ? 'error' : 'text',
+                content: commitHash
+                    ? `Auto-committed: ${commitHash}${pushWarning ? ` — ${pushWarning}` : ''}`
+                    : 'Done (no file changes)',
+                timestamp: new Date().toISOString(),
+            });
+        }
+    } catch { /* window destroyed */ }
 
     return { hash: commitHash || false };
 }

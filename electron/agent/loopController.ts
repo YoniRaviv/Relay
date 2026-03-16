@@ -154,8 +154,11 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
       // ── Handle pause/stop that interrupted the task ──
       if (abortSignal.aborted) {
         const db = getDbForProject(projectId);
+        // Check current task status — engine may have already moved it to 'review' or 'done'
+        const currentStatus = (db.prepare('SELECT status FROM tasks WHERE id = ?').get(task.id) as { status: string } | undefined)?.status;
+        const canReset = currentStatus === 'in_progress' || currentStatus === 'failed';
+
         if (loopState as string === 'paused') {
-          // Keep task in_progress while paused (shows in Building column with pause icon)
           safeSend(win,'agent:activity', {
             id: randomUUID(),
             taskId: task.id,
@@ -165,18 +168,22 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
           });
           refreshAndBroadcastTasks(projectId, prdId, win);
           await waitForUnpause(win, true); // skipEmit: pauseLoop already emitted
-          // After unpause: reset task to pending so it gets re-picked and rebuilt
-          db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
-            .run('pending', new Date().toISOString(), task.id);
+          // After unpause: only reset to pending if engine didn't already complete the task
+          if (canReset) {
+            db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
+              .run('pending', new Date().toISOString(), task.id);
+          }
           refreshAndBroadcastTasks(projectId, prdId, win);
           if (loopState as string === 'stopped') break;
           // Reset abort signal for the next task
           abortSignal = { aborted: false };
           continue;
         }
-        // Stopped — reset task to pending so it's not left in a broken state
-        db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
-          .run('pending', new Date().toISOString(), task.id);
+        // Stopped — only reset if task wasn't already completed by engine
+        if (canReset) {
+          db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
+            .run('pending', new Date().toISOString(), task.id);
+        }
         refreshAndBroadcastTasks(projectId, prdId, win);
         break;
       }
@@ -187,11 +194,13 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
         // Re-read current passes from DB (engine may have incremented)
         const currentRow = db.prepare('SELECT passes FROM tasks WHERE id = ?').get(task.id) as { passes: number } | undefined;
         const currentPasses = (currentRow?.passes ?? task.passes) + 1;
-        const maxPasses = store.get('maxPassesPerTask', 5) as number;
+        const rawMaxPasses = store.get('maxPassesPerTask', 5) as number;
+        // Treat 0 or negative as "no retries" (fail immediately), not "infinite"
+        const maxPasses = rawMaxPasses <= 0 ? 1 : rawMaxPasses;
 
         const errorMsg = result.error || 'Unknown error';
 
-        if (maxPasses > 0 && currentPasses >= maxPasses) {
+        if (currentPasses >= maxPasses) {
           // Exceeded max attempts — mark as permanently failed
           db.prepare('UPDATE tasks SET status = ?, passes = ?, rejection_notes = ?, updated_at = ? WHERE id = ?')
             .run('failed', currentPasses, `Failed after ${currentPasses} attempts. Last error: ${errorMsg}`, new Date().toISOString(), task.id);

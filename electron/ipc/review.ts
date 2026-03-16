@@ -68,12 +68,17 @@ export function registerReviewHandlers(): void {
       }
 
       // Push if we have a commit
+      let pushWarning: string | null = null;
       if (commitHash) {
         try {
           const branchSummary = await git.branch();
           await git.push('origin', branchSummary.current, ['--set-upstream']);
-        } catch {
-          // Push may fail if no remote configured — continue anyway
+        } catch (pushErr) {
+          const pushMsg = pushErr instanceof Error ? pushErr.message : String(pushErr);
+          pushWarning = pushMsg.includes('remote') || pushMsg.includes('origin')
+            ? 'Push failed — no remote configured. Commit saved locally.'
+            : `Push failed: ${pushMsg}. Commit saved locally.`;
+          console.warn('[review:approve] Push failed:', pushMsg);
         }
       }
 
@@ -88,7 +93,9 @@ export function registerReviewHandlers(): void {
         id: randomUUID(),
         taskId,
         type: 'text',
-        content: commitHash ? `Done — committed: ${commitHash}` : 'Done (no file changes)',
+        content: commitHash
+          ? `Done — committed: ${commitHash}${pushWarning ? ` (${pushWarning})` : ''}`
+          : 'Done (no file changes)',
         timestamp: new Date().toISOString(),
       });
 

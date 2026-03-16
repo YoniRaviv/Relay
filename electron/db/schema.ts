@@ -59,6 +59,17 @@ export function initializeDatabase(db: Database.Database): void {
     );
   `);
 
+  // Create indexes for common query patterns
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_prd_project_id ON prd(project_id);
+    CREATE INDEX IF NOT EXISTS idx_prd_created_at ON prd(created_at);
+    CREATE INDEX IF NOT EXISTS idx_tasks_project_prd ON tasks(project_id, prd_id);
+    CREATE INDEX IF NOT EXISTS idx_tasks_prd_status ON tasks(prd_id, status);
+    CREATE INDEX IF NOT EXISTS idx_tasks_status_order ON tasks(status, "order");
+    CREATE INDEX IF NOT EXISTS idx_task_logs_task_id ON task_logs(task_id);
+    CREATE INDEX IF NOT EXISTS idx_task_metrics_task_id ON task_metrics(task_id);
+  `);
+
   // Migration: add model column to existing databases
   const columns = db.pragma('table_info(task_metrics)') as Array<{ name: string }>;
   if (!columns.some(c => c.name === 'model')) {
@@ -81,5 +92,14 @@ export function initializeDatabase(db: Database.Database): void {
   const prdColumns = db.pragma('table_info(prd)') as Array<{ name: string }>;
   if (!prdColumns.some(c => c.name === 'feature_branch')) {
     db.exec(`ALTER TABLE prd ADD COLUMN feature_branch TEXT`);
+  }
+
+  // Recovery: reset orphaned in_progress tasks from previous crashed sessions
+  // These tasks were being built when the app crashed — reset to pending so the loop can retry
+  const orphaned = db.prepare(
+    `UPDATE tasks SET status = 'pending', updated_at = datetime('now') WHERE status = 'in_progress'`
+  ).run();
+  if (orphaned.changes > 0) {
+    console.warn(`[schema] Recovered ${orphaned.changes} orphaned in_progress task(s) from previous session`);
   }
 }
