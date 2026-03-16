@@ -56,11 +56,14 @@ interface RelayAPI {
   listPrds(projectId: string): Promise<Array<import('../shared/types').PRD & { taskCount: number; doneCount: number }>>
   deletePrd(prdId: string): Promise<unknown>
   prdSetFeatureBranch(prdId: string, branch: string): Promise<{ status: string }>
+  prdExportMarkdown(projectId: string, prdId: string): Promise<{ status: string; markdown: string }>
 
   // Tasks
   listTasks(projectId: string, prdId?: string): Promise<import('../shared/types').Task[]>
   updateTask(taskId: string, updates: Partial<import('../shared/types').Task>): Promise<unknown>
   reorderTasks(tasks: unknown): Promise<unknown>
+  createTask(params: { projectId: string; prdId: string; title: string; description: string; acceptanceCriteria: string; priority: string }): Promise<{ status: string; task: import('../shared/types').Task }>
+  deleteTask(taskId: string): Promise<unknown>
 
   // Agent Loop
   startLoop(projectId?: string, prdId?: string, buildMode?: import('../shared/types').BuildMode): Promise<unknown>

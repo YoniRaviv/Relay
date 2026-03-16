@@ -56,6 +56,7 @@ export interface Task {
   passes: number;
   rejectionNotes: string | null;
   commitHash: string | null;
+  dependsOn: string | null;  // comma-separated task IDs
   createdAt: string;
   updatedAt: string;
 }

@@ -1,6 +1,6 @@
-import { useMemo, useState, useCallback, useImperativeHandle, forwardRef } from 'react'
+import { useMemo, useRef, useState, useCallback, useImperativeHandle, forwardRef } from 'react'
 import { html, parse } from 'diff2html'
-import { ChevronDown, ChevronRight, FileEdit, FilePlus, FileX, FileText } from 'lucide-react'
+import { ChevronDown, ChevronRight, FileEdit, FilePlus, FileX, FileText, Columns2, AlignJustify } from 'lucide-react'
 import 'diff2html/bundles/css/diff2html.min.css'
 
 interface DiffViewerProps {
@@ -21,13 +21,18 @@ const fileTypeConfig = {
 } as const
 
 export const DiffViewer = forwardRef<DiffViewerHandle, DiffViewerProps>(
-    function DiffViewer({ diffString, outputFormat = 'line-by-line', onActiveFileChange }, ref) {
+    function DiffViewer({ diffString, outputFormat: initialFormat = 'line-by-line', onActiveFileChange }, ref) {
         const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+        const [outputFormat, setOutputFormat] = useState(initialFormat)
+
+        // Parse diff metadata upfront, but defer HTML generation until file is expanded
+        const parsedFiles = useMemo(() => {
+            if (!diffString.trim()) return []
+            return parse(diffString)
+        }, [diffString])
 
         const fileDiffs = useMemo(() => {
-            if (!diffString.trim()) return []
-            const parsed = parse(diffString)
-            return parsed.map((file) => ({
+            return parsedFiles.map((file) => ({
                 path: file.newName !== '/dev/null' ? file.newName : file.oldName,
                 isNew: file.oldName === '/dev/null',
                 isDeleted: file.newName === '/dev/null',
@@ -35,13 +40,23 @@ export const DiffViewer = forwardRef<DiffViewerHandle, DiffViewerProps>(
                 addedLines: file.addedLines,
                 deletedLines: file.deletedLines,
                 isBinary: file.isBinary,
-                html: html([file], {
-                    drawFileList: false,
-                    matching: 'lines',
-                    outputFormat,
-                }),
+                // Lazy: generate HTML only when needed (cached via htmlCache)
+                get html() {
+                    const key = `${file.newName}:${outputFormat}`
+                    if (!htmlCache.current.has(key)) {
+                        htmlCache.current.set(key, html([file], {
+                            drawFileList: false,
+                            matching: 'lines',
+                            outputFormat,
+                        }))
+                    }
+                    return htmlCache.current.get(key)!
+                },
             }))
-        }, [diffString, outputFormat])
+        }, [parsedFiles, outputFormat])
+
+        // Cache generated HTML to avoid re-rendering on collapse/expand
+        const htmlCache = useRef(new Map<string, string>())
 
         const toggleCollapse = useCallback((path: string) => {
             setCollapsed((prev) => ({ ...prev, [path]: !prev[path] }))
@@ -64,10 +79,49 @@ export const DiffViewer = forwardRef<DiffViewerHandle, DiffViewerProps>(
             return <p className="text-muted-foreground p-4 text-sm">No changes detected.</p>
         }
 
+        // Auto-collapse files in large diffs to avoid DOM bloat
+        const autoCollapse = fileDiffs.length > 10
+
+        // Clear HTML cache when format changes
+        const prevFormat = useRef(outputFormat)
+        if (prevFormat.current !== outputFormat) {
+            htmlCache.current.clear()
+            prevFormat.current = outputFormat
+        }
+
         return (
             <div className="diff-viewer">
-                {fileDiffs.map((file) => {
-                    const isCollapsed = collapsed[file.path] ?? false
+                {/* Format toggle */}
+                <div className="flex items-center gap-1 px-3 py-2 border-b border-border bg-muted/30">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mr-2">View</span>
+                    <button
+                        onClick={() => setOutputFormat('line-by-line')}
+                        className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+                            outputFormat === 'line-by-line'
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                    >
+                        <AlignJustify className="h-3 w-3" />
+                        Unified
+                    </button>
+                    <button
+                        onClick={() => setOutputFormat('side-by-side')}
+                        className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+                            outputFormat === 'side-by-side'
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                    >
+                        <Columns2 className="h-3 w-3" />
+                        Side by Side
+                    </button>
+                    <span className="ml-auto text-[10px] text-muted-foreground">
+                        {fileDiffs.length} file{fileDiffs.length !== 1 ? 's' : ''} changed
+                    </span>
+                </div>
+                {fileDiffs.map((file, index) => {
+                    const isCollapsed = collapsed[file.path] ?? (autoCollapse && index > 2)
                     const tag = file.isNew ? 'added' : file.isDeleted ? 'deleted' : file.isRenamed ? 'renamed' : 'changed'
                     const config = fileTypeConfig[tag]
                     const Icon = config.icon
@@ -106,6 +160,7 @@ export const DiffViewer = forwardRef<DiffViewerHandle, DiffViewerProps>(
                                 </span>
                             </button>
 
+                            {/* Lazy render: only generate HTML when expanded */}
                             {!isCollapsed && (
                                 <div
                                     className="text-sm overflow-x-auto"

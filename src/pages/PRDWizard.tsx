@@ -5,7 +5,8 @@ import { useIpcListener } from '@/shared/hooks/useIpcListener'
 import { ArrowLeft } from 'lucide-react'
 import type { DecomposedTask } from '@/shared/types/prd'
 
-const STEPS = ['Describe', 'Review PRD', 'Edit', 'Tasks', 'Confirm']
+const PRD_STEPS = ['Describe', 'Review PRD', 'Edit', 'Tasks', 'Confirm']
+const MANUAL_STEPS = ['Describe', 'Add Tasks', 'Confirm']
 
 interface PRDWizardProps {
     onComplete: () => void
@@ -34,6 +35,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
     const [tasks, setTasks] = useState<DecomposedTask[]>([])
     const [error, setError] = useState('')
     const [agentStatus, setAgentStatus] = useState('')
+    const [manualMode, setManualMode] = useState(false)
 
     // Simulated streaming for CLI mode (large chunks arrive at once)
     const textQueueRef = useRef('')
@@ -198,21 +200,51 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
 
     const confirmTasks = useCallback(async () => {
         if (!activeProject) return
+        // Validate: at least one task with a title
+        const validTasks = tasks.filter(t => t.title.trim())
+        if (validTasks.length === 0) {
+            setError('Add at least one task with a title.')
+            return
+        }
         setSaving(true)
         setError('')
         try {
             await window.relayAPI.savePrd({
                 projectId: activeProject.id,
-                description: featureDescription,
-                markdown: prdMarkdown,
-                tasks,
+                description: featureDescription || (manualMode ? validTasks[0].title : ''),
+                markdown: prdMarkdown || (manualMode ? `# ${featureDescription || 'Manual Feature'}\n\nManual tasks — no PRD generated.` : ''),
+                tasks: validTasks,
             })
             onComplete()
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to save')
             setSaving(false)
         }
-    }, [activeProject, featureDescription, prdMarkdown, tasks, onComplete])
+    }, [activeProject, featureDescription, prdMarkdown, tasks, manualMode, onComplete])
+
+    const handleManualMode = () => {
+        setManualMode(true)
+        setTasks([{
+            storyId: 'TASK-001',
+            title: '',
+            description: '',
+            acceptanceCriteria: '',
+            priority: 'medium',
+        }])
+        setPrdMarkdown('')
+        setWizardStep(3)
+    }
+
+    const addEmptyTask = () => {
+        const num = tasks.length + 1
+        setTasks(prev => [...prev, {
+            storyId: `TASK-${String(num).padStart(3, '0')}`,
+            title: '',
+            description: '',
+            acceptanceCriteria: '',
+            priority: 'medium',
+        }])
+    }
 
     const removeTasks = (index: number) => {
         setTasks((prev) => prev.filter((_, i) => i !== index))
@@ -231,6 +263,11 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         if (wizardStep === 0) {
             // First step — exit wizard entirely
             onBack()
+        } else if (manualMode && wizardStep === 3) {
+            // Manual mode tasks → back to describe
+            setManualMode(false)
+            setTasks([])
+            setWizardStep(0)
         } else if (wizardStep === 2) {
             // Edit → back to Review PRD
             setWizardStep(1)
@@ -269,7 +306,10 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
 
                 {/* Steps */}
                 <div className="px-5 py-2 flex-1">
-                    <StepIndicator steps={STEPS} currentStep={effectiveStep} />
+                    <StepIndicator
+                        steps={manualMode ? MANUAL_STEPS : PRD_STEPS}
+                        currentStep={manualMode ? (wizardStep === 0 ? 0 : 1) : effectiveStep}
+                    />
                 </div>
 
                 {/* Feature description context */}
@@ -298,14 +338,14 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                             {effectiveStep === 0 && 'Describe your feature'}
                             {effectiveStep === 1 && (streaming ? 'Generating PRD...' : 'Review your PRD')}
                             {effectiveStep === 2 && 'Edit PRD'}
-                            {effectiveStep === 3 && (decomposing ? 'Decomposing into tasks...' : 'Review tasks')}
+                            {effectiveStep === 3 && (decomposing ? 'Decomposing into tasks...' : manualMode ? 'Add your tasks' : 'Review tasks')}
                             {effectiveStep === 4 && 'Confirm'}
                         </h1>
                         <p className="text-sm text-muted-foreground mt-1">
                             {effectiveStep === 0 && 'What are you building? Be as detailed as you like.'}
                             {effectiveStep === 1 && (streaming ? 'Claude is writing the product requirements.' : 'Make sure this captures what you want to build.')}
                             {effectiveStep === 2 && 'Refine the markdown directly, then save.'}
-                            {effectiveStep === 3 && (decomposing ? 'Breaking the PRD into buildable tasks.' : 'Remove any tasks that aren\'t needed, then start building.')}
+                            {effectiveStep === 3 && (decomposing ? 'Breaking the PRD into buildable tasks.' : manualMode ? 'Define the tasks you want the agent to build.' : 'Remove any tasks that aren\'t needed, then start building.')}
                         </p>
                     </div>
 
@@ -321,6 +361,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                                 value={featureDescription}
                                 onChange={setFeatureDescription}
                                 onGenerate={generatePrd}
+                                onManualMode={handleManualMode}
                                 loading={streaming}
                                 projectContext={projectContext}
                                 scanningProject={scanningProject}
@@ -390,13 +431,25 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                                     </div>
                                 </div>
                             ) : (
-                                <TaskReview
-                                    tasks={tasks}
-                                    onRemove={removeTasks}
-                                    onUpdate={updateTask}
-                                    onConfirm={confirmTasks}
-                                    loading={saving}
-                                />
+                                <>
+                                    {manualMode && (
+                                        <div className="mb-5">
+                                            <button
+                                                onClick={addEmptyTask}
+                                                className="w-full py-2.5 rounded-md border border-dashed border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                                            >
+                                                + Add Task
+                                            </button>
+                                        </div>
+                                    )}
+                                    <TaskReview
+                                        tasks={tasks}
+                                        onRemove={removeTasks}
+                                        onUpdate={updateTask}
+                                        onConfirm={confirmTasks}
+                                        loading={saving}
+                                    />
+                                </>
                             )
                         )}
                     </div>

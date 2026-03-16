@@ -9,8 +9,10 @@ import { useRelayStore } from '@/store/useRelayStore'
 interface TaskCardProps {
     task: Task
     isActive?: boolean
+    isSelected?: boolean
     onClick: () => void
     onReview?: () => void
+    onShiftClick?: () => void
 }
 
 function TaskCardContent({ task, isPaused }: { task: Task; isPaused?: boolean }) {
@@ -32,7 +34,7 @@ function TaskCardContent({ task, isPaused }: { task: Task; isPaused?: boolean })
     )
 }
 
-export const TaskCard = React.memo(function TaskCard({ task, isActive, onClick, onReview }: TaskCardProps) {
+export const TaskCard = React.memo(function TaskCard({ task, isActive, isSelected, onClick, onReview, onShiftClick }: TaskCardProps) {
     const loopState = useRelayStore((s) => s.loopState)
     const isPausedInProgress = task.status === 'in_progress' && loopState === 'paused'
     const {
@@ -55,17 +57,26 @@ export const TaskCard = React.memo(function TaskCard({ task, isActive, onClick, 
             style={style}
             {...attributes}
             {...listeners}
-            onClick={onClick}
+            onClick={(e) => {
+                if (e.shiftKey && onShiftClick) {
+                    e.preventDefault()
+                    onShiftClick()
+                } else {
+                    onClick()
+                }
+            }}
             className={`p-3 rounded-lg bg-card cursor-pointer transition-all shadow-sm hover:shadow-md ${
                 isDragging ? 'opacity-0' : ''
-            } ${isActive && task.status === 'in_progress' && !isPausedInProgress
-                ? 'ring-2 ring-emerald-500 building-glow'
-                : isPausedInProgress
-                    ? 'ring-2 ring-amber-500/60'
-                    : isActive && task.status === 'in_progress'
-                        ? 'ring-2 ring-primary ring-offset-1 ring-offset-background'
-                        : ''
-            } ${task.status === 'review' ? 'ring-1 ring-amber-500/40' : ''
+            } ${isSelected
+                ? 'ring-2 ring-primary bg-primary/5'
+                : isActive && task.status === 'in_progress' && !isPausedInProgress
+                    ? 'ring-2 ring-emerald-500 building-glow'
+                    : isPausedInProgress
+                        ? 'ring-2 ring-amber-500/60'
+                        : isActive && task.status === 'in_progress'
+                            ? 'ring-2 ring-primary ring-offset-1 ring-offset-background'
+                            : ''
+            } ${task.status === 'review' && !isSelected ? 'ring-1 ring-amber-500/40' : ''
             }`}
         >
             <TaskCardContent task={task} isPaused={isPausedInProgress} />

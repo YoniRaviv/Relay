@@ -1,6 +1,23 @@
 import simpleGit from 'simple-git';
+import fs from 'node:fs';
+import path from 'node:path';
 import { openDb } from '../db/connection';
 import { store } from '../ipc/settings';
+
+/** Ensure critical ignore patterns exist before any commit to prevent staging node_modules etc. */
+function ensureMinimalGitignore(projectPath: string): void {
+    const MUST_IGNORE = ['node_modules/', '.relay/', 'dist/', 'build/', '.env', '.env.*'];
+    const gitignorePath = path.join(projectPath, '.gitignore');
+    try {
+        const existing = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf-8') : '';
+        const lines = new Set(existing.split('\n').map(l => l.trim()));
+        const toAdd = MUST_IGNORE.filter(p => !lines.has(p));
+        if (toAdd.length > 0) {
+            const base = existing.endsWith('\n') || existing === '' ? existing : existing + '\n';
+            fs.writeFileSync(gitignorePath, base + toAdd.join('\n') + '\n', 'utf-8');
+        }
+    } catch { /* best effort */ }
+}
 
 function getProjectPath(projectId: string): string {
     const projects = store.get('recentProjects', []) as Array<{ path: string }>;
@@ -24,6 +41,7 @@ export async function stageAndCommit(
     projectPath: string,
     message: string,
 ): Promise<string | null> {
+    ensureMinimalGitignore(projectPath);
     const git = simpleGit(projectPath);
     await git.add('.');
     try {
@@ -175,9 +193,9 @@ export async function approveTask(
     // Push
     const pushWarning = await pushToRemote(projectPath);
 
-    // Update task
-    db.prepare('UPDATE tasks SET status = ?, commit_hash = ?, updated_at = ? WHERE id = ?')
-        .run('done', commitHash, new Date().toISOString(), taskId);
+    // Update task — mark as human-approved
+    db.prepare('UPDATE tasks SET status = ?, commit_hash = ?, approved_by = ?, updated_at = ? WHERE id = ?')
+        .run('done', commitHash, 'human', new Date().toISOString(), taskId);
 
     return { hash: commitHash, pushWarning };
 }

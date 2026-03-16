@@ -44,11 +44,14 @@ const relayAPI = {
   listPrds: (projectId: string) => ipcRenderer.invoke('prd:list', projectId),
   deletePrd: (prdId: string) => ipcRenderer.invoke('prd:delete', prdId),
   prdSetFeatureBranch: (prdId: string, branch: string) => ipcRenderer.invoke('prd:setFeatureBranch', prdId, branch),
+  prdExportMarkdown: (projectId: string, prdId: string) => ipcRenderer.invoke('prd:exportMarkdown', projectId, prdId),
 
   // Tasks
   listTasks: (projectId: string, prdId?: string) => ipcRenderer.invoke('tasks:list', projectId, prdId),
   updateTask: (taskId: string, updates: unknown) => ipcRenderer.invoke('tasks:update', taskId, updates),
   reorderTasks: (tasks: unknown) => ipcRenderer.invoke('tasks:reorder', tasks),
+  createTask: (params: { projectId: string; prdId: string; title: string; description: string; acceptanceCriteria: string; priority: string }) => ipcRenderer.invoke('tasks:create', params),
+  deleteTask: (taskId: string) => ipcRenderer.invoke('tasks:delete', taskId),
 
   // Agent Loop
   startLoop: (projectId?: string, prdId?: string, buildMode?: string) => ipcRenderer.invoke('loop:start', projectId, prdId, buildMode),

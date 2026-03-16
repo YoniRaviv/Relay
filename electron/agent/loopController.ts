@@ -6,7 +6,8 @@ import { getEngine } from './engines';
 import { openDb } from '../db/connection';
 import { store } from '../ipc/settings';
 import { autoCommitTask } from './autoCommit';
-import { createWipCommit } from '../git/commitHelper';
+import { createWipCommit, getProjectPath as getProjectPathFromHelper } from '../git/commitHelper';
+import { cleanStaleLockFile } from '../git/lock';
 import type { Task, BuildMode } from '../../shared/types';
 
 /** Safe wrapper for webContents.send — silently drops messages if window is destroyed */
@@ -59,6 +60,7 @@ function rowToTask(row: Record<string, unknown>): Task {
     passes: row.passes as number,
     rejectionNotes: row.rejection_notes as string | null,
     commitHash: (row.commit_hash as string | null) ?? null,
+    dependsOn: (row.depends_on as string | null) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -66,18 +68,31 @@ function rowToTask(row: Record<string, unknown>): Task {
 
 function getNextPendingTask(projectId: string, prdId?: string): Task | null {
   const db = getDbForProject(projectId);
-  if (prdId) {
-    const row = db.prepare(
-      `SELECT * FROM tasks WHERE project_id = ? AND prd_id = ? AND status = 'pending' ORDER BY "order" ASC LIMIT 1`
-    ).get(projectId, prdId) as Record<string, unknown> | undefined;
-    if (!row) return null;
-    return rowToTask(row);
+  const query = prdId
+    ? `SELECT * FROM tasks WHERE project_id = ? AND prd_id = ? AND status = 'pending' ORDER BY "order" ASC`
+    : `SELECT * FROM tasks WHERE project_id = ? AND status = 'pending' ORDER BY "order" ASC`;
+  const params = prdId ? [projectId, prdId] : [projectId];
+  const rows = db.prepare(query).all(...params) as Record<string, unknown>[];
+
+  // Find the first task whose dependencies (if any) are all done
+  for (const row of rows) {
+    const dependsOn = row.depends_on as string | null;
+    if (!dependsOn) return rowToTask(row); // No dependencies — ready to go
+
+    const depIds = dependsOn.split(',').map(s => s.trim()).filter(Boolean);
+    if (depIds.length === 0) return rowToTask(row);
+
+    // Check all dependencies are done
+    const placeholders = depIds.map(() => '?').join(',');
+    const doneCount = (db.prepare(
+      `SELECT COUNT(*) as c FROM tasks WHERE id IN (${placeholders}) AND status = 'done'`
+    ).get(...depIds) as { c: number }).c;
+
+    if (doneCount === depIds.length) return rowToTask(row);
+    // Otherwise skip this task and try the next pending one
   }
-  const row = db.prepare(
-    `SELECT * FROM tasks WHERE project_id = ? AND status = 'pending' ORDER BY "order" ASC LIMIT 1`
-  ).get(projectId) as Record<string, unknown> | undefined;
-  if (!row) return null;
-  return rowToTask(row);
+
+  return null;
 }
 
 function refreshAndBroadcastTasks(projectId: string, prdId: string | undefined, win: BrowserWindow): void {
@@ -113,6 +128,12 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
   loopState = 'running';
   abortSignal = { aborted: false };
   safeSend(win,'loop:stateChange', { state: 'running' });
+
+  // Clean up any stale git lock files from previous crashed sessions
+  try {
+    const projectPath = getProjectPathFromHelper(projectId);
+    cleanStaleLockFile(projectPath);
+  } catch { /* non-critical */ }
 
   try {
     while (loopState as string === 'running') {
@@ -222,6 +243,9 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
           if (loopState as string === 'stopped') break;
         }
         if (loopState as string === 'stopped') break;
+
+        // Brief delay before retry to prevent cascade bombing when git is locked or CC crashes
+        await new Promise(r => setTimeout(r, 2000));
         continue;
       }
 

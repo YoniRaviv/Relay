@@ -20,10 +20,10 @@ export async function autoCommitTask(
         pushWarning = await pushToRemote(projectPath);
     }
 
-    // Update task status to done with commit hash
+    // Update task status to done with commit hash — mark as auto-approved
     const db = openDb(projectPath);
-    db.prepare('UPDATE tasks SET status = ?, commit_hash = ?, updated_at = ? WHERE id = ?')
-        .run('done', commitHash, new Date().toISOString(), taskId);
+    db.prepare('UPDATE tasks SET status = ?, commit_hash = ?, approved_by = ?, updated_at = ? WHERE id = ?')
+        .run('done', commitHash, 'auto', new Date().toISOString(), taskId);
 
     // Notify UI
     try {

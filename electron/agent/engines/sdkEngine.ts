@@ -2,7 +2,7 @@ import { BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { getClient } from '../runner';
-import { buildTaskPrompt } from '../promptBuilder';
+import { buildTaskPrompt, TASK_SYSTEM_PROMPT } from '../promptBuilder';
 import { buildCumulativeContext } from '../buildContext';
 import { openDb } from '../../db/connection';
 import { store } from '../../ipc/settings';
@@ -237,15 +237,7 @@ export const sdkEngine: TaskEngine = {
         const response = await anthropic.messages.create({
           model: modelId,
           max_tokens: 16384,
-          system: `You are an expert software engineer completing a coding task. Work methodically:
-1. First explore the project structure with list_files and search_files to understand the codebase
-2. Read relevant files before making changes
-3. Use edit_file for precise changes to existing files (preferred over write_file for existing files)
-4. Use write_file only for new files or when rewriting an entire file
-5. After making changes, read the file back to verify correctness
-6. Call task_complete when all acceptance criteria are met
-
-If a tool call fails, analyze the error and try a different approach. Do not give up.`,
+          system: TASK_SYSTEM_PROMPT,
           messages,
           tools: [
             {

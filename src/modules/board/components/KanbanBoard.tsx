@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, useEffect } from 'react'
 import {
     DndContext,
     DragEndEvent,
@@ -12,6 +12,9 @@ import {
 import { arrayMove } from '@dnd-kit/sortable'
 import { KanbanColumn } from './KanbanColumn'
 import { TaskCardOverlay } from './TaskCard'
+import { Button } from '@/components/ui/button'
+import { Trash2, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { useRelayStore } from '@/store/useRelayStore'
 import type { Task, TaskStatus } from '@shared/types'
 
@@ -45,6 +48,30 @@ export function KanbanBoard() {
     const currentTaskId = useRelayStore((s) => s.currentTaskId)
     const setReviewingTaskId = useRelayStore((s) => s.setReviewingTaskId)
     const [activeTask, setActiveTask] = useState<Task | null>(null)
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const isSelecting = selectedIds.size > 0
+
+    // Clear selection when tasks change (e.g. after bulk delete)
+    useEffect(() => { setSelectedIds(new Set()) }, [tasks])
+
+    const toggleSelect = useCallback((taskId: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev)
+            if (next.has(taskId)) next.delete(taskId)
+            else next.add(taskId)
+            return next
+        })
+    }, [])
+
+    const handleBulkDelete = useCallback(async () => {
+        if (!window.confirm(`Delete ${selectedIds.size} task(s)? This cannot be undone.`)) return
+        for (const id of selectedIds) {
+            await window.relayAPI.deleteTask(id)
+        }
+        setTasks(tasks.filter(t => !selectedIds.has(t.id)))
+        setSelectedIds(new Set())
+        toast.success(`Deleted ${selectedIds.size} tasks`)
+    }, [selectedIds, tasks, setTasks])
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -144,6 +171,20 @@ export function KanbanBoard() {
             onDragEnd={handleDragEnd}
             onDragCancel={handleDragCancel}
         >
+            {/* Bulk action bar */}
+            {isSelecting && (
+                <div className="flex items-center gap-3 px-6 py-2 bg-muted/50 border-b border-border">
+                    <span className="text-xs font-medium">{selectedIds.size} selected</span>
+                    <Button size="sm" variant="destructive" className="h-6 gap-1 text-xs" onClick={handleBulkDelete}>
+                        <Trash2 className="h-3 w-3" />
+                        Delete
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-6 gap-1 text-xs" onClick={() => setSelectedIds(new Set())}>
+                        <X className="h-3 w-3" />
+                        Clear
+                    </Button>
+                </div>
+            )}
             <div className="flex gap-4 p-6 h-full overflow-x-auto">
                 {COLUMNS.map((col) => (
                     <KanbanColumn
@@ -152,8 +193,10 @@ export function KanbanBoard() {
                         title={col.title}
                         tasks={columnTasks(col.id)}
                         activeTaskId={currentTaskId}
-                        onTaskClick={setSelectedTaskId}
+                        onTaskClick={isSelecting ? toggleSelect : setSelectedTaskId}
                         onTaskReview={setReviewingTaskId}
+                        selectedIds={selectedIds}
+                        onToggleSelect={toggleSelect}
                     />
                 ))}
             </div>

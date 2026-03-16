@@ -189,6 +189,28 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                     onViewChange={setSidebarView}
                     onNewFeature={onNewFeature}
                     onSelectFeature={onSelectFeature}
+                    onDeleteFeature={async (prdId) => {
+                        // Stop loop if it's running for this feature
+                        const { loopState: ls, activePrdId: currentPrd } = useRelayStore.getState()
+                        if (currentPrd === prdId && (ls === 'running' || ls === 'paused')) {
+                            await window.relayAPI.stopLoop()
+                        }
+                        await window.relayAPI.deletePrd(prdId)
+                        // Refresh features and switch to another if available
+                        const freshFeatures = await window.relayAPI.listPrds(activeProject.id)
+                        setFeatures(freshFeatures)
+                        if (prdId === useRelayStore.getState().activePrdId) {
+                            if (freshFeatures.length > 0) {
+                                onSelectFeature(freshFeatures[0].id)
+                            } else {
+                                setTasks([])
+                                useRelayStore.getState().setPrd(null)
+                                useRelayStore.getState().setPrdMarkdown('')
+                                useRelayStore.getState().setActivePrdId(null)
+                            }
+                        }
+                        toast.success('Feature deleted')
+                    }}
                     onSwitchProject={onSwitchProject}
                 />
             }
@@ -263,7 +285,22 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
 
                         {sidebarView === 'prd' && (
                             <div className="p-6 overflow-auto h-full">
-                                <h2 className="text-lg font-semibold mb-4">Product Requirements Document</h2>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-lg font-semibold">Product Requirements Document</h2>
+                                    {prdMarkdown && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="gap-1.5 text-xs"
+                                            onClick={() => {
+                                                useRelayStore.getState().setWizardStep(1)
+                                                onNewFeature()
+                                            }}
+                                        >
+                                            Edit & Re-decompose
+                                        </Button>
+                                    )}
+                                </div>
                                 {prdMarkdown ? (
                                     <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-lg p-4">
                                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
