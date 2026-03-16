@@ -1,11 +1,11 @@
 import { BrowserWindow, Notification } from 'electron';
 import { randomUUID } from 'node:crypto';
-import simpleGit from 'simple-git';
 import * as Sentry from '@sentry/electron/main';
 import { getEngine } from './engines';
 import { openDb } from '../db/connection';
 import { store } from '../ipc/settings';
 import { autoCommitTask } from './autoCommit';
+import { createWipCommit } from '../git/commitHelper';
 import type { Task, BuildMode } from '../../shared/types';
 
 /** Safe wrapper for webContents.send — silently drops messages if window is destroyed */
@@ -27,20 +27,6 @@ function sendNotification(title: string, body: string): void {
 
 let loopState: 'idle' | 'running' | 'paused' | 'stopped' = 'idle';
 let abortSignal = { aborted: false };
-
-function getProjectPath(projectId: string): string {
-  const projects = store.get('recentProjects', []) as Array<{ path: string }>;
-  for (const p of projects) {
-    try {
-      const db = openDb(p.path);
-      const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
-      if (row) return p.path;
-    } catch {
-      continue;
-    }
-  }
-  throw new Error('Project not found');
-}
 
 function getDbForProject(projectId: string) {
   const projects = store.get('recentProjects', []) as Array<{ path: string }>;
@@ -241,34 +227,47 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
         continue;
       }
 
-      // ── Task succeeded — refresh UI ──
-      refreshAndBroadcastTasks(projectId, prdId, win);
-
-      // Check if the task is now in review — behaviour depends on effectiveBuildMode
+      // ── Task succeeded — create WIP commit to isolate this task's changes ──
       const db = getDbForProject(projectId);
       const updatedTask = db.prepare('SELECT status, story_id, title FROM tasks WHERE id = ?').get(task.id) as Record<string, unknown> | undefined;
+
       if (updatedTask && updatedTask.status === 'review') {
-        // Auto-approve tasks with no file changes — nothing to review
+        // Create a WIP commit for this task — isolates its changes from the next task
+        let wipHash: string | null = null;
         try {
-          const projectPath = getProjectPath(projectId);
-          const git = simpleGit(projectPath);
-          const status = await git.status();
-          if (status.isClean()) {
-            db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
-              .run('done', new Date().toISOString(), task.id);
-            safeSend(win, 'agent:activity', {
-              id: randomUUID(),
-              taskId: task.id,
-              type: 'text',
-              content: 'No file changes detected — marked done.',
-              timestamp: new Date().toISOString(),
-            });
-            refreshAndBroadcastTasks(projectId, prdId, win);
-            continue;
-          }
-        } catch {
-          // Git check failed — proceed with normal review flow
+          wipHash = await createWipCommit(
+            projectId, task.id,
+            updatedTask.story_id as string,
+            updatedTask.title as string,
+          );
+        } catch (err) {
+          console.warn('[loopController] WIP commit failed:', err);
         }
+
+        if (!wipHash) {
+          // No file changes — auto-mark done
+          db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
+            .run('done', new Date().toISOString(), task.id);
+          safeSend(win, 'agent:activity', {
+            id: randomUUID(),
+            taskId: task.id,
+            type: 'text',
+            content: 'No file changes detected — marked done.',
+            timestamp: new Date().toISOString(),
+          });
+          refreshAndBroadcastTasks(projectId, prdId, win);
+          continue;
+        }
+
+        safeSend(win, 'agent:activity', {
+          id: randomUUID(),
+          taskId: task.id,
+          type: 'text',
+          content: `Changes saved as WIP commit: ${wipHash.slice(0, 7)}`,
+          timestamp: new Date().toISOString(),
+        });
+        refreshAndBroadcastTasks(projectId, prdId, win);
+
         if (effectiveBuildMode === 'auto-pilot' || effectiveBuildMode === ('auto-commit' as string)) {
           // Auto-commit and mark as done, then continue
           const commitPrefix = (store.get('commitPrefix') ?? 'feat') as string;
@@ -298,6 +297,8 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
           await waitForUnpause(win);
           if (loopState as string === 'stopped') break;
         }
+      } else {
+        refreshAndBroadcastTasks(projectId, prdId, win);
       }
 
       // Check if paused (manual pause between tasks)

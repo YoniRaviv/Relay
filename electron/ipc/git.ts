@@ -33,19 +33,18 @@ export interface FileChange {
 }
 
 export function registerGitHandlers(): void {
+  // #39: Consistent .relay/ exclusion in all diff outputs
   ipcMain.handle('git:diff', async (_event, projectId: string) => {
     const projectPath = getProjectPath(projectId);
     const git = simpleGit(projectPath);
-    // Get diff of all uncommitted changes (staged + unstaged)
-    const diff = await git.diff();
-    const stagedDiff = await git.diff(['--cached']);
+    // Get diff of all uncommitted changes (staged + unstaged), excluding .relay/
+    const diff = await git.diff(['--', '.', ':!.relay/']);
+    const stagedDiff = await git.diff(['--cached', '--', '.', ':!.relay/']);
     // Also include untracked files as diffs
     const status = await git.status();
     let untrackedDiff = '';
-    for (const file of status.not_added) {
+    for (const file of status.not_added.filter(f => !f.startsWith('.relay/') && !f.startsWith('.relay\\'))) {
       try {
-        const fs = await import('node:fs');
-        const path = await import('node:path');
         const content = fs.readFileSync(path.resolve(projectPath, file), 'utf-8');
         untrackedDiff += `diff --git a/${file} b/${file}\nnew file mode 100644\n--- /dev/null\n+++ b/${file}\n@@ -0,0 +1,${content.split('\n').length} @@\n${content.split('\n').map(l => `+${l}`).join('\n')}\n`;
       } catch {

@@ -63,7 +63,7 @@ export interface Task {
 export interface TaskLog {
   id: string;
   taskId: string;
-  type: 'text' | 'tool_use' | 'tool_result' | 'error';
+  type: 'text' | 'tool_use' | 'tool_result' | 'error' | 'warning';
   content: string;
   timestamp: string;
   // Structured metadata (optional, backward-compatible)

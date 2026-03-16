@@ -77,7 +77,7 @@ const relayAPI = {
   gitEnsureGitignore: (projectId: string) => ipcRenderer.invoke('git:ensureGitignore', projectId),
 
   // Review
-  reviewGetDiff: (projectId: string) => ipcRenderer.invoke('review:getDiff', projectId),
+  reviewGetDiff: (projectId: string, taskId?: string) => ipcRenderer.invoke('review:getDiff', projectId, taskId),
   reviewApprove: (projectId: string, taskId: string, commitMessage: string) => ipcRenderer.invoke('review:approve', projectId, taskId, commitMessage),
   reviewReject: (projectId: string, taskId: string, notes: string) => ipcRenderer.invoke('review:reject', projectId, taskId, notes),
 
