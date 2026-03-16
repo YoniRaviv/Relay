@@ -32,7 +32,7 @@ export function initializeDatabase(db: Database.Database): void {
       priority TEXT NOT NULL DEFAULT 'medium',
       status TEXT NOT NULL DEFAULT 'pending',
       "order" INTEGER NOT NULL DEFAULT 0,
-      passes INTEGER NOT NULL DEFAULT 0,
+      passes INTEGER NOT NULL DEFAULT 0,  -- total attempt count (incremented on failure or rejection)
       rejection_notes TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -53,7 +53,7 @@ export function initializeDatabase(db: Database.Database): void {
       tokens_in INTEGER NOT NULL DEFAULT 0,
       tokens_out INTEGER NOT NULL DEFAULT 0,
       tool_calls INTEGER NOT NULL DEFAULT 0,
-      passes INTEGER NOT NULL DEFAULT 0,
+      passes INTEGER NOT NULL DEFAULT 0,  -- attempt number at time of this metric (1-based)
       model TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -113,6 +113,16 @@ export function initializeDatabase(db: Database.Database): void {
         const cols = db.pragma('table_info(prd)') as Array<{ name: string }>;
         if (!cols.some(c => c.name === 'feature_branch')) {
           db.exec(`ALTER TABLE prd ADD COLUMN feature_branch TEXT`);
+        }
+      },
+    },
+    {
+      version: 5,
+      description: 'Add approved_by column to tasks (human vs auto tracking)',
+      up: () => {
+        const cols = db.pragma('table_info(tasks)') as Array<{ name: string }>;
+        if (!cols.some(c => c.name === 'approved_by')) {
+          db.exec(`ALTER TABLE tasks ADD COLUMN approved_by TEXT`); // 'human' | 'auto' | null
         }
       },
     },

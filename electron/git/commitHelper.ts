@@ -175,9 +175,9 @@ export async function approveTask(
     // Push
     const pushWarning = await pushToRemote(projectPath);
 
-    // Update task
-    db.prepare('UPDATE tasks SET status = ?, commit_hash = ?, updated_at = ? WHERE id = ?')
-        .run('done', commitHash, new Date().toISOString(), taskId);
+    // Update task — mark as human-approved
+    db.prepare('UPDATE tasks SET status = ?, commit_hash = ?, approved_by = ?, updated_at = ? WHERE id = ?')
+        .run('done', commitHash, 'human', new Date().toISOString(), taskId);
 
     return { hash: commitHash, pushWarning };
 }

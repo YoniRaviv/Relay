@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron';
+import { randomUUID } from 'node:crypto';
 import { openDb } from '../db/connection';
 import { store } from './settings';
 import type { Task } from '../../shared/types';
@@ -69,6 +70,9 @@ export function registerTasksHandlers(): void {
         if (updates.title !== undefined) { sets.push('title = ?'); vals.push(updates.title); }
         if (updates.passes !== undefined) { sets.push('passes = ?'); vals.push(updates.passes); }
         if (updates.rejectionNotes !== undefined) { sets.push('rejection_notes = ?'); vals.push(updates.rejectionNotes); }
+        if (updates.description !== undefined) { sets.push('description = ?'); vals.push(updates.description); }
+        if (updates.acceptanceCriteria !== undefined) { sets.push('acceptance_criteria = ?'); vals.push(updates.acceptanceCriteria); }
+        if (updates.priority !== undefined) { sets.push('priority = ?'); vals.push(updates.priority); }
 
         if (sets.length > 0) {
           sets.push('updated_at = ?');
@@ -106,5 +110,58 @@ export function registerTasksHandlers(): void {
       }
     }
     throw new Error('Failed to reorder tasks');
+  });
+
+  ipcMain.handle('tasks:create', async (_event, params: {
+    projectId: string;
+    prdId: string;
+    title: string;
+    description: string;
+    acceptanceCriteria: string;
+    priority: string;
+  }) => {
+    const db = getDbForProject(params.projectId);
+    const id = randomUUID();
+    const now = new Date().toISOString();
+
+    // Auto-generate storyId from existing tasks count
+    const countRow = db.prepare(
+      `SELECT COUNT(*) as count FROM tasks WHERE prd_id = ?`
+    ).get(params.prdId) as { count: number };
+    const storyId = `TASK-${String(countRow.count + 1).padStart(3, '0')}`;
+
+    // Set order to max + 1
+    const maxRow = db.prepare(
+      `SELECT MAX("order") as maxOrder FROM tasks WHERE prd_id = ?`
+    ).get(params.prdId) as { maxOrder: number | null };
+    const order = (maxRow.maxOrder ?? -1) + 1;
+
+    db.prepare(
+      `INSERT INTO tasks (id, project_id, prd_id, story_id, title, description, acceptance_criteria, priority, status, "order", passes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 0, ?, ?)`
+    ).run(id, params.projectId, params.prdId, storyId, params.title, params.description, params.acceptanceCriteria, params.priority, order, now, now);
+
+    return { status: 'ok', task: rowToTask(db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as Record<string, unknown>) };
+  });
+
+  ipcMain.handle('tasks:delete', async (_event, taskId: string) => {
+    const projects = store.get('recentProjects', []) as Array<{ path: string }>;
+    for (const p of projects) {
+      try {
+        const db = openDb(p.path);
+        const row = db.prepare('SELECT id FROM tasks WHERE id = ?').get(taskId);
+        if (!row) continue;
+
+        // Delete related logs and metrics first (FK constraints)
+        db.prepare('DELETE FROM task_metrics WHERE task_id = ?').run(taskId);
+        db.prepare('DELETE FROM task_logs WHERE task_id = ?').run(taskId);
+        db.prepare('DELETE FROM tasks WHERE id = ?').run(taskId);
+        return { status: 'ok' };
+      } catch (err) {
+        console.error(`[tasks:delete] DB error for ${p.path}:`, err instanceof Error ? err.message : err);
+        continue;
+      }
+    }
+    throw new Error('Task not found');
   });
 }

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import { buildTaskPrompt } from '../promptBuilder';
+import { buildTaskPrompt, TASK_SYSTEM_PROMPT } from '../promptBuilder';
 import { buildCumulativeContext } from '../buildContext';
 import { openDb } from '../../db/connection';
 import { store } from '../../ipc/settings';
@@ -183,7 +183,7 @@ export const cliEngine: TaskEngine = {
             allowedTools: getPresetTools(),
             permissionMode: 'acceptEdits',
             maxTurns: 50,
-            systemPrompt: 'You are an expert software engineer completing a coding task. Work methodically through the acceptance criteria. Read existing code before making changes. Follow existing patterns and conventions.',
+            systemPrompt: TASK_SYSTEM_PROMPT,
             persistSession: false,
             pathToClaudeCodeExecutable: getClaudePath(),
             env: cleanEnv,

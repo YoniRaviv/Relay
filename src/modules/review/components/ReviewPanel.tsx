@@ -186,8 +186,8 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
 
                 {/* Content */}
                 <div className="flex flex-1 overflow-hidden">
-                    {/* File list sidebar */}
-                    <div className="w-64 border-r border-border overflow-auto bg-[var(--color-sidebar)]">
+                    {/* File list + acceptance criteria sidebar */}
+                    <div className="w-72 border-r border-border overflow-auto bg-[var(--color-sidebar)]">
                         <div className="px-3 py-2.5 border-b border-border">
                             <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 Changed Files
@@ -198,6 +198,28 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
                             activeFile={activeFile}
                             onFileClick={handleFileClick}
                         />
+
+                        {/* Acceptance criteria checklist */}
+                        {task.acceptanceCriteria && (
+                            <div className="border-t border-border px-3 py-2.5">
+                                <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                                    Acceptance Criteria
+                                </h3>
+                                <ul className="space-y-1.5">
+                                    {task.acceptanceCriteria
+                                        .split('\n')
+                                        .map(line => line.replace(/^[\s]*[-\u2013\u2022*]\s*/, '').trim())
+                                        .filter(Boolean)
+                                        .map((item, i) => (
+                                            <li key={i} className="flex items-start gap-1.5 text-[11px] text-muted-foreground leading-relaxed">
+                                                <span className="shrink-0 mt-0.5 text-muted-foreground/40">&#9744;</span>
+                                                <span>{item}</span>
+                                            </li>
+                                        ))
+                                    }
+                                </ul>
+                            </div>
+                        )}
                     </div>
 
                     {/* Diff viewer */}

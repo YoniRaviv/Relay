@@ -424,4 +424,38 @@ export function registerPrdHandlers(): void {
     }
     throw new Error('PRD not found');
   });
+
+  // #44: Export PRD + tasks as Markdown
+  ipcMain.handle('prd:exportMarkdown', async (_event, _projectId: string, prdId: string) => {
+    const projects = store.get('recentProjects', []) as Array<{ path: string }>;
+    for (const p of projects) {
+      try {
+        const db = openDb(p.path);
+        const prd = db.prepare('SELECT * FROM prd WHERE id = ?').get(prdId) as Record<string, unknown> | undefined;
+        if (!prd) continue;
+
+        const tasks = db.prepare(
+          `SELECT * FROM tasks WHERE prd_id = ? ORDER BY "order" ASC`
+        ).all(prdId) as Record<string, unknown>[];
+
+        let md = `# ${(prd.description as string).split('\n')[0] || 'Feature'}\n\n`;
+        md += `${prd.markdown as string}\n\n`;
+        md += `---\n\n## Tasks\n\n`;
+
+        const statusEmoji: Record<string, string> = {
+          done: '[x]', pending: '[ ]', in_progress: '[-]', review: '[?]', failed: '[!]',
+        };
+
+        for (const t of tasks) {
+          const emoji = statusEmoji[t.status as string] ?? '[ ]';
+          md += `- ${emoji} **${t.story_id}**: ${t.title}\n`;
+          if (t.description) md += `  ${(t.description as string).split('\n')[0]}\n`;
+        }
+
+        md += `\n---\n*Exported from Relay on ${new Date().toISOString().split('T')[0]}*\n`;
+        return { status: 'ok', markdown: md };
+      } catch { continue; }
+    }
+    throw new Error('PRD not found');
+  });
 }

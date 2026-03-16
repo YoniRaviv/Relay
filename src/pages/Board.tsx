@@ -263,7 +263,22 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
 
                         {sidebarView === 'prd' && (
                             <div className="p-6 overflow-auto h-full">
-                                <h2 className="text-lg font-semibold mb-4">Product Requirements Document</h2>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-lg font-semibold">Product Requirements Document</h2>
+                                    {prdMarkdown && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="gap-1.5 text-xs"
+                                            onClick={() => {
+                                                useRelayStore.getState().setWizardStep(1)
+                                                onNewFeature()
+                                            }}
+                                        >
+                                            Edit & Re-decompose
+                                        </Button>
+                                    )}
+                                </div>
                                 {prdMarkdown ? (
                                     <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-lg p-4">
                                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
