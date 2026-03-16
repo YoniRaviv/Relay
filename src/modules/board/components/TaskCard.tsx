@@ -1,3 +1,4 @@
+import React from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Eye, Pause } from 'lucide-react'
@@ -31,8 +32,8 @@ function TaskCardContent({ task, isPaused }: { task: Task; isPaused?: boolean })
     )
 }
 
-export function TaskCard({ task, isActive, onClick, onReview }: TaskCardProps) {
-    const { loopState } = useRelayStore()
+export const TaskCard = React.memo(function TaskCard({ task, isActive, onClick, onReview }: TaskCardProps) {
+    const loopState = useRelayStore((s) => s.loopState)
     const isPausedInProgress = task.status === 'in_progress' && loopState === 'paused'
     const {
         attributes,
@@ -87,7 +88,7 @@ export function TaskCard({ task, isActive, onClick, onReview }: TaskCardProps) {
             )}
         </div>
     )
-}
+})
 
 export function TaskCardOverlay({ task, isActive }: { task: Task; isActive?: boolean }) {
     return (

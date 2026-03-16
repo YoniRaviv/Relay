@@ -25,7 +25,7 @@ export function LoopControls() {
         return tasks.length > 0 && tasks.every(t => t.status === 'done')
     }, [tasks])
 
-    const featureComplete = allComplete && (loopState === 'idle' || loopState === 'stopped')
+    const featureComplete = allComplete && loopState !== 'running'
 
     // Check remote & PR status when feature completes
     useEffect(() => {

@@ -7,7 +7,7 @@ import { isActionGroup } from '@/shared/types/activity'
 import { useRelayStore } from '@/store/useRelayStore'
 
 export function AgentActivityFeed() {
-    const { activityFeed } = useRelayStore()
+    const activityFeed = useRelayStore((s) => s.activityFeed)
     const bottomRef = useRef<HTMLDivElement>(null)
 
     const grouped = useMemo(() => groupActions(activityFeed), [activityFeed])

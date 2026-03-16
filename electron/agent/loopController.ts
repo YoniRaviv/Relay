@@ -1,5 +1,6 @@
 import { BrowserWindow, Notification } from 'electron';
 import { randomUUID } from 'node:crypto';
+import { EventEmitter } from 'node:events';
 import * as Sentry from '@sentry/electron/main';
 import { getEngine } from './engines';
 import { openDb } from '../db/connection';
@@ -27,6 +28,7 @@ function sendNotification(title: string, body: string): void {
 
 let loopState: 'idle' | 'running' | 'paused' | 'stopped' = 'idle';
 let abortSignal = { aborted: false };
+const loopEvents = new EventEmitter();
 
 function getDbForProject(projectId: string) {
   const projects = store.get('recentProjects', []) as Array<{ path: string }>;
@@ -98,13 +100,9 @@ async function waitForUnpause(win: BrowserWindow, skipEmit = false): Promise<voi
   if (!skipEmit) {
     safeSend(win,'loop:stateChange', { state: 'paused' });
   }
+  if (loopState !== 'paused') return; // Already unpaused
   await new Promise<void>((resolve) => {
-    const check = setInterval(() => {
-      if (loopState !== 'paused') {
-        clearInterval(check);
-        resolve();
-      }
-    }, 200);
+    loopEvents.once('stateChange', resolve);
   });
 }
 
@@ -332,6 +330,7 @@ export function pauseLoop(win?: BrowserWindow): void {
 export function resumeLoop(win?: BrowserWindow): void {
   if (loopState === 'paused') {
     loopState = 'running';
+    loopEvents.emit('stateChange');
     if (win) safeSend(win,'loop:stateChange', { state: 'running' });
   }
 }
@@ -339,5 +338,6 @@ export function resumeLoop(win?: BrowserWindow): void {
 export function stopLoop(win?: BrowserWindow): void {
   abortSignal.aborted = true;
   loopState = 'stopped';
+  loopEvents.emit('stateChange');
   if (win) safeSend(win,'loop:stateChange', { state: 'stopped' });
 }

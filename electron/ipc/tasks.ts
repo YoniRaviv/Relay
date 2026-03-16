@@ -78,7 +78,8 @@ export function registerTasksHandlers(): void {
         }
 
         return { status: 'ok' };
-      } catch {
+      } catch (err) {
+        console.error(`[tasks:update] DB error for ${p.path}:`, err instanceof Error ? err.message : err);
         continue;
       }
     }
@@ -99,7 +100,8 @@ export function registerTasksHandlers(): void {
         });
         reorder(taskOrders);
         return { status: 'ok' };
-      } catch {
+      } catch (err) {
+        console.error(`[tasks:reorder] DB error for ${p.path}:`, err instanceof Error ? err.message : err);
         continue;
       }
     }
