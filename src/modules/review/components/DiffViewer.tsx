@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, useCallback, useImperativeHandle, forwardRef } from 'react'
 import { html, parse } from 'diff2html'
-import { ChevronDown, ChevronRight, FileEdit, FilePlus, FileX, FileText } from 'lucide-react'
+import { ChevronDown, ChevronRight, FileEdit, FilePlus, FileX, FileText, Columns2, AlignJustify } from 'lucide-react'
 import 'diff2html/bundles/css/diff2html.min.css'
 
 interface DiffViewerProps {
@@ -21,8 +21,9 @@ const fileTypeConfig = {
 } as const
 
 export const DiffViewer = forwardRef<DiffViewerHandle, DiffViewerProps>(
-    function DiffViewer({ diffString, outputFormat = 'line-by-line', onActiveFileChange }, ref) {
+    function DiffViewer({ diffString, outputFormat: initialFormat = 'line-by-line', onActiveFileChange }, ref) {
         const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+        const [outputFormat, setOutputFormat] = useState(initialFormat)
 
         // Parse diff metadata upfront, but defer HTML generation until file is expanded
         const parsedFiles = useMemo(() => {
@@ -81,8 +82,44 @@ export const DiffViewer = forwardRef<DiffViewerHandle, DiffViewerProps>(
         // Auto-collapse files in large diffs to avoid DOM bloat
         const autoCollapse = fileDiffs.length > 10
 
+        // Clear HTML cache when format changes
+        const prevFormat = useRef(outputFormat)
+        if (prevFormat.current !== outputFormat) {
+            htmlCache.current.clear()
+            prevFormat.current = outputFormat
+        }
+
         return (
             <div className="diff-viewer">
+                {/* Format toggle */}
+                <div className="flex items-center gap-1 px-3 py-2 border-b border-border bg-muted/30">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mr-2">View</span>
+                    <button
+                        onClick={() => setOutputFormat('line-by-line')}
+                        className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+                            outputFormat === 'line-by-line'
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                    >
+                        <AlignJustify className="h-3 w-3" />
+                        Unified
+                    </button>
+                    <button
+                        onClick={() => setOutputFormat('side-by-side')}
+                        className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+                            outputFormat === 'side-by-side'
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                    >
+                        <Columns2 className="h-3 w-3" />
+                        Side by Side
+                    </button>
+                    <span className="ml-auto text-[10px] text-muted-foreground">
+                        {fileDiffs.length} file{fileDiffs.length !== 1 ? 's' : ''} changed
+                    </span>
+                </div>
                 {fileDiffs.map((file, index) => {
                     const isCollapsed = collapsed[file.path] ?? (autoCollapse && index > 2)
                     const tag = file.isNew ? 'added' : file.isDeleted ? 'deleted' : file.isRenamed ? 'renamed' : 'changed'

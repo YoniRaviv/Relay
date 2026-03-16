@@ -62,6 +62,8 @@ export async function buildCumulativeContext(
     const modifiedFiles = new Set<string>();
     const git = simpleGit(projectPath);
 
+    const IGNORE_PREFIXES = ['node_modules/', '.relay/', 'dist/', 'build/', '.next/', '.nuxt/', 'target/', '__pycache__/', '.venv/', 'venv/', 'vendor/', 'coverage/'];
+
     for (const t of completedTasks) {
         if (!t.commit_hash) continue;
         try {
@@ -70,13 +72,16 @@ export async function buildCumulativeContext(
             ]);
             for (const line of show.trim().split('\n')) {
                 const file = line.trim();
-                if (file && !file.startsWith('.relay/')) {
-                    modifiedFiles.add(file);
-                }
+                if (!file) continue;
+                if (IGNORE_PREFIXES.some(p => file.startsWith(p))) continue;
+                modifiedFiles.add(file);
+                // Cap at 100 files to prevent bloat from large commits
+                if (modifiedFiles.size >= 100) break;
             }
         } catch {
             // commit may not exist (reverted, etc.)
         }
+        if (modifiedFiles.size >= 100) break;
     }
 
     if (modifiedFiles.size > 0) {
@@ -87,18 +92,22 @@ export async function buildCumulativeContext(
     }
 
     // ── 3. Pre-load key source files the current task likely needs ──
+    const MAX_PRELOAD_BYTES = 100_000; // 100KB total budget for pre-loaded files
+    const MAX_FILE_BYTES = 30_000;     // 30KB per file max
     const filesToPreload = resolveRelevantFiles(currentTask, modifiedFiles, projectPath);
     const preloaded: string[] = [];
+    let preloadedBytes = 0;
 
     for (const filePath of filesToPreload) {
+        if (preloadedBytes >= MAX_PRELOAD_BYTES) break;
         const absPath = path.resolve(projectPath, filePath);
         try {
             if (!fs.existsSync(absPath)) continue;
             const stat = fs.statSync(absPath);
-            // Skip files larger than 30KB (too big for context)
-            if (stat.size > 30_000) continue;
+            if (stat.size > MAX_FILE_BYTES) continue;
             const content = fs.readFileSync(absPath, 'utf-8');
             preloaded.push(`### ${filePath}\n\`\`\`\n${content}\n\`\`\``);
+            preloadedBytes += content.length;
         } catch {
             // skip unreadable files
         }
