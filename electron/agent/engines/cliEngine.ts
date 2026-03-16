@@ -119,15 +119,6 @@ export const cliEngine: TaskEngine = {
       }
       const prompt = buildTaskPrompt(task, prd, task.rejectionNotes, projectContext, buildContext);
 
-      // Debug: log prompt size breakdown to diagnose "prompt too long" errors
-      console.log(`[cliEngine] Prompt size breakdown for ${task.storyId}:`,
-        `total=${prompt.length} chars`,
-        `| projectContext=${projectContext?.length ?? 0}`,
-        `| buildContext=${buildContext?.length ?? 0}`,
-        `| prd=${prd?.markdown?.length ?? 0}`,
-        `| rejectionNotes=${task.rejectionNotes?.length ?? 0}`,
-      );
-
       const db = getDbForProject(task.projectId);
       db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')
         .run('in_progress', new Date().toISOString(), task.id);
