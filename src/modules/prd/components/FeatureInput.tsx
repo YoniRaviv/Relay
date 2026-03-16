@@ -20,6 +20,7 @@ interface FeatureInputProps {
     value: string
     onChange: (value: string) => void
     onGenerate: (clarifications?: string) => void
+    onManualMode?: () => void
     loading: boolean
     projectContext?: string | null
     scanningProject?: boolean
@@ -28,7 +29,7 @@ interface FeatureInputProps {
     onRemoveAttachment: (id: string) => void
 }
 
-export function FeatureInput({ value, onChange, onGenerate, loading, projectContext, scanningProject, attachments, onAddAttachment, onRemoveAttachment }: FeatureInputProps) {
+export function FeatureInput({ value, onChange, onGenerate, onManualMode, loading, projectContext, scanningProject, attachments, onAddAttachment, onRemoveAttachment }: FeatureInputProps) {
     const [phase, setPhase] = useState<'describe' | 'clarifying' | 'answering'>('describe')
     const [questions, setQuestions] = useState<ClarifyQuestion[]>([])
     const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -203,6 +204,16 @@ export function FeatureInput({ value, onChange, onGenerate, loading, projectCont
                         Generate PRD
                     </Button>
                 </div>
+                {onManualMode && (
+                    <div className="border-t border-border pt-4 mt-2">
+                        <button
+                            onClick={onManualMode}
+                            className="w-full py-2.5 rounded-md border border-dashed border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                        >
+                            Skip PRD — add tasks manually
+                        </button>
+                    </div>
+                )}
             </div>
         )
     }
