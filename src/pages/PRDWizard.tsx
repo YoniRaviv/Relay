@@ -156,6 +156,11 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         setAgentStatus('')
         setStreaming(true)
         setPrdMarkdown('')
+        // Safety timeout: if 'done' event never arrives, cancel after 5 minutes
+        const safetyTimeout = setTimeout(() => {
+            setStreaming(false)
+            setError('PRD generation timed out. Please try again.')
+        }, 5 * 60 * 1000)
         try {
             await window.relayAPI.generatePrd(
                 featureDescription,
@@ -164,6 +169,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                 featureAttachments.length > 0 ? featureAttachments : undefined,
             )
         } catch (err) {
+            clearTimeout(safetyTimeout)
             setError(err instanceof Error ? err.message : 'Failed to generate PRD')
             setStreaming(false)
         }

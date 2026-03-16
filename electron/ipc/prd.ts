@@ -313,6 +313,7 @@ export function registerPrdHandlers(): void {
 
   ipcMain.handle('prd:get', async (_event, projectId: string) => {
     const projects = store.get('recentProjects', []) as Array<{ path: string }>;
+    const errors: string[] = [];
     for (const p of projects) {
       try {
         const db = openDb(p.path);
@@ -331,15 +332,20 @@ export function registerPrdHandlers(): void {
             updatedAt: row.updated_at,
           };
         }
-      } catch {
+      } catch (err) {
+        errors.push(`${p.path}: ${err instanceof Error ? err.message : String(err)}`);
         continue;
       }
+    }
+    if (errors.length > 0) {
+      console.error('[prd:get] DB errors encountered:', errors.join('; '));
     }
     return null;
   });
 
   ipcMain.handle('prd:list', async (_event, projectId: string) => {
     const projects = store.get('recentProjects', []) as Array<{ path: string }>;
+    const errors: string[] = [];
     for (const p of projects) {
       try {
         const db = openDb(p.path);
@@ -365,9 +371,13 @@ export function registerPrdHandlers(): void {
           taskCount: row.task_count as number,
           doneCount: row.done_count as number,
         }));
-      } catch {
+      } catch (err) {
+        errors.push(`${p.path}: ${err instanceof Error ? err.message : String(err)}`);
         continue;
       }
+    }
+    if (errors.length > 0) {
+      console.error('[prd:list] DB errors encountered:', errors.join('; '));
     }
     return [];
   });

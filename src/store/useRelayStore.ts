@@ -163,7 +163,17 @@ export const useRelayStore = create<RelayStore>((set) => ({
   setLoopState: (loopState) => set({ loopState }),
   setCurrentTaskId: (currentTaskId) => set({ currentTaskId }),
   addActivity: (log) =>
-    set((state) => ({ activityFeed: [...state.activityFeed, log] })),
+    set((state) => {
+      const feed = state.activityFeed;
+      // Cap at 2000 entries to prevent OOM on large builds
+      const MAX_ACTIVITY = 2000;
+      if (feed.length >= MAX_ACTIVITY) {
+        // Drop the oldest 25% when hitting the cap
+        const trimmed = feed.slice(Math.floor(MAX_ACTIVITY * 0.25));
+        return { activityFeed: [...trimmed, log] };
+      }
+      return { activityFeed: [...feed, log] };
+    }),
   clearActivity: () => set({ activityFeed: [] }),
   setBuildStartTime: (buildStartTime) => set({ buildStartTime }),
   setBuildMode: (buildMode) => set({ buildMode }),

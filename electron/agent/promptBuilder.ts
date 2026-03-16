@@ -1,6 +1,12 @@
 import type { Task, PRD } from '../../shared/types';
 
-export function buildTaskPrompt(task: Task, prd: PRD | null, rejectionNotes: string | null, projectContext?: string | null): string {
+export function buildTaskPrompt(
+  task: Task,
+  prd: PRD | null,
+  rejectionNotes: string | null,
+  projectContext?: string | null,
+  buildContext?: string | null,
+): string {
   let prompt = `You are an expert software engineer. Complete the following task autonomously.
 
 ## Task: ${task.storyId} — ${task.title}
@@ -11,6 +17,14 @@ ${task.description}
 ### Acceptance Criteria
 ${task.acceptanceCriteria}
 `;
+
+  // Build context (cumulative knowledge from previous tasks) — highest value, put it early
+  if (buildContext) {
+    prompt += `
+### Build Context
+${buildContext}
+`;
+  }
 
   if (projectContext) {
     prompt += `
@@ -42,14 +56,19 @@ This is attempt #${task.passes + 1}. Previous attempts did not pass review. Be e
 `;
   }
 
+  const hasPreloadedFiles = buildContext?.includes('## Pre-loaded Files');
+
   prompt += `
 ### Instructions
-- Read existing code before making changes
+${hasPreloadedFiles
+    ? '- Relevant files are pre-loaded above. Go directly to making changes — do NOT explore or re-read these files unless you need a fresh copy after editing.'
+    : '- Read existing code before making changes'}
 - Write clean, well-structured code
 - Follow existing patterns and conventions in the codebase
 - Make only the changes necessary to complete this task
 - Do not modify files unrelated to this task
 - Ensure your changes compile without errors
+${hasPreloadedFiles ? '- Minimize tool calls — the pre-loaded context should be sufficient for most changes' : ''}
 `;
 
   return prompt;

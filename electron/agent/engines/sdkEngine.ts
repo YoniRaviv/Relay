@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { getClient } from '../runner';
 import { buildTaskPrompt } from '../promptBuilder';
+import { buildCumulativeContext } from '../buildContext';
 import { openDb } from '../../db/connection';
 import { store } from '../../ipc/settings';
 import { safeStorage } from 'electron';
@@ -204,7 +205,13 @@ export const sdkEngine: TaskEngine = {
       const anthropic = getClient(apiKey);
       const prd = getPrd(task.projectId);
       const projectContext = getProjectContext(task.projectId);
-      const prompt = buildTaskPrompt(task, prd, task.rejectionNotes, projectContext);
+      let buildContext: string | null = null;
+      try {
+        buildContext = await buildCumulativeContext(task.projectId, task.prdId, task);
+      } catch (err) {
+        console.warn('[sdkEngine] Failed to build cumulative context:', err);
+      }
+      const prompt = buildTaskPrompt(task, prd, task.rejectionNotes, projectContext, buildContext);
 
       const db = getDbForProject(task.projectId);
       db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')

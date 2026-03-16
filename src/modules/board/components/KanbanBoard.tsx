@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
     DndContext,
     DragEndEvent,
@@ -39,20 +39,29 @@ function getDefaultStatusForColumn(columnId: string): TaskStatus {
 }
 
 export function KanbanBoard() {
-    const { tasks, setTasks, setSelectedTaskId, currentTaskId, setReviewingTaskId } = useRelayStore()
+    const tasks = useRelayStore((s) => s.tasks)
+    const setTasks = useRelayStore((s) => s.setTasks)
+    const setSelectedTaskId = useRelayStore((s) => s.setSelectedTaskId)
+    const currentTaskId = useRelayStore((s) => s.currentTaskId)
+    const setReviewingTaskId = useRelayStore((s) => s.setReviewingTaskId)
     const [activeTask, setActiveTask] = useState<Task | null>(null)
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
     )
 
-    const columnTasks = (columnId: string) => {
-        const col = COLUMNS.find((c) => c.id === columnId)
-        if (!col) return []
-        return tasks
-            .filter((t) => col.statuses.includes(t.status))
-            .sort((a, b) => a.order - b.order)
-    }
+    // Memoize per-column task lists — only recomputes when tasks array changes
+    const tasksByColumn = useMemo(() => {
+        const map: Record<string, Task[]> = {}
+        for (const col of COLUMNS) {
+            map[col.id] = tasks
+                .filter((t) => col.statuses.includes(t.status))
+                .sort((a, b) => a.order - b.order)
+        }
+        return map
+    }, [tasks])
+
+    const columnTasks = (columnId: string) => tasksByColumn[columnId] ?? []
 
     const findTaskColumn = (taskId: string): string | undefined => {
         const task = tasks.find((t) => t.id === taskId)

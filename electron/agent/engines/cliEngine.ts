@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { buildTaskPrompt } from '../promptBuilder';
+import { buildCumulativeContext } from '../buildContext';
 import { openDb } from '../../db/connection';
 import { store } from '../../ipc/settings';
 import type { Task, PRD } from '../../../shared/types';
@@ -110,7 +111,13 @@ export const cliEngine: TaskEngine = {
       const projectPath = getProjectPath(task.projectId);
       const prd = getPrd(task.projectId);
       const projectContext = getProjectContext(task.projectId);
-      const prompt = buildTaskPrompt(task, prd, task.rejectionNotes, projectContext);
+      let buildContext: string | null = null;
+      try {
+        buildContext = await buildCumulativeContext(task.projectId, task.prdId, task);
+      } catch (err) {
+        console.warn('[cliEngine] Failed to build cumulative context:', err);
+      }
+      const prompt = buildTaskPrompt(task, prd, task.rejectionNotes, projectContext, buildContext);
 
       const db = getDbForProject(task.projectId);
       db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?')

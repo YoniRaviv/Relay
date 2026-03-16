@@ -196,6 +196,16 @@ function App() {
   }
 
   const handleSwitchProject = () => {
+    // #23: Guard against switching projects while loop is active
+    const { loopState } = useRelayStore.getState()
+    if (loopState === 'running' || loopState === 'paused') {
+      const confirmed = window.confirm(
+        'The agent loop is still active. Switching projects will stop it and discard any in-progress work.\n\nContinue?'
+      )
+      if (!confirmed) return
+      window.relayAPI.stopLoop()
+    }
+    // #38: Clear all state on project switch (not just project/PRD slices)
     setActiveProject(null)
     setProjectContext(null)
     setTasks([])
@@ -203,6 +213,15 @@ function App() {
     setPrdMarkdown('')
     setActivePrdId(null)
     setFeatures([])
+    useRelayStore.getState().clearActivity()
+    useRelayStore.getState().setLoopState('idle')
+    useRelayStore.getState().setCurrentTaskId(null)
+    useRelayStore.getState().setSelectedTaskId(null)
+    useRelayStore.getState().setReviewingTaskId(null)
+    useRelayStore.getState().setBuildStartTime(null)
+    useRelayStore.getState().setFeatureBranch(null)
+    useRelayStore.getState().setBaseBranch(null)
+    useRelayStore.getState().setPrUrl(null)
     setView('setup-project')
   }
 

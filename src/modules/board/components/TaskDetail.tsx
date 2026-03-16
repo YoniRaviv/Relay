@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Button } from '@/components/ui/button'
-import { X, Eye, GitCommit, Pause, CheckCircle2, AlertTriangle, Circle, SquareCheck } from 'lucide-react'
+import { X, Eye, GitCommit, Pause, CheckCircle2, AlertTriangle, Circle, SquareCheck, RotateCcw } from 'lucide-react'
 import { ActionBlock } from '@/modules/agent/components/ActionBlock'
 import { TextBlock } from '@/modules/agent/components/TextBlock'
 import { groupActions } from '@/modules/agent/utils/parseActivity'
@@ -28,7 +28,13 @@ function parseCriteria(text: string): string[] {
 }
 
 export function TaskDetail() {
-    const { tasks, selectedTaskId, setSelectedTaskId, activityFeed, currentTaskId, setReviewingTaskId, loopState } = useRelayStore()
+    const tasks = useRelayStore((s) => s.tasks)
+    const selectedTaskId = useRelayStore((s) => s.selectedTaskId)
+    const setSelectedTaskId = useRelayStore((s) => s.setSelectedTaskId)
+    const activityFeed = useRelayStore((s) => s.activityFeed)
+    const currentTaskId = useRelayStore((s) => s.currentTaskId)
+    const setReviewingTaskId = useRelayStore((s) => s.setReviewingTaskId)
+    const loopState = useRelayStore((s) => s.loopState)
     const task = tasks.find((t) => t.id === selectedTaskId)
     const taskActivity = useMemo(
         () => task ? activityFeed.filter((a) => a.taskId === task.id) : [],
@@ -104,6 +110,22 @@ export function TaskDetail() {
                     >
                         <Eye className="h-3.5 w-3.5 mr-1.5" />
                         Review Changes
+                    </Button>
+                )}
+
+                {/* Retry CTA for failed tasks */}
+                {task.status === 'failed' && (
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-3 w-full text-[13px]"
+                        onClick={() => {
+                            window.relayAPI.updateTask(task.id, { status: 'pending' })
+                            useRelayStore.getState().updateTask(task.id, { status: 'pending' })
+                        }}
+                    >
+                        <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                        Retry Task
                     </Button>
                 )}
             </div>

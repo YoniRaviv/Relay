@@ -28,12 +28,23 @@ interface BoardProps {
 }
 
 export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardProps) {
-    const {
-        activeProject, tasks, setTasks, selectedTaskId, prdMarkdown, activePrdId, features, setFeatures,
-        setLoopState, setCurrentTaskId, addActivity, updateTask, setBuildStartTime,
-        reviewingTaskId, setReviewingTaskId,
-        projectContext, scanningProject,
-    } = useRelayStore()
+    const activeProject = useRelayStore((s) => s.activeProject)
+    const tasks = useRelayStore((s) => s.tasks)
+    const setTasks = useRelayStore((s) => s.setTasks)
+    const selectedTaskId = useRelayStore((s) => s.selectedTaskId)
+    const prdMarkdown = useRelayStore((s) => s.prdMarkdown)
+    const activePrdId = useRelayStore((s) => s.activePrdId)
+    const features = useRelayStore((s) => s.features)
+    const setFeatures = useRelayStore((s) => s.setFeatures)
+    const setLoopState = useRelayStore((s) => s.setLoopState)
+    const setCurrentTaskId = useRelayStore((s) => s.setCurrentTaskId)
+    const addActivity = useRelayStore((s) => s.addActivity)
+    const updateTask = useRelayStore((s) => s.updateTask)
+    const setBuildStartTime = useRelayStore((s) => s.setBuildStartTime)
+    const reviewingTaskId = useRelayStore((s) => s.reviewingTaskId)
+    const setReviewingTaskId = useRelayStore((s) => s.setReviewingTaskId)
+    const projectContext = useRelayStore((s) => s.projectContext)
+    const scanningProject = useRelayStore((s) => s.scanningProject)
 
     const activeFeature = features.find(f => f.id === activePrdId)
     const activeFeatureTitle = activeFeature
