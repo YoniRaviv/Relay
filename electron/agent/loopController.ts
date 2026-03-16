@@ -6,7 +6,8 @@ import { getEngine } from './engines';
 import { openDb } from '../db/connection';
 import { store } from '../ipc/settings';
 import { autoCommitTask } from './autoCommit';
-import { createWipCommit } from '../git/commitHelper';
+import { createWipCommit, getProjectPath as getProjectPathFromHelper } from '../git/commitHelper';
+import { cleanStaleLockFile } from '../git/lock';
 import type { Task, BuildMode } from '../../shared/types';
 
 /** Safe wrapper for webContents.send — silently drops messages if window is destroyed */
@@ -113,6 +114,12 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
   loopState = 'running';
   abortSignal = { aborted: false };
   safeSend(win,'loop:stateChange', { state: 'running' });
+
+  // Clean up any stale git lock files from previous crashed sessions
+  try {
+    const projectPath = getProjectPathFromHelper(projectId);
+    cleanStaleLockFile(projectPath);
+  } catch { /* non-critical */ }
 
   try {
     while (loopState as string === 'running') {
@@ -222,6 +229,9 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
           if (loopState as string === 'stopped') break;
         }
         if (loopState as string === 'stopped') break;
+
+        // Brief delay before retry to prevent cascade bombing when git is locked or CC crashes
+        await new Promise(r => setTimeout(r, 2000));
         continue;
       }
 

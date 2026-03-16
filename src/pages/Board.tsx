@@ -189,6 +189,28 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                     onViewChange={setSidebarView}
                     onNewFeature={onNewFeature}
                     onSelectFeature={onSelectFeature}
+                    onDeleteFeature={async (prdId) => {
+                        // Stop loop if it's running for this feature
+                        const { loopState: ls, activePrdId: currentPrd } = useRelayStore.getState()
+                        if (currentPrd === prdId && (ls === 'running' || ls === 'paused')) {
+                            await window.relayAPI.stopLoop()
+                        }
+                        await window.relayAPI.deletePrd(prdId)
+                        // Refresh features and switch to another if available
+                        const freshFeatures = await window.relayAPI.listPrds(activeProject.id)
+                        setFeatures(freshFeatures)
+                        if (prdId === useRelayStore.getState().activePrdId) {
+                            if (freshFeatures.length > 0) {
+                                onSelectFeature(freshFeatures[0].id)
+                            } else {
+                                setTasks([])
+                                useRelayStore.getState().setPrd(null)
+                                useRelayStore.getState().setPrdMarkdown('')
+                                useRelayStore.getState().setActivePrdId(null)
+                            }
+                        }
+                        toast.success('Feature deleted')
+                    }}
                     onSwitchProject={onSwitchProject}
                 />
             }

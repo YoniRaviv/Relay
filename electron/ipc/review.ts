@@ -7,15 +7,13 @@ import { getTaskDiff, approveTask, rejectTask, getProjectPath } from '../git/com
 
 export function registerReviewHandlers(): void {
   // #39: Unified diff filter — always excludes .relay/, uses task-scoped diff when available
+  // No git lock for getDiff — it's a read-only operation (git show/diff) that should never
+  // block or be blocked by the agent loop's git operations
   ipcMain.handle('review:getDiff', async (_event, projectId: string, taskId?: string) => {
-    return withGitLock(async () => {
-      if (taskId) {
-        // Task-scoped diff: shows only this task's WIP commit changes
-        return getTaskDiff(projectId, taskId);
-      }
-      // Fallback: full working tree diff (for manual git:diff calls)
-      return getTaskDiff(projectId, '');
-    });
+    if (taskId) {
+      return getTaskDiff(projectId, taskId);
+    }
+    return getTaskDiff(projectId, '');
   });
 
   // #6/#8/#26: Approve only this task's commit, re-verify before committing

@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, FileText, BarChart3, Settings, Plus, Check, FolderOpen } from 'lucide-react'
+import { LayoutDashboard, FileText, BarChart3, Settings, Plus, Check, FolderOpen, Trash2 } from 'lucide-react'
 import { ThemeToggle } from '@/modules/settings'
 import { useRelayStore } from '@/store/useRelayStore'
 import { GitHistoryPanel } from './GitHistoryPanel'
@@ -12,6 +12,7 @@ interface ProjectSidebarProps {
     onViewChange: (view: SidebarView) => void
     onNewFeature?: () => void
     onSelectFeature?: (prdId: string) => void
+    onDeleteFeature?: (prdId: string) => void
     onSwitchProject?: () => void
 }
 
@@ -27,7 +28,7 @@ function extractTitle(description: string): string {
     return first || 'Untitled Feature'
 }
 
-export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFeature, onSelectFeature, onSwitchProject }: ProjectSidebarProps) {
+export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFeature, onSelectFeature, onDeleteFeature, onSwitchProject }: ProjectSidebarProps) {
     const { features, activePrdId } = useRelayStore()
 
     return (
@@ -73,24 +74,42 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                             const isActive = f.id === activePrdId
                             const isComplete = f.taskCount > 0 && f.doneCount === f.taskCount
                             return (
-                                <button
+                                <div
                                     key={f.id}
-                                    onClick={() => onSelectFeature?.(f.id)}
-                                    className={`w-full text-left px-2 py-1.5 rounded-md text-[13px] flex items-center gap-2 transition-colors ${
+                                    className={`group flex items-center rounded-md transition-colors ${
                                         isActive
                                             ? 'bg-secondary text-secondary-foreground'
                                             : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                     }`}
                                 >
-                                    {isComplete ? (
-                                        <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                                    ) : (
-                                        <span className="shrink-0 text-center text-[10px] leading-3 text-muted-foreground">
-                                            {f.doneCount}/{f.taskCount}
-                                        </span>
+                                    <button
+                                        onClick={() => onSelectFeature?.(f.id)}
+                                        className="flex-1 text-left px-2 py-1.5 text-[13px] flex items-center gap-2 min-w-0"
+                                    >
+                                        {isComplete ? (
+                                            <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                                        ) : (
+                                            <span className="shrink-0 text-center text-[10px] leading-3 text-muted-foreground">
+                                                {f.doneCount}/{f.taskCount}
+                                            </span>
+                                        )}
+                                        <span className="truncate">{extractTitle(f.description)}</span>
+                                    </button>
+                                    {onDeleteFeature && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                if (window.confirm(`Delete "${extractTitle(f.description)}" and all its tasks? This cannot be undone.`)) {
+                                                    onDeleteFeature(f.id)
+                                                }
+                                            }}
+                                            className="shrink-0 p-1.5 mr-1 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
+                                            title="Delete feature"
+                                        >
+                                            <Trash2 className="h-3 w-3" />
+                                        </button>
                                     )}
-                                    <span className="truncate">{extractTitle(f.description)}</span>
-                                </button>
+                                </div>
                             )
                         })}
                     </div>

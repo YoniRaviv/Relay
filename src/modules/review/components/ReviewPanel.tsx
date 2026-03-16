@@ -61,14 +61,7 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
         if (!activeProject) return
         setLoading(true)
         try {
-            // Auto-pause loop to avoid git lock conflicts (skip in continuous mode — loop keeps running)
-            const { loopState: currentLoopState, buildMode } = useRelayStore.getState()
-            if (currentLoopState === 'running' && buildMode !== 'continuous') {
-                await window.relayAPI.pauseLoop()
-                // Brief wait for engine to release git locks
-                await new Promise(r => setTimeout(r, 500))
-            }
-
+            // WIP commits mean getDiff uses `git show` (read-only) — no need to pause the loop
             const diff = await window.relayAPI.reviewGetDiff(activeProject.id, task.id) as string
             setDiffString(diff)
             // Parse file list from the diff itself (works for both WIP commits and working tree diffs)
