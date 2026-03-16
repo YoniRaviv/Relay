@@ -61,6 +61,20 @@ function createWindow() {
     },
   })
 
+  // Set Content-Security-Policy to prevent XSS (relaxed in dev for Vite HMR)
+  if (!VITE_DEV_SERVER_URL) {
+    win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'",
+          ],
+        },
+      })
+    })
+  }
+
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
   } else {

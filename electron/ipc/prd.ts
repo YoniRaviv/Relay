@@ -37,14 +37,14 @@ function getApiKey(): string {
       return safeStorage.decryptString(Buffer.from(encrypted as string, 'base64'));
     }
     return encrypted as string;
-  } catch {
-    store.delete('apiKey');
-    throw new Error('Stored API key was corrupted and has been cleared. Please re-enter your API key in Settings.');
+  } catch (err) {
+    console.error('[prd] API key decryption failed:', err);
+    throw new Error('Failed to decrypt API key. If this persists, re-enter your key in Settings.');
   }
 }
 
 function getEngineMode(): EngineMode {
-  return (store.get('engineMode') ?? 'api-key') as EngineMode;
+  return (store.get('engineMode') ?? 'claude-code') as EngineMode;
 }
 
 function buildCliEnv(): Record<string, string | undefined> {
@@ -100,7 +100,7 @@ async function cliStreamText(
   win: BrowserWindow,
   channel: string,
 ): Promise<string> {
-  let fullText = '';
+  const textChunks: string[] = [];
   let hasContent = false;
   const stderrLines: string[] = [];
 
@@ -126,7 +126,7 @@ async function cliStreamText(
         }
         const evt = (message as { event: { type: string; delta?: { type: string; text?: string } } }).event;
         if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta' && evt.delta.text) {
-          fullText += evt.delta.text;
+          textChunks.push(evt.delta.text);
           win.webContents.send(channel, { type: 'delta', text: evt.delta.text });
         }
       } else if (message.type === 'assistant') {
@@ -136,8 +136,8 @@ async function cliStreamText(
           hasContent = true;
         }
         for (const block of message.message.content) {
-          if (block.type === 'text' && !fullText) {
-            fullText = block.text;
+          if (block.type === 'text' && textChunks.length === 0) {
+            textChunks.push(block.text);
             win.webContents.send(channel, { type: 'delta', text: block.text });
           }
         }
@@ -151,6 +151,7 @@ async function cliStreamText(
     throw new Error(`${msg}${detail ? `\nCLI stderr: ${detail}` : ''}`);
   }
 
+  const fullText = textChunks.join('');
   sendStatus(win, '');
   win.webContents.send(channel, { type: 'done', text: fullText });
   return fullText;
@@ -161,7 +162,7 @@ async function cliGenerateText(
   userMessage: string | ContentBlock[],
   win?: BrowserWindow,
 ): Promise<string> {
-  let fullText = '';
+  const textChunks: string[] = [];
   const stderrLines: string[] = [];
 
   if (win) sendStatus(win, 'Spawning Claude Code agent...');
@@ -179,12 +180,12 @@ async function cliGenerateText(
     for await (const message of session) {
       if (win && message.type === 'system' && 'subtype' in message && message.subtype === 'init') {
         sendStatus(win, 'Agent connected, analyzing PRD...');
-      } else if (win && message.type === 'stream_event' && !fullText) {
+      } else if (win && message.type === 'stream_event' && textChunks.length === 0) {
         sendStatus(win, 'Decomposing into tasks...');
       } else if (message.type === 'assistant') {
         for (const block of message.message.content) {
           if (block.type === 'text') {
-            fullText += block.text;
+            textChunks.push(block.text);
           }
         }
       } else if (win && message.type === 'result') {
@@ -198,7 +199,7 @@ async function cliGenerateText(
   }
 
   if (win) sendStatus(win, '');
-  return fullText;
+  return textChunks.join('');
 }
 
 export function registerPrdHandlers(): void {
@@ -284,18 +285,20 @@ export function registerPrdHandlers(): void {
     const prdId = randomUUID();
     const now = new Date().toISOString();
 
-    db.prepare(
+    const insertPrd = db.prepare(
       `INSERT INTO prd (id, project_id, description, markdown, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, 'approved', ?, ?)`
-    ).run(prdId, data.projectId, data.description, data.markdown, now, now);
+    );
 
     const insertTask = db.prepare(
       `INSERT INTO tasks (id, project_id, prd_id, story_id, title, description, acceptance_criteria, priority, status, "order", passes, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 0, ?, ?)`
     );
 
-    const insertMany = db.transaction((tasks: typeof data.tasks) => {
-      tasks.forEach((task, i) => {
+    // Wrap PRD + all tasks in a single transaction to prevent orphaned PRDs on crash
+    const saveAll = db.transaction(() => {
+      insertPrd.run(prdId, data.projectId, data.description, data.markdown, now, now);
+      data.tasks.forEach((task, i) => {
         insertTask.run(
           randomUUID(), data.projectId, prdId, task.storyId,
           task.title, task.description, task.acceptanceCriteria,
@@ -304,7 +307,7 @@ export function registerPrdHandlers(): void {
       });
     });
 
-    insertMany(data.tasks);
+    saveAll();
     return { status: 'ok', prdId };
   });
 

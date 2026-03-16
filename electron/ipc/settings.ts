@@ -42,7 +42,7 @@ function findClaudeBinary(): { found: boolean; path?: string; error?: string } {
 export function registerSettingsHandlers(): void {
   ipcMain.handle('cc:checkAuth', async (): Promise<AuthStatus> => {
     // In CLI engine mode, verify the CLI is actually available
-    const engineMode = (store.get('engineMode') ?? 'api-key') as EngineMode;
+    const engineMode = (store.get('engineMode') ?? 'claude-code') as EngineMode;
     if (engineMode === 'claude-code') {
       const cliCheck = findClaudeBinary();
       return cliCheck.found
@@ -122,7 +122,7 @@ export function registerSettingsHandlers(): void {
 
   // Engine mode
   ipcMain.handle('cc:getEngineMode', async (): Promise<EngineMode> => {
-    return (store.get('engineMode') ?? 'api-key') as EngineMode;
+    return (store.get('engineMode') ?? 'claude-code') as EngineMode;
   });
 
   ipcMain.handle('cc:setEngineMode', async (_event, mode: EngineMode): Promise<void> => {

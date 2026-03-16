@@ -23,7 +23,7 @@ ${projectContext}
     prompt += `
 ### PRD Summary
 The task is part of this product requirement:
-${prd.markdown.slice(0, 2000)}${prd.markdown.length > 2000 ? '\n...(truncated)' : ''}
+${prd.markdown.slice(0, 12000)}${prd.markdown.length > 12000 ? '\n...(truncated)' : ''}
 `;
   }
 

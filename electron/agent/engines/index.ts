@@ -4,7 +4,7 @@ import { cliEngine } from './cliEngine';
 import type { TaskEngine, EngineMode } from './types';
 
 export function getEngine(): TaskEngine {
-  const mode = (store.get('engineMode') ?? 'api-key') as EngineMode;
+  const mode = (store.get('engineMode') ?? 'claude-code') as EngineMode;
   return mode === 'claude-code' ? cliEngine : sdkEngine;
 }
 

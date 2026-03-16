@@ -7,8 +7,17 @@ export function registerAgentHandlers(): void {
   ipcMain.handle('loop:start', withSentry('loop:start', async (_event, projectId: string, prdId?: string, buildMode?: BuildMode) => {
     const win = BrowserWindow.getFocusedWindow();
     if (!win) throw new Error('No active window');
-    // Start loop in background (don't await — it runs until done/stopped)
-    startLoop(projectId, win, prdId, buildMode);
+    // Start loop in background — catch errors and emit to renderer
+    startLoop(projectId, win, prdId, buildMode).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('[agent] Loop crashed:', message);
+      try {
+        if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+          win.webContents.send('agent:error', { message });
+          win.webContents.send('loop:stateChange', { state: 'idle' });
+        }
+      } catch { /* window already gone */ }
+    });
     return { status: 'ok' };
   }));
 

@@ -134,6 +134,22 @@ export const cliEngine: TaskEngine = {
         }
       }, 200);
 
+      // Wall-clock timeout: abort if task runs longer than 10 minutes
+      const TASK_TIMEOUT_MS = 10 * 60 * 1000;
+      const taskTimeout = setTimeout(() => {
+        if (!abortSignal.aborted) {
+          console.warn(`[cliEngine] Task ${task.id} timed out after ${TASK_TIMEOUT_MS / 1000}s`);
+          ac.abort();
+          safeSend(win, 'agent:activity', {
+            id: randomUUID(),
+            taskId: task.id,
+            type: 'error',
+            content: `Task timed out after ${TASK_TIMEOUT_MS / 60000} minutes.`,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }, TASK_TIMEOUT_MS);
+
       try {
         // Build clean env:
         // 1. Strip CLAUDECODE to prevent "nested session" detection
@@ -167,6 +183,14 @@ export const cliEngine: TaskEngine = {
             debug: true,
             stderr: (data: string) => {
               console.error('[cliEngine:stderr]', data);
+              // Surface stderr to UI so the user can see CLI errors
+              safeSend(win, 'agent:activity', {
+                id: randomUUID(),
+                taskId: task.id,
+                type: 'error',
+                content: `[CLI stderr] ${data}`,
+                timestamp: new Date().toISOString(),
+              });
             },
           },
         });
@@ -216,9 +240,11 @@ export const cliEngine: TaskEngine = {
               tokensOut += message.message.usage.output_tokens;
             }
           } else if (message.type === 'result') {
-            // Use the result's aggregated usage (more accurate)
-            tokensIn = message.usage.input_tokens;
-            tokensOut = message.usage.output_tokens;
+            // Result message has aggregated usage — prefer it over per-message accumulation
+            if (message.usage) {
+              tokensIn = message.usage.input_tokens ?? tokensIn;
+              tokensOut = message.usage.output_tokens ?? tokensOut;
+            }
             if ((message as { model?: string }).model) {
               detectedModel = (message as { model?: string }).model;
             }
@@ -243,6 +269,7 @@ export const cliEngine: TaskEngine = {
         }
       } finally {
         clearInterval(abortCheck);
+        clearTimeout(taskTimeout);
       }
 
       // Mark task as review (only if not aborted)

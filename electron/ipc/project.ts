@@ -26,6 +26,20 @@ const IGNORE_DIRS = new Set([
   '.idea', '.vscode', 'coverage', '.turbo', '.cache',
 ]);
 
+/** Files that should never be read or sent as AI context */
+const SENSITIVE_FILE_PATTERNS = [
+  /^\.env(\..*)?$/,           // .env, .env.local, .env.production, etc.
+  /^\.aws/,
+  /^\.ssh/,
+  /^\.npmrc$/,
+  /^\.netrc$/,
+  /^credentials\.json$/,
+  /^service[_-]?account.*\.json$/i,
+  /^.*\.pem$/,
+  /^.*\.key$/,
+  /^.*secret.*$/i,
+];
+
 function getDirectoryTree(dirPath: string, depth = 0, maxDepth = 3): string {
   if (depth >= maxDepth) return '';
   let result = '';
@@ -35,6 +49,7 @@ function getDirectoryTree(dirPath: string, depth = 0, maxDepth = 3): string {
     const filtered = entries
       .filter(e => !e.name.startsWith('.') || e.name === '.env.example')
       .filter(e => !IGNORE_DIRS.has(e.name))
+      .filter(e => !SENSITIVE_FILE_PATTERNS.some(p => p.test(e.name)))
       .sort((a, b) => {
         if (a.isDirectory() && !b.isDirectory()) return -1;
         if (!a.isDirectory() && b.isDirectory()) return 1;
@@ -72,6 +87,14 @@ function scanProjectContext(projectPath: string): string {
     if (fs.existsSync(filePath)) {
       try {
         let content = fs.readFileSync(filePath, 'utf-8');
+        // Sanitize package.json: remove scripts (may contain inline secrets/tokens)
+        if (fileName === 'package.json') {
+          try {
+            const pkg = JSON.parse(content);
+            delete pkg.scripts;
+            content = JSON.stringify(pkg, null, 2);
+          } catch { /* keep raw content if parse fails */ }
+        }
         // Truncate large files (keep first 3000 chars)
         if (content.length > 3000) {
           content = content.slice(0, 3000) + '\n... (truncated)';
