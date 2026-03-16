@@ -25,6 +25,12 @@
   <img src="public/screenshots/Kanban-build-loop.png" alt="Relay — Kanban Build Loop" width="800" />
 </p>
 
+> **macOS note:** If you see "app is damaged and should be moved to trash" after installing, run this in Terminal:
+> ```bash
+> xattr -cr /Applications/Relay.app
+> ```
+> This removes the macOS quarantine flag. The app is not signed with an Apple Developer certificate yet.
+
 ---
 
 ## What is Relay?
