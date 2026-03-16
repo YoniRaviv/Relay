@@ -10,6 +10,32 @@ import { toast } from 'sonner'
 import type { Task } from '@shared/types'
 import type { FileChange } from '@/shared/types/review'
 
+/** Extract file list from a unified diff string */
+function parseDiffFiles(diffString: string): FileChange[] {
+    const files: FileChange[] = []
+    const diffHeaders = diffString.match(/^diff --git a\/.+ b\/(.+)$/gm) || []
+    const seen = new Set<string>()
+
+    for (const header of diffHeaders) {
+        const match = header.match(/^diff --git a\/.+ b\/(.+)$/)
+        if (!match || seen.has(match[1])) continue
+        seen.add(match[1])
+
+        const filePath = match[1]
+        // Determine status from surrounding context
+        const idx = diffString.indexOf(header)
+        const chunk = diffString.slice(idx, idx + 200)
+        let status: FileChange['status'] = 'modified'
+        if (chunk.includes('new file mode')) status = 'new'
+        else if (chunk.includes('deleted file mode')) status = 'deleted'
+        else if (chunk.includes('rename from')) status = 'renamed'
+
+        files.push({ path: filePath, insertions: 0, deletions: 0, status })
+    }
+
+    return files
+}
+
 interface ReviewPanelProps {
     task: Task
     onClose: () => void
@@ -43,12 +69,10 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
                 await new Promise(r => setTimeout(r, 500))
             }
 
-            const [diff, status] = await Promise.all([
-                window.relayAPI.reviewGetDiff(activeProject.id),
-                window.relayAPI.gitStatus(activeProject.id),
-            ])
-            setDiffString(diff as string)
-            setFiles((status as { files: FileChange[] }).files)
+            const diff = await window.relayAPI.reviewGetDiff(activeProject.id, task.id) as string
+            setDiffString(diff)
+            // Parse file list from the diff itself (works for both WIP commits and working tree diffs)
+            setFiles(parseDiffFiles(diff))
         } catch (err) {
             const msg = err instanceof Error ? err.message : 'Failed to load diff'
             toast.error('Failed to load diff', { description: msg })

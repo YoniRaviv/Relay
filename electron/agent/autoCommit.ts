@@ -1,22 +1,7 @@
-import simpleGit from 'simple-git';
 import { BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
+import { stageAndCommit, pushToRemote, getProjectPath } from '../git/commitHelper';
 import { openDb } from '../db/connection';
-import { store } from '../ipc/settings';
-
-function getProjectPath(projectId: string): string {
-    const projects = store.get('recentProjects', []) as Array<{ path: string }>;
-    for (const p of projects) {
-        try {
-            const db = openDb(p.path);
-            const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
-            if (row) return p.path;
-        } catch {
-            continue;
-        }
-    }
-    throw new Error('Project not found');
-}
 
 export async function autoCommitTask(
     projectId: string,
@@ -25,39 +10,18 @@ export async function autoCommitTask(
     win: BrowserWindow,
 ): Promise<{ hash: string | false }> {
     const projectPath = getProjectPath(projectId);
-    const git = simpleGit(projectPath);
-    const db = openDb(projectPath);
 
     // Stage all and commit
-    await git.add('.');
-    let commitHash: string | null = null;
-    try {
-        const result = await git.commit(commitMessage);
-        commitHash = result.commit || null;
-    } catch (err) {
-        const msg = err instanceof Error ? err.message : '';
-        if (!msg.includes('nothing to commit') && !msg.includes('no changes added')) {
-            throw err; // Re-throw real errors
-        }
-        // Nothing to commit is OK — task still done
-    }
+    const commitHash = await stageAndCommit(projectPath, commitMessage);
 
-    // Push if we have a commit
+    // Push
     let pushWarning: string | null = null;
     if (commitHash) {
-        try {
-            const branchSummary = await git.branch();
-            await git.push('origin', branchSummary.current, ['--set-upstream']);
-        } catch (pushErr) {
-            const pushMsg = pushErr instanceof Error ? pushErr.message : String(pushErr);
-            pushWarning = pushMsg.includes('remote') || pushMsg.includes('origin')
-                ? 'Push failed — no remote configured. Commit saved locally.'
-                : `Push failed: ${pushMsg}. Commit saved locally.`;
-            console.warn('[autoCommit] Push failed:', pushMsg);
-        }
+        pushWarning = await pushToRemote(projectPath);
     }
 
     // Update task status to done with commit hash
+    const db = openDb(projectPath);
     db.prepare('UPDATE tasks SET status = ?, commit_hash = ?, updated_at = ? WHERE id = ?')
         .run('done', commitHash, new Date().toISOString(), taskId);
 
@@ -67,9 +31,11 @@ export async function autoCommitTask(
             win.webContents.send('agent:activity', {
                 id: randomUUID(),
                 taskId,
-                type: pushWarning ? 'error' : 'text',
+                type: pushWarning ? 'warning' : 'text',
                 content: commitHash
-                    ? `Auto-committed: ${commitHash}${pushWarning ? ` — ${pushWarning}` : ''}`
+                    ? pushWarning
+                        ? `Committed locally: ${commitHash.slice(0, 7)} — ${pushWarning}`
+                        : `Auto-committed: ${commitHash.slice(0, 7)}`
                     : 'Done (no file changes)',
                 timestamp: new Date().toISOString(),
             });

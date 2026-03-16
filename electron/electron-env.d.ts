@@ -89,7 +89,7 @@ interface RelayAPI {
   gitEnsureGitignore(projectId: string): Promise<{ status: string }>
 
   // Review
-  reviewGetDiff(projectId: string): Promise<string>
+  reviewGetDiff(projectId: string, taskId?: string): Promise<string>
   reviewApprove(projectId: string, taskId: string, commitMessage: string): Promise<unknown>
   reviewReject(projectId: string, taskId: string, notes: string): Promise<unknown>
 
