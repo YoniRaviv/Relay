@@ -11,9 +11,11 @@ interface KanbanColumnProps {
     activeTaskId?: string | null
     onTaskClick: (taskId: string) => void
     onTaskReview?: (taskId: string) => void
+    selectedIds?: Set<string>
+    onToggleSelect?: (taskId: string) => void
 }
 
-export function KanbanColumn({ id, title, tasks, activeTaskId, onTaskClick, onTaskReview }: KanbanColumnProps) {
+export function KanbanColumn({ id, title, tasks, activeTaskId, onTaskClick, onTaskReview, selectedIds, onToggleSelect }: KanbanColumnProps) {
     const { setNodeRef, isOver } = useDroppable({ id })
     const taskIds = tasks.map((t) => t.id)
 
@@ -46,8 +48,10 @@ export function KanbanColumn({ id, title, tasks, activeTaskId, onTaskClick, onTa
                                 key={task.id}
                                 task={task}
                                 isActive={task.id === activeTaskId}
+                                isSelected={selectedIds?.has(task.id) ?? false}
                                 onClick={() => onTaskClick(task.id)}
                                 onReview={() => onTaskReview?.(task.id)}
+                                onShiftClick={() => onToggleSelect?.(task.id)}
                             />
                         ))
                     )}

@@ -33,6 +33,7 @@ function rowToTask(row: Record<string, unknown>): Task {
     passes: row.passes as number,
     rejectionNotes: row.rejection_notes as string | null,
     commitHash: (row.commit_hash as string | null) ?? null,
+    dependsOn: (row.depends_on as string | null) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -73,6 +74,7 @@ export function registerTasksHandlers(): void {
         if (updates.description !== undefined) { sets.push('description = ?'); vals.push(updates.description); }
         if (updates.acceptanceCriteria !== undefined) { sets.push('acceptance_criteria = ?'); vals.push(updates.acceptanceCriteria); }
         if (updates.priority !== undefined) { sets.push('priority = ?'); vals.push(updates.priority); }
+        if (updates.dependsOn !== undefined) { sets.push('depends_on = ?'); vals.push(updates.dependsOn); }
 
         if (sets.length > 0) {
           sets.push('updated_at = ?');

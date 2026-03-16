@@ -100,6 +100,7 @@ function rowToTask(row: Record<string, unknown>) {
     passes: row.passes as number,
     rejectionNotes: row.rejection_notes as string | null,
     commitHash: (row.commit_hash as string | null) ?? null,
+    dependsOn: (row.depends_on as string | null) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };

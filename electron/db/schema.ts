@@ -126,6 +126,16 @@ export function initializeDatabase(db: Database.Database): void {
         }
       },
     },
+    {
+      version: 6,
+      description: 'Add depends_on column to tasks (task dependency tracking)',
+      up: () => {
+        const cols = db.pragma('table_info(tasks)') as Array<{ name: string }>;
+        if (!cols.some(c => c.name === 'depends_on')) {
+          db.exec(`ALTER TABLE tasks ADD COLUMN depends_on TEXT`); // comma-separated task IDs or null
+        }
+      },
+    },
   ];
 
   // Run pending migrations inside a transaction

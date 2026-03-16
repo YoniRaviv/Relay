@@ -24,7 +24,7 @@ const navItems: { id: SidebarView; label: string; icon: React.ReactNode }[] = [
 
 function extractTitle(description: string): string {
     const first = description.split('\n')[0].trim()
-    if (first.length > 30) return first.slice(0, 30) + '...'
+    if (first.length > 45) return first.slice(0, 45) + '...'
     return first || 'Untitled Feature'
 }
 
@@ -69,6 +69,28 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                     <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
                         Features
                     </p>
+                    {/* Project-level progress */}
+                    {(() => {
+                        const totalTasks = features.reduce((s, f) => s + f.taskCount, 0)
+                        const doneTasks = features.reduce((s, f) => s + f.doneCount, 0)
+                        const completedFeatures = features.filter(f => f.taskCount > 0 && f.doneCount === f.taskCount).length
+                        return (
+                            <div className="px-2 py-2 rounded-md bg-muted/30 mb-2">
+                                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                                    <span>{completedFeatures}/{features.length} features</span>
+                                    <span>{doneTasks}/{totalTasks} tasks</span>
+                                </div>
+                                {totalTasks > 0 && (
+                                    <div className="mt-1.5 h-1 bg-muted rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                                            style={{ width: `${Math.round((doneTasks / totalTasks) * 100)}%` }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    })()}
                     <div className="space-y-0.5 max-h-[200px] overflow-auto">
                         {features.map((f) => {
                             const isActive = f.id === activePrdId
