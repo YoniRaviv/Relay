@@ -1,10 +1,10 @@
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, FileText, BarChart3, Settings, Plus, Check, FolderOpen, Trash2 } from 'lucide-react'
+import { LayoutDashboard, FileText, BarChart3, Settings, Plus, Check, FolderOpen, Trash2, Archive } from 'lucide-react'
 import { ThemeToggle } from '@/modules/settings'
 import { useRelayStore } from '@/store/useRelayStore'
 import { GitHistoryPanel } from './GitHistoryPanel'
 
-export type SidebarView = 'board' | 'prd' | 'summary' | 'settings'
+export type SidebarView = 'board' | 'prd' | 'summary' | 'settings' | 'archive'
 
 interface ProjectSidebarProps {
     projectName: string
@@ -13,6 +13,7 @@ interface ProjectSidebarProps {
     onNewFeature?: () => void
     onSelectFeature?: (prdId: string) => void
     onDeleteFeature?: (prdId: string) => void
+    onArchiveFeature?: (prdId: string) => void
     onSwitchProject?: () => void
 }
 
@@ -27,8 +28,8 @@ function extractTitle(description: string): string {
     return first || 'Untitled Feature'
 }
 
-export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFeature, onSelectFeature, onDeleteFeature, onSwitchProject }: ProjectSidebarProps) {
-    const { features, activePrdId } = useRelayStore()
+export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFeature, onSelectFeature, onDeleteFeature, onArchiveFeature, onSwitchProject }: ProjectSidebarProps) {
+    const { features, activePrdId, archivedFeatures } = useRelayStore()
 
     return (
         <div className="flex flex-col h-full p-4">
@@ -99,8 +100,8 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                                     key={f.id}
                                     className={`group flex items-center rounded-md transition-colors ${
                                         isActive
-                                            ? 'bg-secondary text-secondary-foreground'
-                                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                            ? 'bg-primary/10 text-foreground border-l-2 border-primary'
+                                            : 'text-muted-foreground hover:bg-muted hover:text-foreground border-l-2 border-transparent'
                                     }`}
                                 >
                                     <button
@@ -108,7 +109,7 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                                         className="flex-1 text-left px-2 py-1.5 text-[13px] flex items-center gap-2 min-w-0"
                                     >
                                         {isComplete ? (
-                                            <Check className="h-3.5 w-3.5 text-emerald-700 dark:text-green-500 shrink-0" />
+                                            <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                                         ) : (
                                             <span className="shrink-0 text-center text-[10px] leading-3 text-muted-foreground">
                                                 {f.doneCount}/{f.taskCount}
@@ -116,6 +117,18 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                                         )}
                                         <span className="truncate">{extractTitle(f.description)}</span>
                                     </button>
+                                    {onArchiveFeature && isComplete && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                onArchiveFeature(f.id)
+                                            }}
+                                            className="shrink-0 p-1.5 rounded opacity-0 group-hover:opacity-100 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                                            title="Archive feature"
+                                        >
+                                            <Archive className="h-3 w-3" />
+                                        </button>
+                                    )}
                                     {onDeleteFeature && (
                                         <button
                                             onClick={(e) => {
@@ -154,6 +167,18 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                         {item.label}
                     </Button>
                 ))}
+                {archivedFeatures.length > 0 && (
+                    <Button
+                        variant={activeView === 'archive' ? 'secondary' : 'ghost'}
+                        className="w-full justify-start gap-2 text-[13px]"
+                        size="sm"
+                        onClick={() => onViewChange('archive')}
+                    >
+                        <Archive className="h-4 w-4" />
+                        Archived Features
+                        <span className="ml-auto text-[10px] text-muted-foreground">{archivedFeatures.length}</span>
+                    </Button>
+                )}
             </nav>
 
             {/* ── Git History ── */}

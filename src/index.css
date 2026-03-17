@@ -97,13 +97,10 @@
 }
 
 /* ── Building task glow animation ── */
+/* Matches ring-emerald-500 (#10b981) on the active task card */
 @keyframes building-pulse {
-  0%, 100% {
-    box-shadow: 0 0 4px rgba(16, 185, 129, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
-  }
+  0%, 100% { box-shadow: 0 0 4px rgba(16, 185, 129, 0.3); }
+  50% { box-shadow: 0 0 12px rgba(16, 185, 129, 0.5); }
 }
 .building-glow {
   animation: building-pulse 2s ease-in-out infinite;

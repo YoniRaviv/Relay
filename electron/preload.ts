@@ -45,6 +45,9 @@ const relayAPI = {
   deletePrd: (prdId: string) => ipcRenderer.invoke('prd:delete', prdId),
   prdSetFeatureBranch: (prdId: string, branch: string) => ipcRenderer.invoke('prd:setFeatureBranch', prdId, branch),
   prdExportMarkdown: (projectId: string, prdId: string) => ipcRenderer.invoke('prd:exportMarkdown', projectId, prdId),
+  archiveFeature: (prdId: string) => ipcRenderer.invoke('prd:archive', prdId),
+  unarchiveFeature: (prdId: string) => ipcRenderer.invoke('prd:unarchive', prdId),
+  listArchivedFeatures: (projectId: string) => ipcRenderer.invoke('prd:listArchived', projectId),
 
   // Tasks
   listTasks: (projectId: string, prdId?: string) => ipcRenderer.invoke('tasks:list', projectId, prdId),

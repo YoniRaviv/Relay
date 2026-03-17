@@ -20,8 +20,8 @@ export function CompletedTaskSummary({ activity }: CompletedTaskSummaryProps) {
         <div className="space-y-3">
             {/* Completion summary — the main takeaway */}
             {summary.completionSummary && (
-                <div className="flex gap-2.5 bg-emerald-500/8 border border-emerald-500/15 rounded-lg p-3">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                <div className="flex gap-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                     <p className="text-sm text-foreground leading-relaxed">
                         {summary.completionSummary}
                     </p>
@@ -62,7 +62,7 @@ export function CompletedTaskSummary({ activity }: CompletedTaskSummaryProps) {
                         {summary.filesModified.map((f) => (
                             <span
                                 key={f}
-                                className="text-[11px] font-mono bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded px-1.5 py-0.5"
+                                className="text-[11px] font-mono bg-amber-500/10 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded px-1.5 py-0.5"
                             >
                                 {shortPath(f)}
                             </span>

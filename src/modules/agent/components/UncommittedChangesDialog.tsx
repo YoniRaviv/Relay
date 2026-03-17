@@ -57,10 +57,10 @@ export function UncommittedChangesDialog({ files, onStash, onCommit, onCancel }:
                         {files.map((f) => (
                             <div key={f.path} className="flex items-center gap-2 text-xs font-mono">
                                 <span className={
-                                    f.status === 'new' ? 'text-emerald-500' :
-                                    f.status === 'deleted' ? 'text-red-500' :
-                                    f.status === 'renamed' ? 'text-blue-500' :
-                                    'text-amber-500'
+                                    f.status === 'new' ? 'text-emerald-600 dark:text-emerald-400' :
+                                    f.status === 'deleted' ? 'text-rose-600 dark:text-rose-400' :
+                                    f.status === 'renamed' ? 'text-sky-600 dark:text-sky-400' :
+                                    'text-amber-600 dark:text-amber-400'
                                 }>
                                     {f.status === 'new' ? 'A' : f.status === 'deleted' ? 'D' : f.status === 'renamed' ? 'R' : 'M'}
                                 </span>

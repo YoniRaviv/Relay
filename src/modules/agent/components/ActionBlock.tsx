@@ -3,10 +3,10 @@ import { FileText, Pencil, Terminal, CheckCircle, AlertCircle, ChevronRight } fr
 import type { ActionGroup } from '@/shared/types/activity'
 
 const categoryIcons = {
-    read: <FileText className="h-3.5 w-3.5 text-sky-500" />,
-    write: <Pencil className="h-3.5 w-3.5 text-amber-500" />,
-    execute: <Terminal className="h-3.5 w-3.5 text-violet-500" />,
-    other: <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />,
+    read: <FileText className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />,
+    write: <Pencil className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />,
+    execute: <Terminal className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />,
+    other: <CheckCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />,
 }
 
 function formatTimeAgo(ts: string): string {
@@ -49,7 +49,7 @@ export function ActionBlock({ action }: ActionBlockProps) {
                             running
                         </span>
                     ) : isError ? (
-                        <span className="flex items-center gap-1 text-rose-500">
+                        <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400">
                             <AlertCircle className="h-3 w-3" />
                             error
                         </span>

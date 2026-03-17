@@ -51,6 +51,8 @@ interface PRDSlice {
   setPrd: (prd: PRD | null) => void;
   setActivePrdId: (id: string | null) => void;
   setFeatures: (features: FeatureSummary[]) => void;
+  archivedFeatures: FeatureSummary[];
+  setArchivedFeatures: (features: FeatureSummary[]) => void;
   setDecomposedTasks: (tasks: Task[]) => void;
   setFeatureAttachments: (attachments: ImageAttachment[]) => void;
   addFeatureAttachment: (attachment: ImageAttachment) => void;
@@ -137,6 +139,8 @@ export const useRelayStore = create<RelayStore>((set) => ({
   setPrd: (prd) => set({ prd }),
   setActivePrdId: (activePrdId) => set({ activePrdId }),
   setFeatures: (features) => set({ features }),
+  archivedFeatures: [],
+  setArchivedFeatures: (archivedFeatures) => set({ archivedFeatures }),
   setDecomposedTasks: (decomposedTasks) => set({ decomposedTasks }),
   setFeatureAttachments: (featureAttachments) => set({ featureAttachments }),
   addFeatureAttachment: (attachment) =>

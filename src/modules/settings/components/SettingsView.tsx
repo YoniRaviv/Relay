@@ -301,7 +301,7 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
                                     <p className="text-sm font-medium">
                                         {hasApiKey ? 'API Key Configured' : 'No API Key Set'}
                                     </p>
-                                    {hasApiKey && <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />}
+                                    {hasApiKey && <CheckCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />}
                                 </div>
                                 <div className="flex gap-2">
                                     <input

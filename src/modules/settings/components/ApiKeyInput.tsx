@@ -57,7 +57,7 @@ export function ApiKeyInput({ onVerified }: ApiKeyInputProps) {
             </div>
 
             {status === 'valid' && (
-                <div className="flex items-center gap-2 text-sm text-green-600">
+                <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
                     <CheckCircle className="h-4 w-4" />
                     API key verified
                 </div>
