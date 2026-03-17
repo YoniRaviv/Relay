@@ -15,8 +15,8 @@ export function CollapsibleSection({ title, children, defaultOpen = true }: {
                 className="flex items-center gap-1.5 mb-2 group"
                 onClick={() => setOpen(!open)}
             >
-                <ChevronDown className={`h-3 w-3 text-muted-foreground/60 transition-transform duration-150 ${open ? '' : '-rotate-90'}`} />
-                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 group-hover:text-muted-foreground transition-colors">
+                <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-150 ${open ? '' : '-rotate-90'}`} />
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">
                     {title}
                 </h3>
             </button>

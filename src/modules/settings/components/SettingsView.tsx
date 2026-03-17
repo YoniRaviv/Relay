@@ -95,7 +95,7 @@ function SettingsRow({ icon, label, description, tooltip, onClick, children }: S
                     <p className="text-sm font-medium">{label}</p>
                     {tooltip && (
                         <Tooltip text={tooltip}>
-                            <Info className="h-3 w-3 text-muted-foreground/60 cursor-help" />
+                            <Info className="h-3 w-3 text-muted-foreground cursor-help" />
                         </Tooltip>
                     )}
                 </div>
@@ -143,7 +143,7 @@ function EngineOption({
                     <p className="text-sm font-medium">{label}</p>
                     {tooltip && (
                         <Tooltip text={tooltip}>
-                            <Info className="h-3 w-3 text-muted-foreground/60 cursor-help" />
+                            <Info className="h-3 w-3 text-muted-foreground cursor-help" />
                         </Tooltip>
                     )}
                 </div>
@@ -398,7 +398,7 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
                                     <RotateCcw className="h-4 w-4 text-muted-foreground" />
                                     <span className="text-sm font-medium">Max Retries per Task</span>
                                     <Tooltip text="How many times a rejected task will be re-attempted before being marked as failed. Set to 0 for unlimited.">
-                                        <Info className="h-3 w-3 text-muted-foreground/60 cursor-help" />
+                                        <Info className="h-3 w-3 text-muted-foreground cursor-help" />
                                     </Tooltip>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -491,7 +491,7 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
                                 <GitCommitHorizontal className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-sm font-medium">Commit Prefix</span>
                                 <Tooltip text="Prefix used for auto-commit messages. Example: feat(TASK-001): Add login form">
-                                    <Info className="h-3 w-3 text-muted-foreground/60 cursor-help" />
+                                    <Info className="h-3 w-3 text-muted-foreground cursor-help" />
                                 </Tooltip>
                             </div>
                             <div className="flex gap-2">

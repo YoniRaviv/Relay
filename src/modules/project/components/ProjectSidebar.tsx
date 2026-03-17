@@ -24,7 +24,6 @@ const navItems: { id: SidebarView; label: string; icon: React.ReactNode }[] = [
 
 function extractTitle(description: string): string {
     const first = description.split('\n')[0].trim()
-    if (first.length > 45) return first.slice(0, 45) + '...'
     return first || 'Untitled Feature'
 }
 
@@ -66,7 +65,7 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
             {/* ── Features List ── */}
             {features.length > 0 && (
                 <div className="mb-2">
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">
                         Features
                     </p>
                     {/* Project-level progress */}
@@ -83,7 +82,7 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                                 {totalTasks > 0 && (
                                     <div className="mt-1.5 h-1 bg-muted rounded-full overflow-hidden">
                                         <div
-                                            className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                                            className="h-full bg-primary rounded-full transition-all duration-500"
                                             style={{ width: `${Math.round((doneTasks / totalTasks) * 100)}%` }}
                                         />
                                     </div>
@@ -109,7 +108,7 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                                         className="flex-1 text-left px-2 py-1.5 text-[13px] flex items-center gap-2 min-w-0"
                                     >
                                         {isComplete ? (
-                                            <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                                            <Check className="h-3.5 w-3.5 text-emerald-700 dark:text-green-500 shrink-0" />
                                         ) : (
                                             <span className="shrink-0 text-center text-[10px] leading-3 text-muted-foreground">
                                                 {f.doneCount}/{f.taskCount}

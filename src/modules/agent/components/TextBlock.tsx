@@ -28,7 +28,7 @@ export function TextBlock({ log }: TextBlockProps) {
                 ) : isCompletion ? (
                     <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                 ) : (
-                    <MessageSquare className="h-3.5 w-3.5 text-muted-foreground/60" />
+                    <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
                 )}
             </div>
             <div className="flex-1 min-w-0">

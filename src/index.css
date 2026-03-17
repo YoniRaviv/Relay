@@ -40,40 +40,41 @@
 }
 
 @theme {
-  /* Warm Studio — Light Theme
-     Cream/ivory backgrounds with stone-tinted neutrals.
-     Deep teal accent for a distinctive, non-generic identity. */
-  --color-background: #f5f2ed;
-  --color-foreground: #2a2521;
-  --color-card: #faf8f5;
-  --color-card-foreground: #2a2521;
-  --color-popover: #faf8f5;
-  --color-popover-foreground: #2a2521;
-  --color-primary: #167a6f;
+  /* Option C — Soft Green Tint
+     Sage-tinted surfaces that tie into the teal accent.
+     Cohesive, nature-inspired. */
+  --color-background: #F3F5F2;
+  --color-foreground: #242723;
+  --color-card: #FAFBF9;
+  --color-card-foreground: #242723;
+  --color-popover: #FAFBF9;
+  --color-popover-foreground: #242723;
+  --color-primary: #0f6e64;
   --color-primary-foreground: #f0fdf8;
-  --color-secondary: #eae5dd;
-  --color-secondary-foreground: #2a2521;
-  --color-muted: #eae5dd;
-  --color-muted-foreground: #7d756a;
-  --color-accent: #e2dcd3;
-  --color-accent-foreground: #2a2521;
+  --color-secondary: #E6EAE4;
+  --color-secondary-foreground: #242723;
+  --color-muted: #E6EAE4;
+  --color-muted-foreground: #6B6F68;
+  --color-accent: #DDE2DA;
+  --color-accent-foreground: #242723;
   --color-destructive: #c53030;
   --color-destructive-foreground: #fef2f2;
-  --color-border: #e2dcd4;
-  --color-input: #d9d2c8;
-  --color-ring: #167a6f;
-  --color-sidebar: #eee9e2;
+  --color-border: #D4DAD1;
+  --color-input: #CDD3CA;
+  --color-ring: #0f6e64;
+  --color-sidebar: #EAEDE8;
+  --color-column: #EDEFEC;
 
   --radius: 0.5rem;
 }
 
 .dark {
-  /* Warm Studio — Dark Theme
+  /* Warm Studio — Dark Theme (original)
      Deep warm charcoal, not void-black.
      Brighter teal accent for legibility on dark surfaces. */
   --color-background: #1c1a16;
   --color-foreground: #e5ded4;
-  --color-card: #26231f;
+  --color-card: #2b2823;
   --color-card-foreground: #e5ded4;
   --color-popover: #26231f;
   --color-popover-foreground: #e5ded4;
@@ -91,6 +92,7 @@
   --color-input: #3d3833;
   --color-ring: #2ec4a6;
   --color-sidebar: #211f1b;
+  --color-column: #1f1c18;
 
 }
 
@@ -132,7 +134,7 @@ body {
   min-height: 100vh;
   background-color: var(--color-background);
   color: var(--color-foreground);
-  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -179,9 +181,6 @@ body {
 .diff-viewer .d2h-code-side-line {
   width: 100%;
 }
-.diff-viewer .d2h-code-line-ctn {
-  width: 100%;
-}
 .diff-viewer .d2h-diff-tbody tr {
   border-color: transparent;
 }
@@ -211,6 +210,9 @@ body {
   color: var(--color-foreground);
   padding-left: 4px;
   border-left: 3px solid transparent;
+}
+.diff-viewer .d2h-code-line-ctn {
+  width: 100%;
 }
 .diff-viewer .d2h-code-line-prefix {
   user-select: none;
@@ -260,19 +262,19 @@ body {
   color: #075985;
 }
 .dark .diff-tag-changed {
-  background: rgba(251, 191, 36, 0.12);
+  background: rgba(251, 191, 36, 0.15);
   color: #fbbf24;
 }
 .dark .diff-tag-added {
-  background: rgba(34, 197, 94, 0.12);
+  background: rgba(34, 197, 94, 0.15);
   color: #4ade80;
 }
 .dark .diff-tag-deleted {
-  background: rgba(239, 68, 68, 0.12);
+  background: rgba(239, 68, 68, 0.15);
   color: #f87171;
 }
 .dark .diff-tag-renamed {
-  background: rgba(56, 189, 248, 0.12);
+  background: rgba(56, 189, 248, 0.15);
   color: #38bdf8;
 }
 

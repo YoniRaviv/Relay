@@ -316,7 +316,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                 {featureDescription && effectiveStep > 0 && (
                     <div className="px-5 pb-5 mt-auto">
                         <div className="border-t border-border pt-4">
-                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium mb-1.5">
+                            <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5">
                                 Feature
                             </p>
                             <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4">

@@ -23,11 +23,11 @@ export function KanbanColumn({ id, title, tasks, activeTaskId, onTaskClick, onTa
 
     return (
         <div className="flex flex-col flex-1 min-w-[260px] max-w-[380px]">
-            <div className="flex items-center gap-2 mb-3 px-1">
-                <h3 className="text-sm font-semibold">{title}</h3>
+            <div className="flex items-center gap-2 mb-3 px-3">
+                <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
                 {tasks.length > 0 && (
                     <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                        isReview ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 font-medium' : 'text-muted-foreground'
+                        isReview ? 'bg-amber-500/15 text-amber-700 dark:bg-yellow-500/15 dark:text-yellow-400 font-medium' : 'text-muted-foreground'
                     }`}>
                         {tasks.length}
                     </span>
@@ -35,8 +35,8 @@ export function KanbanColumn({ id, title, tasks, activeTaskId, onTaskClick, onTa
             </div>
             <div
                 ref={setNodeRef}
-                className={`flex-1 p-2 rounded-lg transition-colors space-y-2 min-h-[200px] ${
-                    isOver ? 'bg-primary/8' : ''
+                className={`flex-1 p-2.5 rounded-xl transition-colors space-y-2 min-h-[200px] bg-[var(--color-column)] ${
+                    isOver ? 'bg-primary/10' : ''
                 }`}
             >
                 <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>

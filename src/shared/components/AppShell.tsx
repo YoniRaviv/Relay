@@ -9,7 +9,7 @@ export function AppShell({ sidebar, children }: AppShellProps) {
     return (
         <div className="flex h-screen">
             {sidebar && (
-                <aside className="w-72 bg-[var(--color-sidebar)] shrink-0">
+                <aside className="w-72 bg-[var(--color-sidebar)] shrink-0 border-r border-border/50">
                     {sidebar}
                 </aside>
             )}

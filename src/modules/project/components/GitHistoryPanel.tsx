@@ -56,7 +56,7 @@ export function GitHistoryPanel() {
                 <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider group-hover:text-foreground transition-colors">
                     Commits
                 </span>
-                <span className="ml-auto text-[10px] text-muted-foreground/50 tabular-nums">
+                <span className="ml-auto text-[10px] text-muted-foreground tabular-nums">
                     {gitHistory.length}
                 </span>
             </button>
@@ -74,14 +74,14 @@ export function GitHistoryPanel() {
                                 {/* Content */}
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-baseline gap-1.5">
-                                        <span className="text-[10px] font-mono text-muted-foreground/70 shrink-0">
+                                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">
                                             {entry.hash.slice(0, 7)}
                                         </span>
-                                        <span className="text-[11px] text-muted-foreground/50 shrink-0">
+                                        <span className="text-[11px] text-muted-foreground shrink-0">
                                             {relativeTime(entry.date)}
                                         </span>
                                     </div>
-                                    <p className="text-[12px] text-foreground/80 truncate leading-snug mt-0.5 group-hover:text-foreground transition-colors">
+                                    <p className="text-[12px] text-foreground/90 truncate leading-snug mt-0.5 group-hover:text-foreground transition-colors">
                                         {entry.message.split('\n')[0]}
                                     </p>
                                 </div>
