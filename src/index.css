@@ -126,6 +126,15 @@
   --tw-prose-td-borders: var(--color-border);
 }
 
+/* Tighter prose spacing for PRD preview */
+.prose-tight h1 { margin-top: 1.2em; margin-bottom: 0.4em; }
+.prose-tight h2 { margin-top: 1em; margin-bottom: 0.35em; }
+.prose-tight h3 { margin-top: 0.8em; margin-bottom: 0.3em; }
+.prose-tight p { margin-top: 0.4em; margin-bottom: 0.4em; }
+.prose-tight ul, .prose-tight ol { margin-top: 0.3em; margin-bottom: 0.3em; }
+.prose-tight li { margin-top: 0.1em; margin-bottom: 0.1em; }
+.prose-tight hr { margin-top: 0.8em; margin-bottom: 0.8em; }
+
 body {
   margin: 0;
   min-height: 100vh;

@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Loader2, SkipForward, ImagePlus, X } from 'lucide-react'
+import { Loader2, SkipForward, ImagePlus, X, ArrowRight, ArrowLeft, Check, PenLine } from 'lucide-react'
 import { ProjectContextBadge } from '@/shared/components/ProjectContextBadge'
 import type { ImageAttachment } from '@shared/types'
 
@@ -16,6 +16,8 @@ interface ClarifyQuestion {
     options?: string[]
 }
 
+export type FeatureInputPhase = 'describe' | 'clarifying' | 'answering'
+
 interface FeatureInputProps {
     value: string
     onChange: (value: string) => void
@@ -27,14 +29,33 @@ interface FeatureInputProps {
     attachments: ImageAttachment[]
     onAddAttachment: (attachment: ImageAttachment) => void
     onRemoveAttachment: (id: string) => void
+    onPhaseChange?: (phase: FeatureInputPhase) => void
 }
 
-export function FeatureInput({ value, onChange, onGenerate, onManualMode, loading, projectContext, scanningProject, attachments, onAddAttachment, onRemoveAttachment }: FeatureInputProps) {
-    const [phase, setPhase] = useState<'describe' | 'clarifying' | 'answering'>('describe')
+export function FeatureInput({ value, onChange, onGenerate, onManualMode, loading, projectContext, scanningProject, attachments, onAddAttachment, onRemoveAttachment, onPhaseChange }: FeatureInputProps) {
+    const [phase, setPhaseInternal] = useState<FeatureInputPhase>('describe')
     const [questions, setQuestions] = useState<ClarifyQuestion[]>([])
     const [answers, setAnswers] = useState<Record<string, string>>({})
+    const [currentIdx, setCurrentIdx] = useState(0)
+    const [showCustomInput, setShowCustomInput] = useState<Record<string, boolean>>({})
     const [error, setError] = useState('')
     const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const setPhase = useCallback((p: FeatureInputPhase) => {
+        setPhaseInternal(p)
+        onPhaseChange?.(p)
+    }, [onPhaseChange])
+
+    // Reset custom input visibility when changing questions
+    useEffect(() => {
+        if (questions.length === 0) return
+        const q = questions[currentIdx]
+        if (!q) return
+        // Show custom input if user typed something that isn't one of the options
+        const answer = answers[q.id] || ''
+        const isCustom = answer && q.options && !q.options.includes(answer)
+        if (isCustom) setShowCustomInput(prev => ({ ...prev, [q.id]: true }))
+    }, [currentIdx, questions, answers])
 
     const totalSize = attachments.reduce((sum, a) => sum + a.sizeBytes, 0)
 
@@ -107,7 +128,7 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
         onGenerate()
     }
 
-    const handleGenerate = () => {
+    const handleGenerate = useCallback(() => {
         const clarifications = questions
             .map((q) => {
                 const answer = answers[q.id]?.trim()
@@ -118,7 +139,7 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
             .join('\n\n')
 
         onGenerate(clarifications || undefined)
-    }
+    }, [questions, answers, onGenerate])
 
     const setAnswer = (id: string, value: string) => {
         setAnswers((prev) => ({ ...prev, [id]: value }))
@@ -132,7 +153,26 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
         })
     }
 
-    const hasAnswers = Object.values(answers).some((a) => a.trim())
+    // Derived state for answering phase
+    const currentQuestion = questions[currentIdx] ?? null
+    const isLastQuestion = currentIdx === questions.length - 1
+    const currentAnswer = currentQuestion ? (answers[currentQuestion.id] || '') : ''
+    const isCustomVisible = currentQuestion ? (showCustomInput[currentQuestion.id] ?? false) : false
+
+    // Keyboard navigation for answering phase
+    useEffect(() => {
+        if (phase !== 'answering') return
+        const handler = (e: KeyboardEvent) => {
+            if (e.target instanceof HTMLTextAreaElement) return
+            if (e.key === 'Enter' && currentAnswer) {
+                e.preventDefault()
+                if (isLastQuestion) handleGenerate()
+                else setCurrentIdx(i => i + 1)
+            }
+        }
+        window.addEventListener('keydown', handler)
+        return () => window.removeEventListener('keydown', handler)
+    }, [phase, currentAnswer, isLastQuestion, handleGenerate])
 
     const attachmentStrip = attachments.length > 0 && (
         <div className="space-y-2">
@@ -238,75 +278,210 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
 
     // phase === 'answering'
     return (
-        <div className="space-y-4">
-            <div className="rounded-md border border-border bg-muted/30 p-3">
-                <p className="text-sm text-muted-foreground line-clamp-3">{value}</p>
+        <div className="space-y-6">
+            {/* Description above questions */}
+            <div className="rounded-lg border border-border bg-card p-4">
+                <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap line-clamp-4">
+                            {value}
+                        </p>
+                    </div>
+                    {attachments.length > 0 && (
+                        <div className="flex gap-1.5 shrink-0">
+                            {attachments.map((att) => (
+                                <img
+                                    key={att.id}
+                                    src={`data:${att.mediaType};base64,${att.base64Data}`}
+                                    alt={att.name}
+                                    className="h-10 w-10 rounded border border-border object-cover"
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
 
-            <div className="space-y-1">
-                <p className="text-sm font-medium">A few questions to refine the PRD</p>
-                <p className="text-xs text-muted-foreground">Answer what you can — skip the rest and we'll make reasonable assumptions.</p>
+            {/* Progress pills */}
+            <div className="flex items-center gap-1.5">
+                {questions.map((q, idx) => {
+                    const isAnswered = !!answers[q.id]?.trim()
+                    const isCurrent = idx === currentIdx
+                    return (
+                        <button
+                            key={q.id}
+                            onClick={() => setCurrentIdx(idx)}
+                            className={`h-7 min-w-[28px] px-2 rounded-md text-xs font-medium transition-all ${
+                                isCurrent
+                                    ? 'bg-primary text-primary-foreground'
+                                    : isAnswered
+                                        ? 'bg-primary/15 text-primary border border-primary/20'
+                                        : 'bg-muted text-muted-foreground'
+                            }`}
+                        >
+                            {isAnswered && !isCurrent ? (
+                                <Check className="h-3 w-3 mx-auto" />
+                            ) : (
+                                idx + 1
+                            )}
+                        </button>
+                    )
+                })}
+                <span className="text-xs text-muted-foreground ml-2">
+                    {currentIdx + 1} of {questions.length}
+                </span>
             </div>
 
-            <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
-                {questions.map((q, idx) => (
-                    <div key={q.id} className="space-y-2">
-                        <Label className="text-sm">
-                            {idx + 1}. {q.question}
-                        </Label>
-                        {q.options && q.options.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5">
-                                {q.options.map((opt) => (
+            {/* Current question */}
+            {currentQuestion && (
+                <div key={currentQuestion.id} className="view-transition-enter">
+                    <h3 className="text-base font-medium text-foreground mb-5 leading-snug">
+                        {currentQuestion.question}
+                    </h3>
+
+                    {/* Option cards */}
+                    {currentQuestion.options && currentQuestion.options.length > 0 && (
+                        <div className="space-y-2 mb-4">
+                            {currentQuestion.options.map((opt) => {
+                                const isSelected = answers[currentQuestion.id] === opt
+                                return (
                                     <button
                                         key={opt}
                                         type="button"
-                                        onClick={() => selectOption(q.id, opt)}
-                                        className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                                            answers[q.id] === opt
-                                                ? 'bg-primary text-primary-foreground border-primary'
-                                                : 'bg-muted/50 border-border hover:border-primary/50 text-muted-foreground'
+                                        onClick={() => {
+                                            selectOption(currentQuestion.id, opt)
+                                            setShowCustomInput(prev => ({ ...prev, [currentQuestion.id]: false }))
+                                        }}
+                                        className={`w-full text-left px-4 py-3 rounded-lg border transition-all text-sm leading-relaxed ${
+                                            isSelected
+                                                ? 'border-primary bg-primary/8 text-foreground ring-1 ring-primary/30'
+                                                : 'border-border bg-card text-foreground/80 hover:border-primary/40 hover:bg-card/80'
                                         }`}
                                     >
-                                        {opt}
+                                        <div className="flex items-start gap-3">
+                                            <div className={`mt-0.5 h-4 w-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${
+                                                isSelected
+                                                    ? 'border-primary bg-primary'
+                                                    : 'border-muted-foreground/40'
+                                            }`}>
+                                                {isSelected && <div className="h-1.5 w-1.5 rounded-full bg-primary-foreground" />}
+                                            </div>
+                                            <span>{opt}</span>
+                                        </div>
                                     </button>
-                                ))}
-                            </div>
-                        )}
-                        <textarea
-                            className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-                            placeholder="Your answer (optional)"
-                            value={answers[q.id] || ''}
-                            onChange={(e) => setAnswer(q.id, e.target.value)}
-                        />
-                    </div>
-                ))}
-            </div>
-
-            {error && (
-                <p className="text-sm text-destructive text-center">{error}</p>
-            )}
-
-            <div className="flex gap-2">
-                <Button
-                    variant="outline"
-                    onClick={handleSkip}
-                    disabled={loading}
-                    className="gap-1.5"
-                >
-                    <SkipForward className="h-3.5 w-3.5" />
-                    Skip
-                </Button>
-                <Button onClick={handleGenerate} disabled={loading} className="flex-1">
-                    {loading ? (
-                        <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Generating PRD...
-                        </>
-                    ) : (
-                        hasAnswers ? 'Generate PRD' : 'Generate PRD (with defaults)'
+                                )
+                            })}
+                        </div>
                     )}
-                </Button>
-            </div>
+
+                    {/* Custom answer toggle + textarea */}
+                    {currentQuestion.options && currentQuestion.options.length > 0 && !isCustomVisible && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setShowCustomInput(prev => ({ ...prev, [currentQuestion.id]: true }))
+                                setAnswers(prev => ({ ...prev, [currentQuestion.id]: '' }))
+                            }}
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4"
+                        >
+                            <PenLine className="h-3 w-3" />
+                            Type a custom answer instead
+                        </button>
+                    )}
+
+                    {/* Show textarea if no options or custom mode active */}
+                    {(!currentQuestion.options || currentQuestion.options.length === 0 || isCustomVisible) && (
+                        <div className="mb-4">
+                            <textarea
+                                className="flex min-h-[80px] w-full rounded-lg border border-input bg-card px-4 py-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                                placeholder="Type your answer..."
+                                value={answers[currentQuestion.id] || ''}
+                                onChange={(e) => setAnswer(currentQuestion.id, e.target.value)}
+                                autoFocus
+                            />
+                            {isCustomVisible && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowCustomInput(prev => ({ ...prev, [currentQuestion.id]: false }))
+                                        setAnswers(prev => ({ ...prev, [currentQuestion.id]: '' }))
+                                    }}
+                                    className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-2"
+                                >
+                                    Back to options
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {error && (
+                        <p className="text-sm text-destructive mb-4">{error}</p>
+                    )}
+
+                    {/* Navigation */}
+                    <div className="flex items-center gap-2 pt-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setCurrentIdx(i => i - 1)}
+                            disabled={currentIdx === 0}
+                            className="gap-1.5"
+                        >
+                            <ArrowLeft className="h-3.5 w-3.5" />
+                            Back
+                        </Button>
+
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                                if (isLastQuestion) handleGenerate()
+                                else setCurrentIdx(i => i + 1)
+                            }}
+                            className="text-muted-foreground"
+                        >
+                            Skip
+                        </Button>
+
+                        <div className="flex-1" />
+
+                        <Button
+                            variant="outline"
+                            onClick={handleSkip}
+                            disabled={loading}
+                            className="gap-1.5"
+                        >
+                            <SkipForward className="h-3.5 w-3.5" />
+                            Skip all questions
+                        </Button>
+
+                        {isLastQuestion ? (
+                            <Button onClick={handleGenerate} disabled={loading} className="gap-1.5">
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Generating...
+                                    </>
+                                ) : (
+                                    <>
+                                        Generate PRD
+                                        <ArrowRight className="h-3.5 w-3.5" />
+                                    </>
+                                )}
+                            </Button>
+                        ) : (
+                            <Button
+                                onClick={() => setCurrentIdx(i => i + 1)}
+                                disabled={!currentAnswer}
+                                className="gap-1.5"
+                            >
+                                Next
+                                <ArrowRight className="h-3.5 w-3.5" />
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
