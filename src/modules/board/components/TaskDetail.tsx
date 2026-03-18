@@ -58,14 +58,14 @@ export function TaskDetail() {
                     <div className="min-w-0 flex-1">
                         {/* Status row */}
                         <div className="flex items-center gap-2 mb-2.5">
-                            <span className="text-[11px] font-mono text-muted-foreground/70">{task.storyId}</span>
+                            <span className="text-[11px] font-mono text-muted-foreground">{task.storyId}</span>
                             <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full ${
                                 isPausedInProgress
                                     ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
                                     : task.status === 'in_progress'
                                         ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400'
                                         : task.status === 'review'
-                                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                                            ? 'bg-amber-500/10 text-amber-700 dark:bg-yellow-500/10 dark:text-yellow-400'
                                             : task.status === 'failed'
                                                 ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
                                                 : isCompleted
@@ -82,7 +82,7 @@ export function TaskDetail() {
                             )}
                         </div>
                         {/* Title */}
-                        <h2 className="text-[15px] font-semibold leading-snug">{task.title}</h2>
+                        <h2 className="text-[16px] font-semibold leading-snug">{task.title}</h2>
                     </div>
                     <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 -mt-0.5" onClick={() => setSelectedTaskId(null)}>
                         <X className="h-4 w-4" />
@@ -105,7 +105,7 @@ export function TaskDetail() {
                 {task.status === 'review' && (
                     <Button
                         size="sm"
-                        className="mt-3 w-full bg-amber-600 hover:bg-amber-700 text-white text-[13px]"
+                        className="mt-3 w-full bg-amber-600 hover:bg-amber-700 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white text-[13px]"
                         onClick={() => setReviewingTaskId(task.id)}
                     >
                         <Eye className="h-3.5 w-3.5 mr-1.5" />
@@ -135,7 +135,7 @@ export function TaskDetail() {
                 {/* Description */}
                 <div className="px-5 py-4 border-b border-border/30">
                     <SectionLabel>Description</SectionLabel>
-                    <div className="text-[13px] text-foreground/80 leading-[1.7] mt-1.5">
+                    <div className="text-[13px] text-foreground leading-[1.7] mt-1.5">
                         <FormattedDescription text={task.description} />
                     </div>
                 </div>
@@ -146,8 +146,8 @@ export function TaskDetail() {
                         <SectionLabel>Acceptance Criteria</SectionLabel>
                         <ul className="mt-2 space-y-1.5">
                             {criteriaItems.map((item, i) => (
-                                <li key={i} className="flex items-start gap-2 text-[13px] text-foreground/70 leading-relaxed">
-                                    <SquareCheck className="h-3.5 w-3.5 shrink-0 mt-[3px] text-muted-foreground/40" />
+                                <li key={i} className="flex items-start gap-2 text-[13px] text-foreground/90 leading-relaxed">
+                                    <SquareCheck className="h-3.5 w-3.5 shrink-0 mt-[3px] text-muted-foreground" />
                                     <span>{item}</span>
                                 </li>
                             ))}
@@ -171,9 +171,9 @@ export function TaskDetail() {
                 {task.status === 'done' && task.commitHash && (
                     <div className="px-5 py-4 border-b border-border/30">
                         <SectionLabel>Commit</SectionLabel>
-                        <div className="flex items-center gap-2.5 mt-2 px-3 py-2 rounded-lg bg-muted/40 border border-border/50">
-                            <GitCommit className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
-                            <span className="text-[11px] font-mono text-primary/80">{task.commitHash.slice(0, 7)}</span>
+                        <div className="flex items-center gap-2.5 mt-2 px-3 py-2 rounded-lg bg-muted/60 border border-border/50">
+                            <GitCommit className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-[11px] font-mono text-primary">{task.commitHash.slice(0, 7)}</span>
                             <span className="text-[12px] text-muted-foreground truncate">
                                 feat({task.storyId}): {task.title}
                             </span>
@@ -200,7 +200,7 @@ export function TaskDetail() {
                                     )}
                                 </div>
                             ) : (
-                                <p className="text-[13px] text-muted-foreground/60 italic">
+                                <p className="text-[13px] text-muted-foreground italic">
                                     {isActiveTask ? 'Waiting for activity...' : 'No activity recorded yet.'}
                                 </p>
                             )}
@@ -214,7 +214,7 @@ export function TaskDetail() {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
     return (
-        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             {children}
         </h3>
     )

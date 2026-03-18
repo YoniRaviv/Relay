@@ -17,22 +17,22 @@ export function LiveSummaryBar({ logs }: LiveSummaryBarProps) {
     if (summary.toolCalls === 0) return null
 
     return (
-        <div className="flex items-center gap-3 px-4 py-1.5 text-xs text-muted-foreground border-b border-border/50">
+        <div className="flex items-center gap-4 px-4 py-2 text-xs font-medium bg-muted/40 border-b border-border/50">
             {isRunning && (
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
             )}
-            <span className="flex items-center gap-1">
-                <FileText className="h-3 w-3" />
-                {summary.filesModified.length} files edited
+            <span className="flex items-center gap-1.5 text-foreground/70">
+                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="tabular-nums">{summary.filesModified.length}</span> files edited
             </span>
-            <span className="text-border">·</span>
-            <span className="flex items-center gap-1">
-                <Wrench className="h-3 w-3" />
-                {summary.toolCalls} tool calls
+            <span className="text-border/60">·</span>
+            <span className="flex items-center gap-1.5 text-foreground/70">
+                <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="tabular-nums">{summary.toolCalls}</span> tool calls
             </span>
-            <span className="text-border">·</span>
-            <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
+            <span className="text-border/60">·</span>
+            <span className="flex items-center gap-1.5 text-foreground/70">
+                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                 {formatDuration(summary.durationSec * 1000)}
             </span>
         </div>

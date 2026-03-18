@@ -12,7 +12,11 @@ import { useClickOutside } from '@/shared/hooks/useClickOutside'
 import type { FileChange } from '@/shared/types/review'
 import type { BuildMode } from '@shared/types'
 
-export function LoopControls() {
+interface LoopControlsProps {
+    onArchiveFeature?: () => void
+}
+
+export function LoopControls({ onArchiveFeature }: LoopControlsProps = {}) {
     const { loopState, setLoopState, activeProject, clearActivity, setFeatureBranch, setBaseBranch, setCurrentBranch, buildMode, setBuildMode, tasks, prUrl, setPrUrl } = useRelayStore()
     const [showUncommitted, setShowUncommitted] = useState(false)
     const [showBranchSetup, setShowBranchSetup] = useState(false)
@@ -301,6 +305,7 @@ export function LoopControls() {
                             hasRemote={hasRemote}
                             prChecked={prChecked}
                             onShowPrDialog={() => setShowPrDialog(true)}
+                            onArchiveFeature={onArchiveFeature}
                         />
                     </>
                 ) : (

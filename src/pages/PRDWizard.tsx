@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { StepIndicator, FeatureInput, PRDPreview, PRDEditor, TaskReview } from '@/modules/prd'
+import type { FeatureInputPhase } from '@/modules/prd'
 import { useRelayStore } from '@/store/useRelayStore'
 import { useIpcListener } from '@/shared/hooks/useIpcListener'
 import { ArrowLeft } from 'lucide-react'
@@ -31,6 +32,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
 
     const [streaming, setStreaming] = useState(false)
     const [decomposing, setDecomposing] = useState(false)
+    const [featurePhase, setFeaturePhase] = useState<FeatureInputPhase>('describe')
     const [saving, setSaving] = useState(false)
     const [tasks, setTasks] = useState<DecomposedTask[]>([])
     const [error, setError] = useState('')
@@ -267,6 +269,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
             // Manual mode tasks → back to describe
             setManualMode(false)
             setTasks([])
+            setFeaturePhase('describe')
             setWizardStep(0)
         } else if (wizardStep === 2) {
             // Edit → back to Review PRD
@@ -276,6 +279,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
             setWizardStep(1)
         } else {
             // Review PRD → back to Describe (keep description intact)
+            setFeaturePhase('describe')
             setWizardStep(0)
         }
     }
@@ -316,7 +320,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                 {featureDescription && effectiveStep > 0 && (
                     <div className="px-5 pb-5 mt-auto">
                         <div className="border-t border-border pt-4">
-                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium mb-1.5">
+                            <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5">
                                 Feature
                             </p>
                             <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4">
@@ -330,19 +334,21 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
             {/* ── Content Area ── */}
             <main className="flex-1 overflow-auto">
                 <div className={`mx-auto px-10 py-10 transition-all duration-300 ${
-                    effectiveStep === 3 || decomposing ? 'max-w-6xl' : 'max-w-3xl'
+                    effectiveStep === 3 || decomposing ? 'max-w-6xl'
+                    : effectiveStep === 1 || effectiveStep === 2 ? 'max-w-4xl'
+                    : 'max-w-3xl'
                 }`}>
                     {/* Step title */}
                     <div className="mb-8">
                         <h1 className="text-lg font-semibold text-foreground">
-                            {effectiveStep === 0 && 'Describe your feature'}
+                            {effectiveStep === 0 && (featurePhase === 'answering' ? 'A few questions to refine the PRD' : 'Describe your feature')}
                             {effectiveStep === 1 && (streaming ? 'Generating PRD...' : 'Review your PRD')}
                             {effectiveStep === 2 && 'Edit PRD'}
                             {effectiveStep === 3 && (decomposing ? 'Decomposing into tasks...' : manualMode ? 'Add your tasks' : 'Review tasks')}
                             {effectiveStep === 4 && 'Confirm'}
                         </h1>
                         <p className="text-sm text-muted-foreground mt-1">
-                            {effectiveStep === 0 && 'What are you building? Be as detailed as you like.'}
+                            {effectiveStep === 0 && (featurePhase === 'answering' ? 'Answer what you can — skip the rest and we\'ll make reasonable assumptions.' : 'What are you building? Be as detailed as you like.')}
                             {effectiveStep === 1 && (streaming ? 'Claude is writing the product requirements.' : 'Make sure this captures what you want to build.')}
                             {effectiveStep === 2 && 'Refine the markdown directly, then save.'}
                             {effectiveStep === 3 && (decomposing ? 'Breaking the PRD into buildable tasks.' : manualMode ? 'Define the tasks you want the agent to build.' : 'Remove any tasks that aren\'t needed, then start building.')}
@@ -368,6 +374,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                                 attachments={featureAttachments}
                                 onAddAttachment={addFeatureAttachment}
                                 onRemoveAttachment={removeFeatureAttachment}
+                                onPhaseChange={setFeaturePhase}
                             />
                         )}
 

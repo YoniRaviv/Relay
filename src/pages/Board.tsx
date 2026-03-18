@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { AppShell } from '@/shared/components/AppShell'
 import { ProjectSidebar, type SidebarView } from '@/modules/project'
-import { KanbanBoard, TaskDetail } from '@/modules/board'
+import { KanbanBoard, TaskDetail, ArchiveView } from '@/modules/board'
 import { LoopControls, AgentActivityFeed } from '@/modules/agent'
 import { ReviewPanel, PrCreationDialog } from '@/modules/review'
 import { BranchIndicator } from '@/shared/components/BranchIndicator'
@@ -45,14 +45,23 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
     const setReviewingTaskId = useRelayStore((s) => s.setReviewingTaskId)
     const projectContext = useRelayStore((s) => s.projectContext)
     const scanningProject = useRelayStore((s) => s.scanningProject)
+    const setArchivedFeatures = useRelayStore((s) => s.setArchivedFeatures)
 
     const activeFeature = features.find(f => f.id === activePrdId)
     const activeFeatureTitle = activeFeature
-        ? (activeFeature.description.split('\n')[0].trim().slice(0, 40) || 'Untitled Feature')
+        ? (activeFeature.description.split('\n')[0].trim() || 'Untitled Feature')
         : null
     const [sidebarView, setSidebarView] = useState<SidebarView>('board')
     const [loading, setLoading] = useState(true)
     const [showPrDialog, setShowPrDialog] = useState(false)
+
+    const refreshArchivedCount = useCallback(() => {
+        if (activeProject) {
+            window.relayAPI.listArchivedFeatures(activeProject.id)
+                .then(setArchivedFeatures)
+                .catch(() => {})
+        }
+    }, [activeProject, setArchivedFeatures])
 
     useEffect(() => {
         if (activeProject) {
@@ -62,10 +71,13 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                 .catch(() => toast.error('Failed to load tasks'))
                 .finally(() => setLoading(false))
 
+            // Fetch archived features count for sidebar badge
+            refreshArchivedCount()
+
             // Ensure .gitignore has .relay/ entry for existing projects
             window.relayAPI.gitEnsureGitignore(activeProject.id).catch(() => {})
         }
-    }, [activeProject, activePrdId, setTasks])
+    }, [activeProject, activePrdId, setTasks, refreshArchivedCount])
 
     // Keyboard shortcuts — Space toggles pause/resume only (Start requires the branch setup dialog via LoopControls)
     const toggleLoop = () => {
@@ -149,7 +161,7 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
     // Menu bar events
     useIpcListener('menu:openSettings', () => setSidebarView('settings'), [])
     useIpcListener('menu:navigate', (view: unknown) => {
-        if (view === 'board' || view === 'prd' || view === 'summary') {
+        if (view === 'board' || view === 'prd' || view === 'summary' || view === 'archive') {
             setSidebarView(view as SidebarView)
         }
     }, [])
@@ -211,6 +223,24 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                         }
                         toast.success('Feature deleted')
                     }}
+                    onArchiveFeature={async (prdId) => {
+                        await window.relayAPI.archiveFeature(prdId)
+                        const freshFeatures = await window.relayAPI.listPrds(activeProject.id)
+                        setFeatures(freshFeatures)
+                        refreshArchivedCount()
+                        // If we just archived the active feature, switch to the next one
+                        if (prdId === useRelayStore.getState().activePrdId) {
+                            if (freshFeatures.length > 0) {
+                                onSelectFeature(freshFeatures[0].id)
+                            } else {
+                                setTasks([])
+                                useRelayStore.getState().setPrd(null)
+                                useRelayStore.getState().setPrdMarkdown('')
+                                useRelayStore.getState().setActivePrdId(null)
+                            }
+                        }
+                        toast.success('Feature archived')
+                    }}
                     onSwitchProject={onSwitchProject}
                 />
             }
@@ -218,24 +248,42 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
             <div className="flex flex-col h-full">
                 {/* Header with loop controls */}
                 {sidebarView === 'board' && (
-                    <div className="flex items-center justify-between px-6 py-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                            {activeFeatureTitle ? (
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <h2 className="text-sm font-semibold truncate max-w-[260px]">{activeFeatureTitle}</h2>
-                                    {activeFeature && (
-                                        <span className="text-[10px] font-medium text-muted-foreground shrink-0">
-                                            {activeFeature.doneCount}/{activeFeature.taskCount} tasks
-                                        </span>
-                                    )}
-                                </div>
-                            ) : (
-                                <h2 className="text-sm font-semibold">Kanban Board</h2>
-                            )}
+                    <div className="flex items-center justify-between gap-3 px-6 py-2.5 border-b border-border/30">
+                        <div className="flex flex-col gap-2 min-w-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                                {activeFeatureTitle ? (
+                                    <>
+                                        <h2 className="text-sm font-semibold truncate max-w-[400px]">{activeFeatureTitle}</h2>
+                                        {activeFeature && (
+                                            <span className="text-[10px] font-medium text-muted-foreground shrink-0">
+                                                {activeFeature.doneCount}/{activeFeature.taskCount} tasks
+                                            </span>
+                                        )}
+                                    </>
+                                ) : (
+                                    <h2 className="text-sm font-semibold">Kanban Board</h2>
+                                )}
+                            </div>
                             <BranchIndicator />
-                            <ModelPicker />
                         </div>
-                        <LoopControls />
+                        <div className="flex items-center gap-2 shrink-0">
+                            <ModelPicker />
+                            <LoopControls onArchiveFeature={activePrdId ? async () => {
+                                await window.relayAPI.archiveFeature(activePrdId)
+                                const freshFeatures = await window.relayAPI.listPrds(activeProject.id)
+                                setFeatures(freshFeatures)
+                                refreshArchivedCount()
+                                if (freshFeatures.length > 0) {
+                                    onSelectFeature(freshFeatures[0].id)
+                                } else {
+                                    setTasks([])
+                                    useRelayStore.getState().setPrd(null)
+                                    useRelayStore.getState().setPrdMarkdown('')
+                                    useRelayStore.getState().setActivePrdId(null)
+                                }
+                                toast.success('Feature archived')
+                            } : undefined} />
+                        </div>
                     </div>
                 )}
 
@@ -266,9 +314,9 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                                         <div className="flex-1 overflow-hidden">
                                             <KanbanBoard />
                                         </div>
-                                        <div className="h-56 bg-[var(--color-sidebar)] flex flex-col border-t border-border/50">
-                                            <div className="px-4 py-2 flex items-center gap-3 border-b border-border/30">
-                                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                        <div className="h-56 bg-[var(--color-sidebar)] flex flex-col border-t border-border">
+                                            <div className="px-4 py-2 flex items-center gap-3 border-b border-border/40">
+                                                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                                                     Agent Activity
                                                 </span>
                                                 <BuildTimer />
@@ -317,6 +365,16 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                             <ErrorBoundary fallbackMessage="Failed to load summary.">
                                 <Summary projectId={activeProject.id} />
                             </ErrorBoundary>
+                        )}
+
+                        {sidebarView === 'archive' && (
+                            <ArchiveView onUnarchive={async (prdId) => {
+                                await window.relayAPI.unarchiveFeature(prdId)
+                                const freshFeatures = await window.relayAPI.listPrds(activeProject.id)
+                                setFeatures(freshFeatures)
+                                refreshArchivedCount()
+                                toast.success('Feature restored')
+                            }} />
                         )}
 
                         {sidebarView === 'settings' && (

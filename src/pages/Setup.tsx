@@ -188,7 +188,7 @@ function CliSetup({ onVerified, onBack }: { onVerified: () => void; onBack: () =
                     </div>
                     <div className="shrink-0">
                         {status === 'checking' && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
-                        {status === 'found' && <CheckCircle className="h-5 w-5 text-green-500" />}
+                        {status === 'found' && <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
                         {status === 'not-found' && <XCircle className="h-5 w-5 text-destructive" />}
                     </div>
                 </div>
@@ -282,7 +282,7 @@ function ApiKeySetup({ onVerified, onBack }: { onVerified: () => void; onBack: (
             </div>
 
             {status === 'valid' && (
-                <div className="flex items-center gap-2 text-sm text-green-600">
+                <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
                     <CheckCircle className="h-4 w-4" />
                     API key verified
                 </div>

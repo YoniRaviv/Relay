@@ -31,9 +31,9 @@ export function BranchIndicator() {
     if (!currentBranch) return null
 
     return (
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/60 border border-border">
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/60 border border-border w-fit">
             <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-xs font-mono text-foreground truncate max-w-[180px]">
+            <span className="text-[13px] font-mono text-foreground truncate max-w-[250px]">
                 {currentBranch}
             </span>
         </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { ExternalLink, Globe, GitPullRequest, Loader2, FileDown, CheckCircle2, Clock, Zap } from 'lucide-react'
+import { ExternalLink, Globe, GitPullRequest, Loader2, FileDown, CheckCircle2, Clock, Zap, Archive } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRelayStore } from '@/store/useRelayStore'
 
@@ -9,9 +9,10 @@ interface FeatureCompleteActionsProps {
     hasRemote: boolean | null
     prChecked: boolean
     onShowPrDialog: () => void
+    onArchiveFeature?: () => void
 }
 
-export function FeatureCompleteActions({ prUrl, hasRemote, prChecked, onShowPrDialog }: FeatureCompleteActionsProps) {
+export function FeatureCompleteActions({ prUrl, hasRemote, prChecked, onShowPrDialog, onArchiveFeature }: FeatureCompleteActionsProps) {
     const activeProject = useRelayStore((s) => s.activeProject)
     const tasks = useRelayStore((s) => s.tasks)
     const activePrdId = useRelayStore((s) => s.activePrdId)
@@ -129,7 +130,7 @@ export function FeatureCompleteActions({ prUrl, hasRemote, prChecked, onShowPrDi
                     className="h-7 gap-1 text-xs"
                     onClick={() => setShowSummary(!showSummary)}
                 >
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                     {totalTasks} tasks
                 </Button>
                 <Button
@@ -142,6 +143,17 @@ export function FeatureCompleteActions({ prUrl, hasRemote, prChecked, onShowPrDi
                     Export
                 </Button>
                 {renderPrButton()}
+                {onArchiveFeature && prUrl && (
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1 text-xs"
+                        onClick={onArchiveFeature}
+                    >
+                        <Archive className="h-3.5 w-3.5" />
+                        Archive
+                    </Button>
+                )}
             </div>
 
             {/* Summary popover */}
@@ -150,7 +162,7 @@ export function FeatureCompleteActions({ prUrl, hasRemote, prChecked, onShowPrDi
                     <h4 className="text-xs font-semibold">Feature Summary</h4>
                     <div className="space-y-1.5 text-[11px] text-muted-foreground">
                         <div className="flex items-center gap-2">
-                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                            <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                             <span>{totalTasks} tasks completed</span>
                         </div>
                         {humanApproved > 0 && (

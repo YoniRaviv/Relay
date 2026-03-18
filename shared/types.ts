@@ -38,6 +38,7 @@ export interface PRD {
   description: string;
   markdown: string;
   status: PRDStatus;
+  isArchived?: boolean;
   createdAt: string;
   updatedAt: string;
 }

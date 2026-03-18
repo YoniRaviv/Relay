@@ -26,7 +26,7 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
                                         ? 'bg-primary text-primary-foreground'
                                         : isCurrent
                                             ? 'border-2 border-primary text-primary bg-primary/10'
-                                            : 'border border-border text-muted-foreground/50'
+                                            : 'border border-border text-muted-foreground/70'
                                     }
                                 `}
                             >
@@ -56,7 +56,7 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
                                     ? 'text-foreground font-medium'
                                     : isCompleted
                                         ? 'text-muted-foreground'
-                                        : 'text-muted-foreground/50'
+                                        : 'text-muted-foreground/70'
                                 }
                             `}
                         >

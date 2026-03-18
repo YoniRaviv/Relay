@@ -356,7 +356,7 @@ export function registerPrdHandlers(): void {
           `SELECT p.*,
             (SELECT COUNT(*) FROM tasks t WHERE t.prd_id = p.id) as task_count,
             (SELECT COUNT(*) FROM tasks t WHERE t.prd_id = p.id AND t.status = 'done') as done_count
-           FROM prd p WHERE p.project_id = ? ORDER BY p.created_at DESC`
+           FROM prd p WHERE p.project_id = ? AND p.is_archived = 0 ORDER BY p.created_at DESC`
         ).all(projectId) as Record<string, unknown>[];
 
         return rows.map(row => ({
@@ -365,6 +365,7 @@ export function registerPrdHandlers(): void {
           description: row.description,
           markdown: row.markdown,
           status: row.status,
+          isArchived: !!(row.is_archived),
           featureBranch: row.feature_branch ?? null,
           createdAt: row.created_at,
           updatedAt: row.updated_at,
@@ -423,6 +424,70 @@ export function registerPrdHandlers(): void {
       }
     }
     throw new Error('PRD not found');
+  });
+
+  // Archive / Unarchive
+  ipcMain.handle('prd:archive', async (_event, prdId: string) => {
+    const projects = store.get('recentProjects', []) as Array<{ path: string }>;
+    for (const p of projects) {
+      try {
+        const db = openDb(p.path);
+        const row = db.prepare('SELECT id FROM prd WHERE id = ?').get(prdId);
+        if (!row) continue;
+        db.prepare('UPDATE prd SET is_archived = 1, updated_at = ? WHERE id = ?')
+          .run(new Date().toISOString(), prdId);
+        return { status: 'ok' };
+      } catch { continue; }
+    }
+    throw new Error('PRD not found');
+  });
+
+  ipcMain.handle('prd:unarchive', async (_event, prdId: string) => {
+    const projects = store.get('recentProjects', []) as Array<{ path: string }>;
+    for (const p of projects) {
+      try {
+        const db = openDb(p.path);
+        const row = db.prepare('SELECT id FROM prd WHERE id = ?').get(prdId);
+        if (!row) continue;
+        db.prepare('UPDATE prd SET is_archived = 0, updated_at = ? WHERE id = ?')
+          .run(new Date().toISOString(), prdId);
+        return { status: 'ok' };
+      } catch { continue; }
+    }
+    throw new Error('PRD not found');
+  });
+
+  ipcMain.handle('prd:listArchived', async (_event, projectId: string) => {
+    const projects = store.get('recentProjects', []) as Array<{ path: string }>;
+    for (const p of projects) {
+      try {
+        const db = openDb(p.path);
+        const projRow = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
+        if (!projRow) continue;
+
+        const rows = db.prepare(
+          `SELECT p.*,
+            (SELECT COUNT(*) FROM tasks t WHERE t.prd_id = p.id) as task_count,
+            (SELECT COUNT(*) FROM tasks t WHERE t.prd_id = p.id AND t.status = 'done') as done_count
+           FROM prd p WHERE p.project_id = ? AND p.is_archived = 1 ORDER BY p.updated_at DESC`
+        ).all(projectId) as Record<string, unknown>[];
+
+        return rows.map(row => ({
+          id: row.id,
+          projectId: row.project_id,
+          description: row.description,
+          markdown: row.markdown,
+          status: row.status,
+          isArchived: true,
+          featureBranch: row.feature_branch ?? null,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          taskCount: row.task_count as number,
+          doneCount: row.done_count as number,
+        }));
+      } catch { continue; }
+    }
+    return [];
   });
 
   // #44: Export PRD + tasks as Markdown

@@ -57,6 +57,9 @@ interface RelayAPI {
   deletePrd(prdId: string): Promise<unknown>
   prdSetFeatureBranch(prdId: string, branch: string): Promise<{ status: string }>
   prdExportMarkdown(projectId: string, prdId: string): Promise<{ status: string; markdown: string }>
+  archiveFeature(prdId: string): Promise<{ status: string }>
+  unarchiveFeature(prdId: string): Promise<{ status: string }>
+  listArchivedFeatures(projectId: string): Promise<Array<import('../shared/types').PRD & { taskCount: number; doneCount: number }>>
 
   // Tasks
   listTasks(projectId: string, prdId?: string): Promise<import('../shared/types').Task[]>

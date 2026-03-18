@@ -136,6 +136,16 @@ export function initializeDatabase(db: Database.Database): void {
         }
       },
     },
+    {
+      version: 7,
+      description: 'Add is_archived column to prd (feature archiving)',
+      up: () => {
+        const cols = db.pragma('table_info(prd)') as Array<{ name: string }>;
+        if (!cols.some(c => c.name === 'is_archived')) {
+          db.exec(`ALTER TABLE prd ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0`);
+        }
+      },
+    },
   ];
 
   // Run pending migrations inside a transaction

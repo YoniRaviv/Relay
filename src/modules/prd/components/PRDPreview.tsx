@@ -28,7 +28,7 @@ export function PRDPreview({ markdown, streaming, agentStatus, onEdit, onApprove
                 className="overflow-auto"
             >
                 {markdown ? (
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <div className="prose prose-sm prose-tight dark:prose-invert max-w-none">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                             {markdown}
                         </ReactMarkdown>
