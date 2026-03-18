@@ -121,6 +121,10 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to get clarifying questions')
             setPhase('describe')
+            setCurrentIdx(0)
+            setQuestions([])
+            setAnswers({})
+            setShowCustomInput({})
         }
     }
 

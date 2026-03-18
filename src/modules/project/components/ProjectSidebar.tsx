@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import { LayoutDashboard, FileText, BarChart3, Settings, Plus, Check, FolderOpen, Trash2, Archive } from 'lucide-react'
 import { ThemeToggle } from '@/modules/settings'
 import { useRelayStore } from '@/store/useRelayStore'
+import { extractTitle } from '@/shared/formatters'
 import { GitHistoryPanel } from './GitHistoryPanel'
 
 export type SidebarView = 'board' | 'prd' | 'summary' | 'settings' | 'archive'
@@ -22,11 +23,6 @@ const navItems: { id: SidebarView; label: string; icon: React.ReactNode }[] = [
     { id: 'prd', label: 'PRD', icon: <FileText className="h-4 w-4" /> },
     { id: 'summary', label: 'Summary', icon: <BarChart3 className="h-4 w-4" /> },
 ]
-
-function extractTitle(description: string): string {
-    const first = description.split('\n')[0].trim()
-    return first || 'Untitled Feature'
-}
 
 export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFeature, onSelectFeature, onDeleteFeature, onArchiveFeature, onSwitchProject }: ProjectSidebarProps) {
     const { features, activePrdId, archivedFeatures } = useRelayStore()

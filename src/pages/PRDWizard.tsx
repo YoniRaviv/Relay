@@ -269,6 +269,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
             // Manual mode tasks → back to describe
             setManualMode(false)
             setTasks([])
+            setFeaturePhase('describe')
             setWizardStep(0)
         } else if (wizardStep === 2) {
             // Edit → back to Review PRD
@@ -278,6 +279,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
             setWizardStep(1)
         } else {
             // Review PRD → back to Describe (keep description intact)
+            setFeaturePhase('describe')
             setWizardStep(0)
         }
     }
