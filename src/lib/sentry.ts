@@ -8,3 +8,5 @@ Sentry.init({
     integrations: [Sentry.browserTracingIntegration()],
     sendDefaultPii: false,
 })
+
+// User ID is set by the main process via @sentry/electron's built-in IPC sync
