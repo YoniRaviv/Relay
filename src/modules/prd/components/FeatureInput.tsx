@@ -24,6 +24,7 @@ interface FeatureInputProps {
     onGenerate: (clarifications?: string) => void
     onManualMode?: () => void
     loading: boolean
+    projectId?: string | null
     projectContext?: string | null
     scanningProject?: boolean
     attachments: ImageAttachment[]
@@ -32,7 +33,7 @@ interface FeatureInputProps {
     onPhaseChange?: (phase: FeatureInputPhase) => void
 }
 
-export function FeatureInput({ value, onChange, onGenerate, onManualMode, loading, projectContext, scanningProject, attachments, onAddAttachment, onRemoveAttachment, onPhaseChange }: FeatureInputProps) {
+export function FeatureInput({ value, onChange, onGenerate, onManualMode, loading, projectId, projectContext, scanningProject, attachments, onAddAttachment, onRemoveAttachment, onPhaseChange }: FeatureInputProps) {
     const [phase, setPhaseInternal] = useState<FeatureInputPhase>('describe')
     const [questions, setQuestions] = useState<ClarifyQuestion[]>([])
     const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -59,41 +60,58 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
 
     const totalSize = attachments.reduce((sum, a) => sum + a.sizeBytes, 0)
 
+    const processFile = useCallback((file: File) => {
+        if (!ACCEPTED_TYPES.includes(file.type as typeof ACCEPTED_TYPES[number])) {
+            setError(`${file.name}: unsupported format. Use JPEG, PNG, GIF, or WebP.`)
+            return
+        }
+        if (file.size > MAX_FILE_SIZE) {
+            setError(`${file.name}: exceeds 5MB limit.`)
+            return
+        }
+        if (totalSize + file.size > MAX_TOTAL_SIZE) {
+            setError('Total attachment size exceeds 20MB limit.')
+            return
+        }
+        if (attachments.length >= MAX_IMAGES) {
+            setError(`Maximum ${MAX_IMAGES} images allowed.`)
+            return
+        }
+
+        const reader = new FileReader()
+        reader.onload = () => {
+            const dataUrl = reader.result as string
+            const base64Data = dataUrl.split(',')[1]
+            onAddAttachment({
+                id: crypto.randomUUID(),
+                name: file.name,
+                mediaType: file.type as ImageAttachment['mediaType'],
+                base64Data,
+                sizeBytes: file.size,
+            })
+        }
+        reader.readAsDataURL(file)
+    }, [totalSize, attachments.length, onAddAttachment])
+
+    const handlePaste = useCallback((e: React.ClipboardEvent) => {
+        const items = e.clipboardData?.items
+        if (!items) return
+
+        for (const item of Array.from(items)) {
+            if (item.type.startsWith('image/')) {
+                e.preventDefault()
+                const file = item.getAsFile()
+                if (file) processFile(file)
+            }
+        }
+    }, [processFile])
+
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files
         if (!files) return
 
         for (const file of Array.from(files)) {
-            if (!ACCEPTED_TYPES.includes(file.type as typeof ACCEPTED_TYPES[number])) {
-                setError(`${file.name}: unsupported format. Use JPEG, PNG, GIF, or WebP.`)
-                continue
-            }
-            if (file.size > MAX_FILE_SIZE) {
-                setError(`${file.name}: exceeds 5MB limit.`)
-                continue
-            }
-            if (totalSize + file.size > MAX_TOTAL_SIZE) {
-                setError('Total attachment size exceeds 20MB limit.')
-                break
-            }
-            if (attachments.length >= MAX_IMAGES) {
-                setError(`Maximum ${MAX_IMAGES} images allowed.`)
-                break
-            }
-
-            const reader = new FileReader()
-            reader.onload = () => {
-                const dataUrl = reader.result as string
-                const base64Data = dataUrl.split(',')[1]
-                onAddAttachment({
-                    id: crypto.randomUUID(),
-                    name: file.name,
-                    mediaType: file.type as ImageAttachment['mediaType'],
-                    base64Data,
-                    sizeBytes: file.size,
-                })
-            }
-            reader.readAsDataURL(file)
+            processFile(file)
         }
 
         // Reset input so same file can be re-selected
@@ -105,6 +123,7 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
         setPhase('clarifying')
         try {
             const result = await window.relayAPI.clarifyPrd(
+                projectId ?? '',
                 value,
                 projectContext ?? undefined,
                 attachments.length > 0 ? attachments : undefined,
@@ -214,9 +233,10 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
                     <textarea
                         id="feature"
                         className="flex min-h-[200px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-                        placeholder="Describe the feature in detail. What should it do? Who is it for? What problem does it solve?"
+                        placeholder="Describe the feature in detail. What should it do? Who is it for? What problem does it solve? Paste images with Cmd+V."
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
+                        onPaste={handlePaste}
                     />
                 </div>
                 {attachmentStrip}
@@ -245,7 +265,7 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
                 )}
                 <div className="flex gap-2">
                     <Button onClick={handleClarify} disabled={!value.trim() || loading} className="flex-1">
-                        Generate PRD
+                        Generate Specification
                     </Button>
                 </div>
                 {onManualMode && (
@@ -254,7 +274,7 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
                             onClick={onManualMode}
                             className="w-full py-2.5 rounded-md border border-dashed border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors"
                         >
-                            Skip PRD — add tasks manually
+                            Skip specification — add tasks manually
                         </button>
                     </div>
                 )}
@@ -468,7 +488,7 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
                                     </>
                                 ) : (
                                     <>
-                                        Generate PRD
+                                        Generate Specification
                                         <ArrowRight className="h-3.5 w-3.5" />
                                     </>
                                 )}

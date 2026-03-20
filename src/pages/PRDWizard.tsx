@@ -6,7 +6,7 @@ import { useIpcListener } from '@/shared/hooks/useIpcListener'
 import { ArrowLeft } from 'lucide-react'
 import type { DecomposedTask } from '@/shared/types/prd'
 
-const PRD_STEPS = ['Describe', 'Review PRD', 'Edit', 'Tasks', 'Confirm']
+const PRD_STEPS = ['Describe', 'Review Specification', 'Edit', 'Tasks', 'Confirm']
 const MANUAL_STEPS = ['Describe', 'Add Tasks', 'Confirm']
 
 interface PRDWizardProps {
@@ -163,10 +163,11 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         // Safety timeout: if 'done' event never arrives, cancel after 5 minutes
         const safetyTimeout = setTimeout(() => {
             setStreaming(false)
-            setError('PRD generation timed out. Please try again.')
+            setError('Specification generation timed out. Please try again.')
         }, 5 * 60 * 1000)
         try {
             await window.relayAPI.generatePrd(
+                activeProject?.id ?? '',
                 featureDescription,
                 clarifications,
                 projectContext ?? undefined,
@@ -174,10 +175,10 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
             )
         } catch (err) {
             clearTimeout(safetyTimeout)
-            setError(err instanceof Error ? err.message : 'Failed to generate PRD')
+            setError(err instanceof Error ? err.message : 'Failed to generate specification')
             setStreaming(false)
         }
-    }, [featureDescription, setPrdMarkdown, projectContext, featureAttachments])
+    }, [activeProject?.id, featureDescription, setPrdMarkdown, projectContext, featureAttachments])
 
     const [estimatedTaskCount, setEstimatedTaskCount] = useState(6)
 
@@ -193,12 +194,12 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         setEstimatedTaskCount(estimate)
 
         try {
-            await window.relayAPI.decomposePrd(prdMarkdown, projectContext ?? undefined)
+            await window.relayAPI.decomposePrd(activeProject?.id ?? '', prdMarkdown, projectContext ?? undefined)
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to decompose PRD')
+            setError(err instanceof Error ? err.message : 'Failed to decompose specification')
             setDecomposing(false)
         }
-    }, [prdMarkdown, projectContext])
+    }, [activeProject?.id, prdMarkdown, projectContext])
 
     const confirmTasks = useCallback(async () => {
         if (!activeProject) return
@@ -214,7 +215,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
             await window.relayAPI.savePrd({
                 projectId: activeProject.id,
                 description: featureDescription || (manualMode ? validTasks[0].title : ''),
-                markdown: prdMarkdown || (manualMode ? `# ${featureDescription || 'Manual Feature'}\n\nManual tasks — no PRD generated.` : ''),
+                markdown: prdMarkdown || (manualMode ? `# ${featureDescription || 'Manual Feature'}\n\nManual tasks — no spec generated.` : ''),
                 tasks: validTasks,
             })
             onComplete()
@@ -226,25 +227,16 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
 
     const handleManualMode = () => {
         setManualMode(true)
-        setTasks([{
-            storyId: 'TASK-001',
-            title: '',
-            description: '',
-            acceptanceCriteria: '',
-            priority: 'medium',
-        }])
+        setTasks([])
         setPrdMarkdown('')
         setWizardStep(3)
     }
 
-    const addEmptyTask = () => {
+    const addTask = (task: DecomposedTask) => {
         const num = tasks.length + 1
         setTasks(prev => [...prev, {
-            storyId: `TASK-${String(num).padStart(3, '0')}`,
-            title: '',
-            description: '',
-            acceptanceCriteria: '',
-            priority: 'medium',
+            ...task,
+            storyId: task.storyId || `TASK-${String(num).padStart(3, '0')}`,
         }])
     }
 
@@ -341,17 +333,17 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                     {/* Step title */}
                     <div className="mb-8">
                         <h1 className="text-lg font-semibold text-foreground">
-                            {effectiveStep === 0 && (featurePhase === 'answering' ? 'A few questions to refine the PRD' : 'Describe your feature')}
-                            {effectiveStep === 1 && (streaming ? 'Generating PRD...' : 'Review your PRD')}
-                            {effectiveStep === 2 && 'Edit PRD'}
+                            {effectiveStep === 0 && (featurePhase === 'answering' ? 'A few questions to refine the specification' : 'Describe your feature')}
+                            {effectiveStep === 1 && (streaming ? 'Generating feature specification...' : 'Review your feature specification')}
+                            {effectiveStep === 2 && 'Edit specification'}
                             {effectiveStep === 3 && (decomposing ? 'Decomposing into tasks...' : manualMode ? 'Add your tasks' : 'Review tasks')}
                             {effectiveStep === 4 && 'Confirm'}
                         </h1>
                         <p className="text-sm text-muted-foreground mt-1">
                             {effectiveStep === 0 && (featurePhase === 'answering' ? 'Answer what you can — skip the rest and we\'ll make reasonable assumptions.' : 'What are you building? Be as detailed as you like.')}
-                            {effectiveStep === 1 && (streaming ? 'Claude is writing the product requirements.' : 'Make sure this captures what you want to build.')}
+                            {effectiveStep === 1 && (streaming ? 'Claude is writing your feature specification document.' : 'Make sure this captures what you want to build.')}
                             {effectiveStep === 2 && 'Refine the markdown directly, then save.'}
-                            {effectiveStep === 3 && (decomposing ? 'Breaking the PRD into buildable tasks.' : manualMode ? 'Define the tasks you want the agent to build.' : 'Remove any tasks that aren\'t needed, then start building.')}
+                            {effectiveStep === 3 && (decomposing ? 'Breaking the specification into buildable tasks.' : manualMode ? 'Define the tasks you want the agent to build.' : 'Remove any tasks that aren\'t needed, then start building.')}
                         </p>
                     </div>
 
@@ -369,6 +361,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                                 onGenerate={generatePrd}
                                 onManualMode={handleManualMode}
                                 loading={streaming}
+                                projectId={activeProject?.id}
                                 projectContext={projectContext}
                                 scanningProject={scanningProject}
                                 attachments={featureAttachments}
@@ -401,7 +394,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                                 <div className="space-y-6">
                                     <div className="flex items-center gap-3 mb-2">
                                         <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                                        <p className="text-sm text-muted-foreground">{agentStatus || 'Decomposing PRD into tasks...'}</p>
+                                        <p className="text-sm text-muted-foreground">{agentStatus || 'Decomposing specification into tasks...'}</p>
                                     </div>
                                     <div className="flex gap-5 items-start">
                                         {(() => {
@@ -438,25 +431,15 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                                     </div>
                                 </div>
                             ) : (
-                                <>
-                                    {manualMode && (
-                                        <div className="mb-5">
-                                            <button
-                                                onClick={addEmptyTask}
-                                                className="w-full py-2.5 rounded-md border border-dashed border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors"
-                                            >
-                                                + Add Task
-                                            </button>
-                                        </div>
-                                    )}
-                                    <TaskReview
-                                        tasks={tasks}
-                                        onRemove={removeTasks}
-                                        onUpdate={updateTask}
-                                        onConfirm={confirmTasks}
-                                        loading={saving}
-                                    />
-                                </>
+                                <TaskReview
+                                    tasks={tasks}
+                                    onRemove={removeTasks}
+                                    onUpdate={updateTask}
+                                    onConfirm={confirmTasks}
+                                    onAddTask={addTask}
+                                    loading={saving}
+                                    manualMode={manualMode}
+                                />
                             )
                         )}
                     </div>

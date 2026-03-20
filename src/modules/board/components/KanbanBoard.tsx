@@ -12,11 +12,13 @@ import {
 import { arrayMove } from '@dnd-kit/sortable'
 import { KanbanColumn } from './KanbanColumn'
 import { TaskCardOverlay } from './TaskCard'
+import { TaskEditDialog } from '@/modules/prd/components/TaskEditDialog'
 import { Button } from '@/components/ui/button'
 import { Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRelayStore } from '@/store/useRelayStore'
 import type { Task, TaskStatus } from '@shared/types'
+import type { DecomposedTask } from '@/shared/types/prd'
 
 const COLUMNS: { id: string; title: string; statuses: TaskStatus[] }[] = [
     { id: 'pending', title: 'Pending', statuses: ['pending'] },
@@ -47,8 +49,11 @@ export function KanbanBoard() {
     const setSelectedTaskId = useRelayStore((s) => s.setSelectedTaskId)
     const currentTaskId = useRelayStore((s) => s.currentTaskId)
     const setReviewingTaskId = useRelayStore((s) => s.setReviewingTaskId)
+    const activeProject = useRelayStore((s) => s.activeProject)
+    const activePrdId = useRelayStore((s) => s.activePrdId)
     const [activeTask, setActiveTask] = useState<Task | null>(null)
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const [showAddTask, setShowAddTask] = useState(false)
     const isSelecting = selectedIds.size > 0
 
     // Clear selection when tasks change (e.g. after bulk delete)
@@ -72,6 +77,24 @@ export function KanbanBoard() {
         setSelectedIds(new Set())
         toast.success(`Deleted ${selectedIds.size} tasks`)
     }, [selectedIds, tasks, setTasks])
+
+    const handleAddTask = useCallback(async (task: DecomposedTask) => {
+        if (!activeProject || !activePrdId) return
+        try {
+            const { task: created } = await window.relayAPI.createTask({
+                projectId: activeProject.id,
+                prdId: activePrdId,
+                title: task.title,
+                description: task.description,
+                acceptanceCriteria: task.acceptanceCriteria,
+                priority: task.priority,
+            })
+            setTasks([...tasks, created])
+            toast.success('Task added')
+        } catch {
+            toast.error('Failed to add task')
+        }
+    }, [activeProject, activePrdId, tasks, setTasks])
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -195,6 +218,7 @@ export function KanbanBoard() {
                         activeTaskId={currentTaskId}
                         onTaskClick={isSelecting ? toggleSelect : setSelectedTaskId}
                         onTaskReview={setReviewingTaskId}
+                        onAddTask={col.id === 'pending' ? () => setShowAddTask(true) : undefined}
                         selectedIds={selectedIds}
                         onToggleSelect={toggleSelect}
                     />
@@ -205,6 +229,14 @@ export function KanbanBoard() {
                     <TaskCardOverlay task={activeTask} isActive={activeTask.id === currentTaskId} />
                 ) : null}
             </DragOverlay>
+
+            {showAddTask && (
+                <TaskEditDialog
+                    task={{ storyId: '', title: '', description: '', acceptanceCriteria: '', priority: 'medium' }}
+                    onSave={(task) => { if (task.title.trim()) handleAddTask(task) }}
+                    onClose={() => setShowAddTask(false)}
+                />
+            )}
         </DndContext>
     )
 }

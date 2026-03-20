@@ -48,10 +48,11 @@ interface RelayAPI {
   getProjectContext(projectId: string): Promise<string | null>
 
   // PRD
-  clarifyPrd(description: string, projectContext?: string, attachments?: import('../shared/types').ImageAttachment[]): Promise<{ status: string; text: string }>
-  generatePrd(description: string, clarifications?: string, projectContext?: string, attachments?: import('../shared/types').ImageAttachment[]): Promise<unknown>
-  decomposePrd(prdMarkdown: string, projectContext?: string): Promise<unknown>
+  clarifyPrd(projectId: string, description: string, projectContext?: string, attachments?: import('../shared/types').ImageAttachment[]): Promise<{ status: string; text: string }>
+  generatePrd(projectId: string, description: string, clarifications?: string, projectContext?: string, attachments?: import('../shared/types').ImageAttachment[]): Promise<unknown>
+  decomposePrd(projectId: string, prdMarkdown: string, projectContext?: string): Promise<unknown>
   savePrd(prd: unknown): Promise<unknown>
+  renamePrd(prdId: string, title: string): Promise<{ status: string }>
   getPrd(projectId: string): Promise<import('../shared/types').PRD | null>
   listPrds(projectId: string): Promise<Array<import('../shared/types').PRD & { taskCount: number; doneCount: number }>>
   deletePrd(prdId: string): Promise<unknown>

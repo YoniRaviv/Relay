@@ -53,7 +53,7 @@ export function FeatureDetail({ feature, onBack, onUnarchive }: FeatureDetailPro
         load()
     }, [feature.id, feature.projectId, activeProject])
 
-    const title = extractTitle(feature.description)
+    const title = extractTitle(feature.description, feature.title)
 
     if (loading) {
         return (
@@ -103,7 +103,7 @@ export function FeatureDetail({ feature, onBack, onUnarchive }: FeatureDetailPro
                                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                             }`}
                         >
-                            {tab === 'overview' ? 'Overview' : tab === 'prd' ? 'PRD' : `Tasks (${feature.taskCount})`}
+                            {tab === 'overview' ? 'Overview' : tab === 'prd' ? 'Specification' : `Tasks (${feature.taskCount})`}
                         </button>
                     ))}
                 </div>
@@ -179,7 +179,7 @@ export function FeatureDetail({ feature, onBack, onUnarchive }: FeatureDetailPro
                         ) : (
                             <div className="flex flex-col items-center justify-center py-12 text-center">
                                 <FileText className="h-8 w-8 text-muted-foreground/50 mb-3" />
-                                <p className="text-sm text-muted-foreground">No PRD document available for this feature.</p>
+                                <p className="text-sm text-muted-foreground">No specification document available for this feature.</p>
                             </div>
                         )}
                     </div>

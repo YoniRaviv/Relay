@@ -35,6 +35,7 @@ export interface Project {
 export interface PRD {
   id: string;
   projectId: string;
+  title?: string | null;
   description: string;
   markdown: string;
   status: PRDStatus;

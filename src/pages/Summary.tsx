@@ -10,7 +10,10 @@ interface SummaryProps {
     projectId: string
 }
 
-function extractTitle(description: string): string {
+function extractTitle(description: string, title?: string | null): string {
+    if (title) {
+        return title.length > 40 ? title.slice(0, 40) + '...' : title
+    }
     const first = description.split('\n')[0].trim()
     if (first.length > 40) return first.slice(0, 40) + '...'
     return first || 'Untitled Feature'
@@ -69,7 +72,7 @@ export function Summary({ projectId }: SummaryProps) {
     }
 
     const selectedLabel = selectedPrdId
-        ? extractTitle(features.find(f => f.id === selectedPrdId)?.description ?? '')
+        ? extractTitle(features.find(f => f.id === selectedPrdId)?.description ?? '', features.find(f => f.id === selectedPrdId)?.title)
         : 'All Features'
 
     if (loading) {
@@ -124,7 +127,7 @@ export function Summary({ projectId }: SummaryProps) {
                                             f.id === selectedPrdId ? 'bg-muted/70 font-medium text-foreground' : 'text-muted-foreground'
                                         }`}
                                     >
-                                        <span className="truncate">{extractTitle(f.description)}</span>
+                                        <span className="truncate">{extractTitle(f.description, f.title)}</span>
                                         <span className="text-[10px] shrink-0">{f.doneCount}/{f.taskCount}</span>
                                     </button>
                                 ))}

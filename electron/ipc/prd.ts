@@ -61,14 +61,28 @@ function buildCliEnv(): Record<string, string | undefined> {
   return cleanEnv;
 }
 
-function getCliQueryOptions(systemPrompt: string, stderrLines: string[]) {
+function getProjectPathById(projectId?: string): string | null {
+  if (!projectId) return null;
+  const projects = store.get('recentProjects', []) as Array<{ path: string }>;
+  for (const p of projects) {
+    try {
+      const db = openDb(p.path);
+      const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
+      if (row) return p.path;
+    } catch { continue; }
+  }
+  return null;
+}
+
+function getCliQueryOptions(systemPrompt: string, stderrLines: string[], projectPath?: string | null) {
   const selectedModel = (store.get('selectedModel') ?? DEFAULT_MODEL) as string;
+  const hasProjectPath = !!projectPath;
   return {
     systemPrompt,
     model: selectedModel,
-    cwd: os.homedir(),
-    maxTurns: 1,
-    allowedTools: [] as string[],
+    cwd: projectPath ?? os.homedir(),
+    maxTurns: hasProjectPath ? 10 : 1,
+    allowedTools: hasProjectPath ? ['Read', 'Glob', 'Grep'] : ([] as string[]),
     permissionMode: 'acceptEdits' as const,
     persistSession: false,
     pathToClaudeCodeExecutable: getClaudePath(),
@@ -99,6 +113,7 @@ async function cliStreamText(
   userMessage: string | ContentBlock[],
   win: BrowserWindow,
   channel: string,
+  projectPath?: string | null,
 ): Promise<string> {
   const textChunks: string[] = [];
   let hasContent = false;
@@ -112,7 +127,7 @@ async function cliStreamText(
 
   const session = query({
     prompt,
-    options: getCliQueryOptions(systemPrompt, stderrLines),
+    options: getCliQueryOptions(systemPrompt, stderrLines, projectPath),
   });
 
   try {
@@ -161,6 +176,7 @@ async function cliGenerateText(
   systemPrompt: string,
   userMessage: string | ContentBlock[],
   win?: BrowserWindow,
+  projectPath?: string | null,
 ): Promise<string> {
   const textChunks: string[] = [];
   const stderrLines: string[] = [];
@@ -173,7 +189,7 @@ async function cliGenerateText(
 
   const session = query({
     prompt,
-    options: getCliQueryOptions(systemPrompt, stderrLines),
+    options: getCliQueryOptions(systemPrompt, stderrLines, projectPath),
   });
 
   try {
@@ -203,10 +219,11 @@ async function cliGenerateText(
 }
 
 export function registerPrdHandlers(): void {
-  ipcMain.handle('prd:clarify', async (_event, description: string, projectContext?: string, attachments?: ImageAttachment[]) => {
+  ipcMain.handle('prd:clarify', async (_event, projectId: string, description: string, projectContext?: string, attachments?: ImageAttachment[]) => {
     const win = BrowserWindow.getFocusedWindow();
     if (!win) throw new Error('No active window');
 
+    const projectPath = getProjectPathById(projectId);
     const hasAttachments = !!attachments?.length;
     const prompt = buildClarifyPrompt(description, projectContext ?? undefined, hasAttachments);
     const systemPrompt = 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent". Return only valid JSON.';
@@ -216,7 +233,7 @@ export function registerPrdHandlers(): void {
 
     let result: string;
     if (getEngineMode() === 'claude-code') {
-      result = await cliGenerateText(systemPrompt, contentBlocks, win);
+      result = await cliGenerateText(systemPrompt, contentBlocks, win, projectPath);
     } else {
       const apiKey = getApiKey();
       result = await generateText(apiKey, systemPrompt, contentBlocks);
@@ -224,10 +241,11 @@ export function registerPrdHandlers(): void {
     return { status: 'ok', text: result };
   });
 
-  ipcMain.handle('prd:generate', withSentry('prd:generate', async (_event, description: string, clarifications?: string, projectContext?: string, attachments?: ImageAttachment[]) => {
+  ipcMain.handle('prd:generate', withSentry('prd:generate', async (_event, projectId: string, description: string, clarifications?: string, projectContext?: string, attachments?: ImageAttachment[]) => {
     const win = BrowserWindow.getFocusedWindow();
     if (!win) throw new Error('No active window');
 
+    const projectPath = getProjectPathById(projectId);
     const hasAttachments = !!attachments?.length;
     const prompt = buildPrdPrompt(description, clarifications, projectContext ?? undefined, hasAttachments);
     const contentBlocks = buildContentBlocks(prompt, attachments);
@@ -235,7 +253,7 @@ export function registerPrdHandlers(): void {
     if (hasAttachments) sendStatus(win, `Analyzing ${attachments!.length} attached image${attachments!.length > 1 ? 's' : ''}...`);
 
     if (getEngineMode() === 'claude-code') {
-      await cliStreamText('You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent".', contentBlocks, win, 'prd:stream');
+      await cliStreamText('You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent".', contentBlocks, win, 'prd:stream', projectPath);
     } else {
       const apiKey = getApiKey();
       await streamText(apiKey, 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent".', contentBlocks, win, 'prd:stream');
@@ -243,14 +261,15 @@ export function registerPrdHandlers(): void {
     return { status: 'ok' };
   }));
 
-  ipcMain.handle('prd:decompose', withSentry('prd:decompose', async (_event, prdMarkdown: string, projectContext?: string) => {
+  ipcMain.handle('prd:decompose', withSentry('prd:decompose', async (_event, projectId: string, prdMarkdown: string, projectContext?: string) => {
     const win = BrowserWindow.getFocusedWindow();
     if (!win) throw new Error('No active window');
 
+    const projectPath = getProjectPathById(projectId);
     const prompt = buildDecomposePrompt(prdMarkdown, projectContext ?? undefined);
 
     if (getEngineMode() === 'claude-code') {
-      const result = await cliGenerateText('You are a senior software architect. Return only valid JSON.', prompt, win);
+      const result = await cliGenerateText('You are a senior software architect. Return only valid JSON.', prompt, win, projectPath);
       win.webContents.send('prd:decomposeStream', { type: 'done', text: result });
     } else {
       const apiKey = getApiKey();
@@ -311,6 +330,21 @@ export function registerPrdHandlers(): void {
     return { status: 'ok', prdId };
   });
 
+  ipcMain.handle('prd:rename', async (_event, prdId: string, title: string) => {
+    const projects = store.get('recentProjects', []) as Array<{ path: string }>;
+    for (const p of projects) {
+      try {
+        const db = openDb(p.path);
+        const row = db.prepare('SELECT id FROM prd WHERE id = ?').get(prdId);
+        if (!row) continue;
+        db.prepare('UPDATE prd SET title = ?, updated_at = ? WHERE id = ?')
+          .run(title, new Date().toISOString(), prdId);
+        return { status: 'ok' };
+      } catch { continue; }
+    }
+    throw new Error('PRD not found');
+  });
+
   ipcMain.handle('prd:get', async (_event, projectId: string) => {
     const projects = store.get('recentProjects', []) as Array<{ path: string }>;
     const errors: string[] = [];
@@ -324,6 +358,7 @@ export function registerPrdHandlers(): void {
           return {
             id: row.id,
             projectId: row.project_id,
+            title: row.title ?? null,
             description: row.description,
             markdown: row.markdown,
             status: row.status,
@@ -362,6 +397,7 @@ export function registerPrdHandlers(): void {
         return rows.map(row => ({
           id: row.id,
           projectId: row.project_id,
+          title: row.title ?? null,
           description: row.description,
           markdown: row.markdown,
           status: row.status,
@@ -475,6 +511,7 @@ export function registerPrdHandlers(): void {
         return rows.map(row => ({
           id: row.id,
           projectId: row.project_id,
+          title: row.title ?? null,
           description: row.description,
           markdown: row.markdown,
           status: row.status,
@@ -503,7 +540,7 @@ export function registerPrdHandlers(): void {
           `SELECT * FROM tasks WHERE prd_id = ? ORDER BY "order" ASC`
         ).all(prdId) as Record<string, unknown>[];
 
-        let md = `# ${(prd.description as string).split('\n')[0] || 'Feature'}\n\n`;
+        let md = `# ${(prd.title as string) || (prd.description as string).split('\n')[0] || 'Feature'}\n\n`;
         md += `${prd.markdown as string}\n\n`;
         md += `---\n\n## Tasks\n\n`;
 

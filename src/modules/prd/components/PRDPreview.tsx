@@ -39,14 +39,14 @@ export function PRDPreview({ markdown, streaming, agentStatus, onEdit, onApprove
                 ) : streaming ? (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground py-1">
                         <span className="inline-block w-1.5 h-4 bg-primary animate-pulse rounded-sm" />
-                        <span>{agentStatus || 'Generating PRD...'}</span>
+                        <span>{agentStatus || 'Generating feature specification...'}</span>
                     </div>
                 ) : null}
             </div>
             {!streaming && markdown && (
                 <div className="flex gap-3 pt-2 border-t border-border">
                     <Button variant="outline" onClick={onEdit} className="flex-1">
-                        Edit PRD
+                        Edit Specification
                     </Button>
                     <Button onClick={onApprove} className="flex-1">
                         Approve & Decompose

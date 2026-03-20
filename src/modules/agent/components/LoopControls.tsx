@@ -10,14 +10,14 @@ import { PrCreationDialog } from '@/modules/review/components/PrCreationDialog'
 import { FeatureCompleteActions } from './FeatureCompleteActions'
 import { useClickOutside } from '@/shared/hooks/useClickOutside'
 import type { FileChange } from '@/shared/types/review'
-import type { BuildMode } from '@shared/types'
+import type { BuildMode, LoopState } from '@shared/types'
 
 interface LoopControlsProps {
     onArchiveFeature?: () => void
 }
 
 export function LoopControls({ onArchiveFeature }: LoopControlsProps = {}) {
-    const { loopState, setLoopState, activeProject, clearActivity, setFeatureBranch, setBaseBranch, setCurrentBranch, buildMode, setBuildMode, tasks, prUrl, setPrUrl } = useRelayStore()
+    const { loopState, loopPrdId, setLoopState, setLoopPrdId, activeProject, clearActivity, setFeatureBranch, setBaseBranch, setCurrentBranch, buildMode, setBuildMode, tasks, prUrl, setPrUrl, activePrdId } = useRelayStore()
     const [showUncommitted, setShowUncommitted] = useState(false)
     const [showBranchSetup, setShowBranchSetup] = useState(false)
     const [showGitInit, setShowGitInit] = useState(false)
@@ -25,11 +25,15 @@ export function LoopControls({ onArchiveFeature }: LoopControlsProps = {}) {
     const [hasRemote, setHasRemote] = useState<boolean | null>(null)
     const [prChecked, setPrChecked] = useState(false)
 
+    // Show idle controls when viewing a different feature than the one the loop is running for
+    const isLoopOnDifferentFeature = loopPrdId && activePrdId && loopPrdId !== activePrdId
+    const effectiveLoopState: LoopState = isLoopOnDifferentFeature ? 'idle' : loopState
+
     const allComplete = useMemo(() => {
         return tasks.length > 0 && tasks.every(t => t.status === 'done')
     }, [tasks])
 
-    const featureComplete = allComplete && loopState !== 'running'
+    const featureComplete = allComplete && effectiveLoopState !== 'running'
 
     // Check remote & PR status when feature completes
     useEffect(() => {
@@ -70,6 +74,7 @@ export function LoopControls({ onArchiveFeature }: LoopControlsProps = {}) {
         setLoopState('running')
         try {
             const { activePrdId: prdId, buildMode: currentBuildMode } = useRelayStore.getState()
+            setLoopPrdId(prdId)
             await window.relayAPI.startLoop(activeProject.id, prdId ?? undefined, currentBuildMode)
         } catch (err) {
             setLoopState('stopped')
@@ -224,6 +229,7 @@ export function LoopControls({ onArchiveFeature }: LoopControlsProps = {}) {
 
     const handleStop = async () => {
         await window.relayAPI.stopLoop()
+        setLoopPrdId(null)
     }
 
     const [modeOpen, setModeOpen] = useState(false)
@@ -310,12 +316,12 @@ export function LoopControls({ onArchiveFeature }: LoopControlsProps = {}) {
                     </>
                 ) : (
                     <>
-                        <div className={`w-2 h-2 rounded-full ${stateColor[loopState]}`} />
-                        <span className="text-xs text-muted-foreground">{stateLabel[loopState]}</span>
+                        <div className={`w-2 h-2 rounded-full ${stateColor[effectiveLoopState]}`} />
+                        <span className="text-xs text-muted-foreground">{stateLabel[effectiveLoopState]}</span>
 
-                        {loopState === 'idle' || loopState === 'stopped' ? (
+                        {effectiveLoopState === 'idle' || effectiveLoopState === 'stopped' ? (
                             renderLoopButtons()
-                        ) : loopState === 'running' ? (
+                        ) : effectiveLoopState === 'running' ? (
                             <>
                                 <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={handlePause}>
                                     <Pause className="h-3.5 w-3.5" />
@@ -326,7 +332,7 @@ export function LoopControls({ onArchiveFeature }: LoopControlsProps = {}) {
                                     Stop
                                 </Button>
                             </>
-                        ) : loopState === 'paused' ? (
+                        ) : effectiveLoopState === 'paused' ? (
                             <>
                                 <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={handleResume}>
                                     <Play className="h-3.5 w-3.5" />

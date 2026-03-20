@@ -146,6 +146,16 @@ export function initializeDatabase(db: Database.Database): void {
         }
       },
     },
+    {
+      version: 8,
+      description: 'Add title column to prd (feature rename)',
+      up: () => {
+        const cols = db.pragma('table_info(prd)') as Array<{ name: string }>;
+        if (!cols.some(c => c.name === 'title')) {
+          db.exec(`ALTER TABLE prd ADD COLUMN title TEXT`);
+        }
+      },
+    },
   ];
 
   // Run pending migrations inside a transaction

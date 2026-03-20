@@ -71,11 +71,13 @@ interface TasksSlice {
 // ── Agent Slice ──
 interface AgentSlice {
   loopState: LoopState;
+  loopPrdId: string | null;  // which feature the loop is running for
   currentTaskId: string | null;
   activityFeed: TaskLog[];
   buildStartTime: string | null;
   buildMode: BuildMode;
   setLoopState: (state: LoopState) => void;
+  setLoopPrdId: (prdId: string | null) => void;
   setCurrentTaskId: (id: string | null) => void;
   addActivity: (log: TaskLog) => void;
   clearActivity: () => void;
@@ -160,11 +162,13 @@ export const useRelayStore = create<RelayStore>((set) => ({
 
   // Agent
   loopState: 'idle',
+  loopPrdId: null,
   currentTaskId: null,
   activityFeed: [],
   buildStartTime: null,
   buildMode: 'review',
   setLoopState: (loopState) => set({ loopState }),
+  setLoopPrdId: (loopPrdId) => set({ loopPrdId }),
   setCurrentTaskId: (currentTaskId) => set({ currentTaskId }),
   addActivity: (log) =>
     set((state) => {
