@@ -186,8 +186,13 @@ async function cliStreamText(
             const accumulated = textChunks.join('');
             if (accumulated.includes('# ')) {
               documentStarted = true;
+              // Strip preamble — only keep text from the first heading onward
+              const headingIndex = accumulated.indexOf('# ');
+              const documentText = accumulated.substring(headingIndex);
+              textChunks.length = 0;
+              textChunks.push(documentText);
               if (!hasContent) { sendStatus(win, 'Writing document...'); hasContent = true; }
-              win.webContents.send(channel, { type: 'delta', text: accumulated });
+              win.webContents.send(channel, { type: 'delta', text: documentText });
             }
           } else {
             textChunks.push(text);
@@ -201,10 +206,12 @@ async function cliStreamText(
               // Check if this completed message contains the document
               if (block.text.includes('# ')) {
                 documentStarted = true;
+                const headingIndex = block.text.indexOf('# ');
+                const documentText = block.text.substring(headingIndex);
                 if (!hasContent) { sendStatus(win, 'Writing document...'); hasContent = true; }
                 if (textChunks.length === 0) {
-                  textChunks.push(block.text);
-                  win.webContents.send(channel, { type: 'delta', text: block.text });
+                  textChunks.push(documentText);
+                  win.webContents.send(channel, { type: 'delta', text: documentText });
                 }
               }
               // Skip non-document text (agent narration during tool use)

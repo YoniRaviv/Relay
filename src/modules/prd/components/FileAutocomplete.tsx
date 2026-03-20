@@ -32,6 +32,9 @@ export function FileAutocomplete({ query, projectId, onSelect, onDismiss }: File
 
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
+            // Only intercept when a textarea is focused (the one that triggered autocomplete)
+            if (!(document.activeElement instanceof HTMLTextAreaElement)) return
+
             if (e.key === 'ArrowDown') {
                 e.preventDefault()
                 setSelectedIndex(i => Math.min(i + 1, results.length - 1))
