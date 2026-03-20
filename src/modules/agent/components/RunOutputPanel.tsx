@@ -1,37 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useIpcListener } from '@/shared/hooks/useIpcListener'
+import { LinkifiedText } from './LinkifiedText'
 
 const MAX_LINES = 5000
-const URL_REGEX = /(https?:\/\/[^\s]+)/g
-
-function LinkifiedText({ text }: { text: string }) {
-    const parts = text.split(URL_REGEX)
-    if (parts.length === 1) return <span>{text}</span>
-
-    return (
-        <span>
-            {parts.map((part, i) =>
-                URL_REGEX.test(part) ? (
-                    <a
-                        key={i}
-                        href={part}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline text-primary hover:text-primary/80"
-                        onClick={(e) => {
-                            e.preventDefault()
-                            window.open(part, '_blank')
-                        }}
-                    >
-                        {part}
-                    </a>
-                ) : (
-                    <span key={i}>{part}</span>
-                )
-            )}
-        </span>
-    )
-}
 
 export function RunOutputPanel() {
     const [lines, setLines] = useState<Array<{ text: string; type: 'stdout' | 'stderr' | 'exit' }>>([])
