@@ -361,17 +361,60 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
 
     if (phase === 'clarifying') {
         return (
-            <div className="space-y-4">
-                <div className="rounded-md border border-border bg-muted/30 p-3">
-                    <p className="text-sm text-muted-foreground line-clamp-3">{value}</p>
+            <div className="space-y-6">
+                {/* Description with shimmer */}
+                <div className="rounded-lg border border-primary/20 bg-card p-4 shimmer-overlay">
+                    <p className="text-sm text-foreground/70 leading-relaxed whitespace-pre-wrap line-clamp-4">{value}</p>
+                    {attachments.length > 0 && (
+                        <div className="flex gap-1.5 mt-3">
+                            {attachments.map((att) => (
+                                <img
+                                    key={att.id}
+                                    src={`data:${att.mediaType};base64,${att.base64Data}`}
+                                    alt={att.name}
+                                    className="h-8 w-8 rounded border border-border object-cover opacity-60"
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
-                <div className="flex flex-col items-center gap-3 py-6">
-                    <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    <p className="text-sm text-muted-foreground">
-                        {attachments.length > 0
-                            ? 'Analyzing your feature description and attached images...'
-                            : 'Analyzing your feature description...'}
-                    </p>
+
+                {/* Skeleton question layout */}
+                <div className="space-y-5">
+                    {/* Skeleton progress pills */}
+                    <div className="flex items-center gap-1.5">
+                        {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="h-7 w-7 rounded-md bg-muted animate-pulse" style={{ animationDelay: `${i * 100}ms` }} />
+                        ))}
+                        <div className="h-3 w-10 bg-muted/50 rounded ml-2 animate-pulse" />
+                    </div>
+
+                    {/* Skeleton question heading */}
+                    <div className="space-y-2">
+                        <div className="h-5 w-4/5 bg-muted rounded animate-pulse" />
+                        <div className="h-5 w-3/5 bg-muted/70 rounded animate-pulse" />
+                    </div>
+
+                    {/* Skeleton option cards */}
+                    <div className="space-y-2">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border/40 bg-card/30" style={{ opacity: 1 - i * 0.15 }}>
+                                <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/20 shrink-0" />
+                                <div className="h-4 rounded bg-muted/50 animate-pulse" style={{ width: `${75 - i * 12}%`, animationDelay: `${i * 150}ms` }} />
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Skeleton navigation */}
+                    <div className="flex items-center gap-2 pt-2">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <div className="h-3 w-3 border-[1.5px] border-primary border-t-transparent rounded-full animate-spin" />
+                            <span>Preparing questions...</span>
+                        </div>
+                        <div className="flex-1" />
+                        <div className="h-8 w-24 bg-muted/40 rounded-md animate-pulse" />
+                        <div className="h-8 w-20 bg-muted/60 rounded-md animate-pulse" />
+                    </div>
                 </div>
             </div>
         )

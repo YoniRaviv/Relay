@@ -121,7 +121,7 @@ function getCliQueryOptions(systemPrompt: string, stderrLines: string[], project
     systemPrompt,
     model: selectedModel,
     cwd: projectPath ?? os.homedir(),
-    maxTurns: hasProjectPath ? 10 : 1,
+    maxTurns: hasProjectPath ? 15 : 1,
     allowedTools: hasProjectPath ? ['Read', 'Glob', 'Grep'] : ([] as string[]),
     permissionMode: 'acceptEdits' as const,
     persistSession: false,
@@ -157,6 +157,7 @@ async function cliStreamText(
 ): Promise<string> {
   const textChunks: string[] = [];
   let hasContent = false;
+  let documentStarted = false; // Track when actual document content begins
   const stderrLines: string[] = [];
 
   sendStatus(win, 'Spawning Claude Code agent...');
@@ -175,25 +176,42 @@ async function cliStreamText(
       if (message.type === 'system' && 'subtype' in message && message.subtype === 'init') {
         sendStatus(win, 'Agent connected, analyzing request...');
       } else if (message.type === 'stream_event') {
-        if (!hasContent) {
-          sendStatus(win, 'Writing document...');
-          hasContent = true;
-        }
         const evt = (message as { event: { type: string; delta?: { type: string; text?: string } } }).event;
         if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta' && evt.delta.text) {
-          textChunks.push(evt.delta.text);
-          win.webContents.send(channel, { type: 'delta', text: evt.delta.text });
+          const text = evt.delta.text;
+          // When project context is enabled, the agent may "think aloud" before writing.
+          // Only start streaming to UI once we see markdown document content (# heading).
+          if (!documentStarted) {
+            textChunks.push(text);
+            const accumulated = textChunks.join('');
+            if (accumulated.includes('# ')) {
+              documentStarted = true;
+              if (!hasContent) { sendStatus(win, 'Writing document...'); hasContent = true; }
+              win.webContents.send(channel, { type: 'delta', text: accumulated });
+            }
+          } else {
+            textChunks.push(text);
+            win.webContents.send(channel, { type: 'delta', text });
+          }
         }
       } else if (message.type === 'assistant') {
-        // Fallback: if stream_event didn't fire, extract text from completed message
-        if (!hasContent) {
-          sendStatus(win, 'Writing document...');
-          hasContent = true;
-        }
         for (const block of message.message.content) {
-          if (block.type === 'text' && textChunks.length === 0) {
-            textChunks.push(block.text);
-            win.webContents.send(channel, { type: 'delta', text: block.text });
+          if (block.type === 'text') {
+            if (!documentStarted) {
+              // Check if this completed message contains the document
+              if (block.text.includes('# ')) {
+                documentStarted = true;
+                if (!hasContent) { sendStatus(win, 'Writing document...'); hasContent = true; }
+                if (textChunks.length === 0) {
+                  textChunks.push(block.text);
+                  win.webContents.send(channel, { type: 'delta', text: block.text });
+                }
+              }
+              // Skip non-document text (agent narration during tool use)
+            } else if (textChunks.length === 0) {
+              textChunks.push(block.text);
+              win.webContents.send(channel, { type: 'delta', text: block.text });
+            }
           }
         }
       } else if (message.type === 'result') {
@@ -208,7 +226,15 @@ async function cliStreamText(
 
   const fullText = textChunks.join('');
   sendStatus(win, '');
-  win.webContents.send(channel, { type: 'done', text: fullText });
+
+  // Validate: if the agent used all turns exploring but never wrote a proper document,
+  // signal failure so the frontend can show an error instead of an empty review page.
+  if (!documentStarted && fullText.length < 200) {
+    win.webContents.send(channel, { type: 'error', text: 'The agent explored the project but did not produce a specification document. Try again — the agent will use its findings from this attempt.' });
+  } else {
+    // If document never formally started but we have substantial text, send it anyway
+    win.webContents.send(channel, { type: 'done', text: fullText });
+  }
   return fullText;
 }
 
@@ -268,7 +294,9 @@ export function registerPrdHandlers(): void {
     const enrichedDescription = description + fileContext;
     const hasAttachments = !!attachments?.length;
     const prompt = buildClarifyPrompt(enrichedDescription, projectContext ?? undefined, hasAttachments);
-    const systemPrompt = 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent". Return only valid JSON.';
+    const systemPrompt = projectPath
+      ? 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent". You have access to the project directory — use tools silently to understand the codebase. Do NOT narrate your exploration. Return only valid JSON.'
+      : 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent". Return only valid JSON.';
     const contentBlocks = buildContentBlocks(prompt, attachments);
 
     if (hasAttachments) sendStatus(win, `Analyzing ${attachments!.length} attached image${attachments!.length > 1 ? 's' : ''}...`);
@@ -297,7 +325,10 @@ export function registerPrdHandlers(): void {
     if (hasAttachments) sendStatus(win, `Analyzing ${attachments!.length} attached image${attachments!.length > 1 ? 's' : ''}...`);
 
     if (getEngineMode() === 'claude-code') {
-      await cliStreamText('You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent".', contentBlocks, win, 'prd:stream', projectPath);
+      const cliSystemPrompt = projectPath
+        ? 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent". You have access to the project directory — use Read/Glob/Grep tools to understand the codebase before writing. IMPORTANT: Do NOT narrate your exploration. Do NOT say "Let me look at..." or describe what you are doing. Use tools silently, then output ONLY the final specification document in markdown. Your entire text response must be the specification — no preamble, no commentary.'
+        : 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent".';
+      await cliStreamText(cliSystemPrompt, contentBlocks, win, 'prd:stream', projectPath);
     } else {
       const apiKey = getApiKey();
       await streamText(apiKey, 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent".', contentBlocks, win, 'prd:stream');
