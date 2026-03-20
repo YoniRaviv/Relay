@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { X } from 'lucide-react'
 import { priorityBadgeColors } from '@/shared/constants/statusMaps'
+import { TextareaWithFileTag } from './TextareaWithFileTag'
+import { useRelayStore } from '@/store/useRelayStore'
 import type { DecomposedTask } from '@/shared/types/prd'
 
 const PRIORITY_ORDER = ['high', 'medium', 'low'] as const
@@ -17,6 +19,7 @@ export function TaskEditDialog({
     onClose: () => void
 }) {
     const [draft, setDraft] = useState(task)
+    const projectId = useRelayStore((s) => s.activeProject?.id)
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         if (e.key === 'Escape') onClose()
@@ -79,10 +82,10 @@ export function TaskEditDialog({
                         <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">
                             Description
                         </label>
-                        <textarea
-                            className="w-full text-sm bg-background border border-input rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow leading-relaxed"
+                        <TextareaWithFileTag
                             value={draft.description}
-                            onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+                            onChange={(v) => setDraft({ ...draft, description: v })}
+                            projectId={projectId}
                             rows={4}
                         />
                     </div>
@@ -91,10 +94,10 @@ export function TaskEditDialog({
                         <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">
                             Acceptance Criteria
                         </label>
-                        <textarea
-                            className="w-full text-sm bg-background border border-input rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow leading-relaxed"
+                        <TextareaWithFileTag
                             value={draft.acceptanceCriteria}
-                            onChange={(e) => setDraft({ ...draft, acceptanceCriteria: e.target.value })}
+                            onChange={(v) => setDraft({ ...draft, acceptanceCriteria: v })}
+                            projectId={projectId}
                             rows={4}
                             placeholder="Define what done looks like..."
                         />

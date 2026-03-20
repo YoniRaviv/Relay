@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Loader2, SkipForward, ImagePlus, X, ArrowRight, ArrowLeft, Check, PenLine } from 'lucide-react'
+import { Loader2, SkipForward, ImagePlus, X, ArrowRight, ArrowLeft, Check, PenLine, FileCode } from 'lucide-react'
 import { ProjectContextBadge } from '@/shared/components/ProjectContextBadge'
+import { FileAutocomplete } from './FileAutocomplete'
 import type { ImageAttachment } from '@shared/types'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB per file
@@ -41,6 +42,10 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
     const [showCustomInput, setShowCustomInput] = useState<Record<string, boolean>>({})
     const [error, setError] = useState('')
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
+    const [showAutocomplete, setShowAutocomplete] = useState(false)
+    const [autocompleteQuery, setAutocompleteQuery] = useState('')
+    const [atStartIndex, setAtStartIndex] = useState(-1)
 
     const setPhase = useCallback((p: FeatureInputPhase) => {
         setPhaseInternal(p)
@@ -117,6 +122,35 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
         // Reset input so same file can be re-selected
         if (fileInputRef.current) fileInputRef.current.value = ''
     }
+
+    const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const newValue = e.target.value
+        onChange(newValue)
+
+        const cursorPos = e.target.selectionStart
+        const textBeforeCursor = newValue.substring(0, cursorPos)
+        const atMatch = textBeforeCursor.match(/@([^\s@]*)$/)
+
+        if (atMatch) {
+            const atPos = textBeforeCursor.lastIndexOf('@')
+            setAtStartIndex(atPos)
+            setAutocompleteQuery(atMatch[1])
+            setShowAutocomplete(true)
+        } else {
+            setShowAutocomplete(false)
+        }
+    }, [onChange])
+
+    const handleFileTagSelect = useCallback((filePath: string) => {
+        if (atStartIndex < 0) return
+        const before = value.substring(0, atStartIndex)
+        const after = value.substring(atStartIndex + 1 + autocompleteQuery.length)
+        const newValue = `${before}@${filePath} ${after}`
+        onChange(newValue)
+        setShowAutocomplete(false)
+        setAtStartIndex(-1)
+        setTimeout(() => textareaRef.current?.focus(), 0)
+    }, [value, onChange, atStartIndex, autocompleteQuery])
 
     const handleClarify = async () => {
         setError('')
@@ -222,6 +256,37 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
         </div>
     )
 
+    // Extract @file references from text for display as chips
+    const fileRefs = Array.from(new Set(
+        (value.match(/@([\w.\/\-()[\]{}]+\.\w+)/g) || []).map(m => m.slice(1))
+    ))
+
+    const removeFileRef = (ref: string) => {
+        const escaped = ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        onChange(value.replace(new RegExp(`@${escaped}\\s?`, 'g'), ''))
+    }
+
+    const fileTagStrip = fileRefs.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+            {fileRefs.map((ref) => (
+                <span
+                    key={ref}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-xs font-mono text-primary"
+                >
+                    <FileCode className="h-3 w-3" />
+                    <span className="max-w-[200px] truncate">{ref}</span>
+                    <button
+                        type="button"
+                        onClick={() => removeFileRef(ref)}
+                        className="ml-0.5 text-primary/60 hover:text-primary transition-colors"
+                    >
+                        <X className="h-2.5 w-2.5" />
+                    </button>
+                </span>
+            ))}
+        </div>
+    )
+
     if (phase === 'describe') {
         return (
             <div className="space-y-4">
@@ -230,14 +295,26 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
                         <Label htmlFor="feature">Describe the feature you want to build</Label>
                         <ProjectContextBadge projectContext={projectContext} scanning={scanningProject} />
                     </div>
-                    <textarea
-                        id="feature"
-                        className="flex min-h-[200px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-                        placeholder="Describe the feature in detail. What should it do? Who is it for? What problem does it solve? Paste images with Cmd+V."
-                        value={value}
-                        onChange={(e) => onChange(e.target.value)}
-                        onPaste={handlePaste}
-                    />
+                    <div className="relative">
+                        <textarea
+                            ref={textareaRef}
+                            id="feature"
+                            className="flex min-h-[200px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                            placeholder="Describe the feature in detail. Use @filename to reference project files. Paste images with Cmd+V."
+                            value={value}
+                            onChange={handleTextChange}
+                            onPaste={handlePaste}
+                        />
+                        {showAutocomplete && projectId && (
+                            <FileAutocomplete
+                                query={autocompleteQuery}
+                                projectId={projectId}
+                                onSelect={handleFileTagSelect}
+                                onDismiss={() => setShowAutocomplete(false)}
+                            />
+                        )}
+                    </div>
+                    {fileTagStrip}
                 </div>
                 {attachmentStrip}
                 <input
@@ -284,17 +361,60 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
 
     if (phase === 'clarifying') {
         return (
-            <div className="space-y-4">
-                <div className="rounded-md border border-border bg-muted/30 p-3">
-                    <p className="text-sm text-muted-foreground line-clamp-3">{value}</p>
+            <div className="space-y-6">
+                {/* Description with shimmer */}
+                <div className="rounded-lg border border-primary/20 bg-card p-4 shimmer-overlay">
+                    <p className="text-sm text-foreground/70 leading-relaxed whitespace-pre-wrap line-clamp-4">{value}</p>
+                    {attachments.length > 0 && (
+                        <div className="flex gap-1.5 mt-3">
+                            {attachments.map((att) => (
+                                <img
+                                    key={att.id}
+                                    src={`data:${att.mediaType};base64,${att.base64Data}`}
+                                    alt={att.name}
+                                    className="h-8 w-8 rounded border border-border object-cover opacity-60"
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
-                <div className="flex flex-col items-center gap-3 py-6">
-                    <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    <p className="text-sm text-muted-foreground">
-                        {attachments.length > 0
-                            ? 'Analyzing your feature description and attached images...'
-                            : 'Analyzing your feature description...'}
-                    </p>
+
+                {/* Skeleton question layout */}
+                <div className="space-y-5">
+                    {/* Skeleton progress pills */}
+                    <div className="flex items-center gap-1.5">
+                        {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="h-7 w-7 rounded-md bg-muted animate-pulse" style={{ animationDelay: `${i * 100}ms` }} />
+                        ))}
+                        <div className="h-3 w-10 bg-muted/50 rounded ml-2 animate-pulse" />
+                    </div>
+
+                    {/* Skeleton question heading */}
+                    <div className="space-y-2">
+                        <div className="h-5 w-4/5 bg-muted rounded animate-pulse" />
+                        <div className="h-5 w-3/5 bg-muted/70 rounded animate-pulse" />
+                    </div>
+
+                    {/* Skeleton option cards */}
+                    <div className="space-y-2">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border/40 bg-card/30" style={{ opacity: 1 - i * 0.15 }}>
+                                <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/20 shrink-0" />
+                                <div className="h-4 rounded bg-muted/50 animate-pulse" style={{ width: `${75 - i * 12}%`, animationDelay: `${i * 150}ms` }} />
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Skeleton navigation */}
+                    <div className="flex items-center gap-2 pt-2">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <div className="h-3 w-3 border-[1.5px] border-primary border-t-transparent rounded-full animate-spin" />
+                            <span>Preparing questions...</span>
+                        </div>
+                        <div className="flex-1" />
+                        <div className="h-8 w-24 bg-muted/40 rounded-md animate-pulse" />
+                        <div className="h-8 w-20 bg-muted/60 rounded-md animate-pulse" />
+                    </div>
                 </div>
             </div>
         )

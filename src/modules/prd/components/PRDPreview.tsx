@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Button } from '@/components/ui/button'
+import { StreamingProgress } from './StreamingProgress'
 
 interface PRDPreviewProps {
     markdown: string
@@ -14,7 +15,6 @@ interface PRDPreviewProps {
 export function PRDPreview({ markdown, streaming, agentStatus, onEdit, onApprove }: PRDPreviewProps) {
     const containerRef = useRef<HTMLDivElement>(null)
 
-    // Auto-scroll to bottom while streaming
     useEffect(() => {
         if (streaming && containerRef.current) {
             containerRef.current.scrollTop = containerRef.current.scrollHeight
@@ -23,6 +23,11 @@ export function PRDPreview({ markdown, streaming, agentStatus, onEdit, onApprove
 
     return (
         <div className="space-y-6">
+            <StreamingProgress
+                agentStatus={agentStatus}
+                hasContent={!!markdown}
+                complete={!streaming && !!markdown}
+            />
             <div
                 ref={containerRef}
                 className="overflow-auto"
@@ -37,9 +42,8 @@ export function PRDPreview({ markdown, streaming, agentStatus, onEdit, onApprove
                         )}
                     </div>
                 ) : streaming ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-1">
-                        <span className="inline-block w-1.5 h-4 bg-primary animate-pulse rounded-sm" />
-                        <span>{agentStatus || 'Generating feature specification...'}</span>
+                    <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+                        Waiting for content...
                     </div>
                 ) : null}
             </div>

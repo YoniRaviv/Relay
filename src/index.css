@@ -106,6 +106,28 @@
   animation: building-pulse 2s ease-in-out infinite;
 }
 
+@keyframes shimmer-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.shimmer-overlay {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-primary) 50%,
+    transparent 100%
+  );
+  opacity: 0.06;
+  animation: shimmer-sweep 2s ease-in-out infinite;
+}
+
 /* ── Prose (typography) theme overrides ── */
 .prose {
   --tw-prose-body: var(--color-foreground);

@@ -43,6 +43,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
     const textQueueRef = useRef('')
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const doneReceivedRef = useRef(false)
+    const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const revealQueue = useCallback(() => {
         // Already ticking — let it continue
@@ -99,6 +100,10 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                 clearTimeout(timerRef.current)
                 timerRef.current = null
             }
+            if (safetyTimeoutRef.current) {
+                clearTimeout(safetyTimeoutRef.current)
+                safetyTimeoutRef.current = null
+            }
         }
     }, [])
 
@@ -117,6 +122,8 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
             }
         }
         if (event.type === 'done') {
+            // Clear safety timeout — generation completed
+            if (safetyTimeoutRef.current) { clearTimeout(safetyTimeoutRef.current); safetyTimeoutRef.current = null }
             if (textQueueRef.current || timerRef.current) {
                 // Still revealing — defer finalization until queue drains
                 doneReceivedRef.current = true
@@ -124,6 +131,12 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                 setStreaming(false)
                 setWizardStep(1)
             }
+        }
+        if (event.type === 'error') {
+            if (safetyTimeoutRef.current) { clearTimeout(safetyTimeoutRef.current); safetyTimeoutRef.current = null }
+            setStreaming(false)
+            setPrdMarkdown('')
+            setError(event.text)
         }
     }, [setPrdMarkdown, setWizardStep, revealQueue]))
 
@@ -160,11 +173,14 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         setAgentStatus('')
         setStreaming(true)
         setPrdMarkdown('')
-        // Safety timeout: if 'done' event never arrives, cancel after 5 minutes
-        const safetyTimeout = setTimeout(() => {
+        // Safety timeout: if 'done' event never arrives, cancel after 10 minutes
+        // Stored in ref so the 'done' event listener can clear it
+        if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current)
+        safetyTimeoutRef.current = setTimeout(() => {
+            safetyTimeoutRef.current = null
             setStreaming(false)
             setError('Specification generation timed out. Please try again.')
-        }, 5 * 60 * 1000)
+        }, 10 * 60 * 1000)
         try {
             await window.relayAPI.generatePrd(
                 activeProject?.id ?? '',
@@ -174,7 +190,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                 featureAttachments.length > 0 ? featureAttachments : undefined,
             )
         } catch (err) {
-            clearTimeout(safetyTimeout)
+            if (safetyTimeoutRef.current) { clearTimeout(safetyTimeoutRef.current); safetyTimeoutRef.current = null }
             setError(err instanceof Error ? err.message : 'Failed to generate specification')
             setStreaming(false)
         }
@@ -327,14 +343,14 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
             <main className="flex-1 overflow-auto">
                 <div className={`mx-auto px-10 py-10 transition-all duration-300 ${
                     effectiveStep === 3 || decomposing ? 'max-w-6xl'
-                    : effectiveStep === 1 || effectiveStep === 2 ? 'max-w-4xl'
+                    : effectiveStep === 1 || effectiveStep === 2 ? 'max-w-5xl'
                     : 'max-w-3xl'
                 }`}>
                     {/* Step title */}
                     <div className="mb-8">
                         <h1 className="text-lg font-semibold text-foreground">
                             {effectiveStep === 0 && (featurePhase === 'answering' ? 'A few questions to refine the specification' : 'Describe your feature')}
-                            {effectiveStep === 1 && (streaming ? 'Generating feature specification...' : 'Review your feature specification')}
+                            {effectiveStep === 1 && (streaming ? 'Generating feature specification document...' : 'Review your feature specification')}
                             {effectiveStep === 2 && 'Edit specification'}
                             {effectiveStep === 3 && (decomposing ? 'Decomposing into tasks...' : manualMode ? 'Add your tasks' : 'Review tasks')}
                             {effectiveStep === 4 && 'Confirm'}
@@ -392,9 +408,13 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                         {(wizardStep === 3 || decomposing) && (
                             decomposing ? (
                                 <div className="space-y-6">
-                                    <div className="flex items-center gap-3 mb-2">
+                                    <div className="flex flex-col items-center gap-2 py-4">
                                         <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                                        <p className="text-sm text-muted-foreground">{agentStatus || 'Decomposing specification into tasks...'}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {agentStatus
+                                                ? agentStatus.replace(/PRD/gi, 'specification')
+                                                : 'Analyzing specification and creating tasks...'}
+                                        </p>
                                     </div>
                                     <div className="flex gap-5 items-start">
                                         {(() => {
