@@ -26,6 +26,8 @@ const relayAPI = {
   setCommitPrefix: (prefix: string) => ipcRenderer.invoke('cc:setCommitPrefix', prefix),
   getNotificationsEnabled: () => ipcRenderer.invoke('cc:getNotificationsEnabled'),
   setNotificationsEnabled: (enabled: boolean) => ipcRenderer.invoke('cc:setNotificationsEnabled', enabled),
+  getSessionMode: () => ipcRenderer.invoke('cc:getSessionMode'),
+  setSessionMode: (mode: string) => ipcRenderer.invoke('cc:setSessionMode', mode),
 
   // Project
   createProject: (params: { name: string; path: string }) => ipcRenderer.invoke('project:create', params),
@@ -92,6 +94,12 @@ const relayAPI = {
   projectMetrics: (projectId: string, prdId?: string) => ipcRenderer.invoke('metrics:project', projectId, prdId),
   taskMetrics: (projectId: string, prdId?: string) => ipcRenderer.invoke('metrics:tasks', projectId, prdId),
   exportMetrics: (projectId: string) => ipcRenderer.invoke('metrics:export', projectId),
+
+  // Runner
+  detectRunCommand: (projectId: string) => ipcRenderer.invoke('runner:detect', projectId),
+  runProject: (projectId: string, command?: string, args?: string[]) => ipcRenderer.invoke('runner:start', projectId, command, args),
+  stopProject: () => ipcRenderer.invoke('runner:stop'),
+  isProjectRunning: () => ipcRenderer.invoke('runner:isRunning'),
 
   // Updater
   checkForUpdates: () => ipcRenderer.invoke('updater:check'),

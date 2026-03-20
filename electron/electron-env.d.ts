@@ -38,6 +38,8 @@ interface RelayAPI {
   setCommitPrefix(prefix: string): Promise<void>
   getNotificationsEnabled(): Promise<boolean>
   setNotificationsEnabled(enabled: boolean): Promise<void>
+  getSessionMode(): Promise<import('../shared/types').SessionMode>
+  setSessionMode(mode: import('../shared/types').SessionMode): Promise<void>
 
   // Project
   createProject(params: { name: string; path: string }): Promise<import('../shared/types').Project>
@@ -104,6 +106,12 @@ interface RelayAPI {
   projectMetrics(projectId: string, prdId?: string): Promise<unknown>
   taskMetrics(projectId: string, prdId?: string): Promise<unknown>
   exportMetrics(projectId: string): Promise<unknown>
+
+  // Runner
+  detectRunCommand(projectId: string): Promise<{ command: string; args: string[]; label: string } | null>
+  runProject(projectId: string, command?: string, args?: string[]): Promise<{ status: string }>
+  stopProject(): Promise<{ status: string }>
+  isProjectRunning(): Promise<boolean>
 
   // Event listeners
   on(channel: string, callback: (...args: unknown[]) => void): () => void

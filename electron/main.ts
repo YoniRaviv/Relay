@@ -5,6 +5,7 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { registerAllHandlers } from './ipc/register'
 import { closeAllDbs } from './db/connection'
+import { stopProject } from './runner/projectRunner'
 import { buildAppMenu } from './menu'
 import { initAutoUpdater, registerUpdaterHandlers } from './updater'
 
@@ -100,6 +101,7 @@ app.on('activate', () => {
 })
 
 app.on('before-quit', () => {
+  stopProject()
   closeAllDbs()
 })
 
