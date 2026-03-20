@@ -1,11 +1,83 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { X } from 'lucide-react'
 import { priorityBadgeColors } from '@/shared/constants/statusMaps'
+import { FileAutocomplete } from './FileAutocomplete'
+import { useRelayStore } from '@/store/useRelayStore'
 import type { DecomposedTask } from '@/shared/types/prd'
 
 const PRIORITY_ORDER = ['high', 'medium', 'low'] as const
+
+function TextareaWithFileTag({
+    value,
+    onChange,
+    projectId,
+    rows,
+    placeholder,
+    autoFocus,
+}: {
+    value: string
+    onChange: (value: string) => void
+    projectId?: string | null
+    rows: number
+    placeholder?: string
+    autoFocus?: boolean
+}) {
+    const [showAutocomplete, setShowAutocomplete] = useState(false)
+    const [autocompleteQuery, setAutocompleteQuery] = useState('')
+    const [atStartIndex, setAtStartIndex] = useState(-1)
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+    const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const newValue = e.target.value
+        onChange(newValue)
+
+        const cursorPos = e.target.selectionStart
+        const textBeforeCursor = newValue.substring(0, cursorPos)
+        const atMatch = textBeforeCursor.match(/@([^\s@]*)$/)
+
+        if (atMatch && projectId) {
+            setAtStartIndex(textBeforeCursor.lastIndexOf('@'))
+            setAutocompleteQuery(atMatch[1])
+            setShowAutocomplete(true)
+        } else {
+            setShowAutocomplete(false)
+        }
+    }, [onChange, projectId])
+
+    const handleSelect = useCallback((filePath: string) => {
+        if (atStartIndex < 0) return
+        const before = value.substring(0, atStartIndex)
+        const after = value.substring(atStartIndex + 1 + autocompleteQuery.length)
+        onChange(`${before}@${filePath} ${after}`)
+        setShowAutocomplete(false)
+        setAtStartIndex(-1)
+        setTimeout(() => textareaRef.current?.focus(), 0)
+    }, [value, onChange, atStartIndex, autocompleteQuery])
+
+    return (
+        <div className="relative">
+            <textarea
+                ref={textareaRef}
+                className="w-full text-sm bg-background border border-input rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow leading-relaxed"
+                value={value}
+                onChange={handleChange}
+                rows={rows}
+                placeholder={placeholder}
+                autoFocus={autoFocus}
+            />
+            {showAutocomplete && projectId && (
+                <FileAutocomplete
+                    query={autocompleteQuery}
+                    projectId={projectId}
+                    onSelect={handleSelect}
+                    onDismiss={() => setShowAutocomplete(false)}
+                />
+            )}
+        </div>
+    )
+}
 
 export function TaskEditDialog({
     task,
@@ -17,6 +89,7 @@ export function TaskEditDialog({
     onClose: () => void
 }) {
     const [draft, setDraft] = useState(task)
+    const projectId = useRelayStore((s) => s.activeProject?.id)
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         if (e.key === 'Escape') onClose()
@@ -79,10 +152,10 @@ export function TaskEditDialog({
                         <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">
                             Description
                         </label>
-                        <textarea
-                            className="w-full text-sm bg-background border border-input rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow leading-relaxed"
+                        <TextareaWithFileTag
                             value={draft.description}
-                            onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+                            onChange={(v) => setDraft({ ...draft, description: v })}
+                            projectId={projectId}
                             rows={4}
                         />
                     </div>
@@ -91,10 +164,10 @@ export function TaskEditDialog({
                         <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">
                             Acceptance Criteria
                         </label>
-                        <textarea
-                            className="w-full text-sm bg-background border border-input rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow leading-relaxed"
+                        <TextareaWithFileTag
                             value={draft.acceptanceCriteria}
-                            onChange={(e) => setDraft({ ...draft, acceptanceCriteria: e.target.value })}
+                            onChange={(v) => setDraft({ ...draft, acceptanceCriteria: v })}
+                            projectId={projectId}
                             rows={4}
                             placeholder="Define what done looks like..."
                         />
