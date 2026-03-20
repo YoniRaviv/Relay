@@ -21,7 +21,8 @@ export function formatCost(cost: number): string {
         return `$${cost.toFixed(2)}`
 }
 
-export function extractTitle(description: string): string {
+export function extractTitle(description: string, title?: string | null): string {
+        if (title) return title
         const first = description.split('\n')[0].trim()
         return first || 'Untitled Feature'
 }

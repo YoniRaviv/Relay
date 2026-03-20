@@ -98,17 +98,14 @@ Write user stories in the format: "As a [role], I want [capability] so that [ben
 ## 4. Functional Requirements
 Detailed requirements organized by area.
 
-## 5. Non-Functional Requirements
-Performance, security, accessibility requirements.
+## 5. Non-Functional Requirements & Success Metrics
+Brief notes on performance, security, accessibility, and how to know the feature works correctly.
 
 ## 6. Technical Considerations
 Architecture notes, constraints, dependencies.
 
 ## 7. Out of Scope
 What is explicitly NOT included.
-
-## 8. Success Metrics
-How to measure if the feature is successful.
 
 Be thorough but practical. Focus on what needs to be built, not how to build it.`
 }
@@ -120,10 +117,14 @@ export function buildDecomposePrompt(prdMarkdown: string, projectContext?: strin
 ${prdMarkdown}${projectContextBlock(projectContext)}
 
 ## Instructions
-Break this PRD into sequential implementation tasks. Each task should be:
-- Small enough to complete in a single coding session
-- Self-contained with clear acceptance criteria
-- Ordered by dependency (foundations first)
+Break this PRD into sequential implementation tasks. Each task will be executed by an autonomous AI coding agent with full file read/write access. Tasks can and should be substantial.
+
+Guidelines:
+- Aim for 3-10 tasks. Prefer fewer, meatier tasks over many granular ones.
+- Every task must produce a visible, functional change.
+- Do NOT create separate tasks for: types/interfaces, error handling, tests, documentation, or validation. These belong as acceptance criteria within the task that implements the feature.
+- If the project directory is empty or has no source code, the first task should scaffold the project (stack, folder structure, dependencies, config). If the project already has code, work within the existing structure — no scaffolding tasks.
+- Order by dependency (foundations first).
 
 ## Output Format
 Return a JSON array of tasks. ONLY output the JSON, no other text.
@@ -140,5 +141,5 @@ Return a JSON array of tasks. ONLY output the JSON, no other text.
 ]
 \`\`\`
 
-Aim for 5-15 tasks. Order them so each task builds on the previous ones. Assign priority based on importance and dependency order.`
+Order tasks so each builds on the previous ones. Assign priority based on importance and dependency order.`
 }

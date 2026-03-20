@@ -59,7 +59,7 @@ export function ArchiveView({ onUnarchive }: ArchiveViewProps) {
                     >
                         <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
-                                <h3 className="text-sm font-medium mb-1 truncate">{extractTitle(f.description)}</h3>
+                                <h3 className="text-sm font-medium mb-1 truncate">{extractTitle(f.description, f.title)}</h3>
                                 <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                                     <span className="flex items-center gap-1">
                                         <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />

@@ -20,7 +20,7 @@ interface ProjectSidebarProps {
 
 const navItems: { id: SidebarView; label: string; icon: React.ReactNode }[] = [
     { id: 'board', label: 'Board', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { id: 'prd', label: 'PRD', icon: <FileText className="h-4 w-4" /> },
+    { id: 'prd', label: 'Feature Spec', icon: <FileText className="h-4 w-4" /> },
     { id: 'summary', label: 'Summary', icon: <BarChart3 className="h-4 w-4" /> },
 ]
 
@@ -111,7 +111,7 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                                                 {f.doneCount}/{f.taskCount}
                                             </span>
                                         )}
-                                        <span className="truncate">{extractTitle(f.description)}</span>
+                                        <span className="truncate">{extractTitle(f.description, f.title)}</span>
                                     </button>
                                     {onArchiveFeature && isComplete && (
                                         <button
@@ -129,11 +129,13 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation()
-                                                if (window.confirm(`Delete "${extractTitle(f.description)}" and all its tasks? This cannot be undone.`)) {
+                                                if (window.confirm(`Delete "${extractTitle(f.description, f.title)}" and all its tasks? This cannot be undone.`)) {
                                                     onDeleteFeature(f.id)
                                                 }
                                             }}
-                                            className="shrink-0 p-1.5 mr-1 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
+                                            className={`shrink-0 p-1.5 mr-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all ${
+                                                isActive ? 'opacity-60 hover:opacity-100' : 'opacity-0 group-hover:opacity-100'
+                                            }`}
                                             title="Delete feature"
                                         >
                                             <Trash2 className="h-3 w-3" />

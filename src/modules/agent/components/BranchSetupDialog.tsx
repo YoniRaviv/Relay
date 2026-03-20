@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { X, GitBranch, Loader2, ChevronDown } from 'lucide-react'
+import { X, GitBranch, Loader2, ChevronDown, Search } from 'lucide-react'
 import { useRelayStore } from '@/store/useRelayStore'
 
 interface BranchSetupDialogProps {
@@ -31,6 +31,8 @@ export function BranchSetupDialog({ onConfirm, onCancel }: BranchSetupDialogProp
     const [fetchingBranches, setFetchingBranches] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [showDropdown, setShowDropdown] = useState(false)
+    const [filterText, setFilterText] = useState('')
+    const filterInputRef = useRef<HTMLInputElement>(null)
 
     // Fetch branches and generate default name
     useEffect(() => {
@@ -61,6 +63,19 @@ export function BranchSetupDialog({ onConfirm, onCancel }: BranchSetupDialogProp
         }
         init()
     }, [activeProject?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    const filteredBranches = filterText
+        ? branches.filter(b => b.toLowerCase().includes(filterText.toLowerCase()))
+        : branches
+
+    // Auto-focus filter input when dropdown opens
+    useEffect(() => {
+        if (showDropdown) {
+            setTimeout(() => filterInputRef.current?.focus(), 0)
+        } else {
+            setFilterText('')
+        }
+    }, [showDropdown])
 
     const handleConfirm = async () => {
         if (!branchName.trim() || !baseBranch) return
@@ -115,22 +130,55 @@ export function BranchSetupDialog({ onConfirm, onCancel }: BranchSetupDialogProp
                                         <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                                     </button>
                                     {showDropdown && (
-                                        <div className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-auto rounded-md border border-border bg-card shadow-lg z-10">
-                                            {branches.map((b) => (
-                                                <button
-                                                    key={b}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setBaseBranch(b)
-                                                        setShowDropdown(false)
-                                                    }}
-                                                    className={`w-full text-left px-3 py-1.5 text-sm font-mono hover:bg-muted/50 ${
-                                                        b === baseBranch ? 'bg-muted/70 text-foreground' : 'text-muted-foreground'
-                                                    }`}
-                                                >
-                                                    {b}
-                                                </button>
-                                            ))}
+                                        <div className="absolute top-full left-0 right-0 mt-1 rounded-md border border-border bg-[var(--color-card)] text-card-foreground shadow-xl z-10">
+                                            {branches.length > 5 && (
+                                                <div className="p-1.5 border-b border-border">
+                                                    <div className="relative">
+                                                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                                                        <input
+                                                            ref={filterInputRef}
+                                                            type="text"
+                                                            value={filterText}
+                                                            onChange={(e) => setFilterText(e.target.value)}
+                                                            placeholder="Filter branches..."
+                                                            className="w-full pl-7 pr-7 py-1.5 text-sm font-mono rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                                        />
+                                                        {filterText && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setFilterText('')
+                                                                    filterInputRef.current?.focus()
+                                                                }}
+                                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                                            >
+                                                                <X className="h-3 w-3" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <div className="max-h-48 overflow-auto">
+                                                {filteredBranches.length === 0 ? (
+                                                    <p className="px-3 py-2 text-sm text-muted-foreground">No matching branches</p>
+                                                ) : (
+                                                    filteredBranches.map((b) => (
+                                                        <button
+                                                            key={b}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setBaseBranch(b)
+                                                                setShowDropdown(false)
+                                                            }}
+                                                            className={`w-full text-left px-3 py-1.5 text-sm font-mono hover:bg-accent/50 ${
+                                                                b === baseBranch ? 'bg-accent text-foreground' : 'text-foreground/80'
+                                                            }`}
+                                                        >
+                                                            {b}
+                                                        </button>
+                                                    ))
+                                                )}
+                                            </div>
                                         </div>
                                     )}
                                 </div>

@@ -35,7 +35,7 @@ export function FeatureCompleteActions({ prUrl, hasRemote, prChecked, onShowPrDi
         try {
             const { markdown } = await window.relayAPI.prdExportMarkdown(activeProject.id, activePrdId)
             await navigator.clipboard.writeText(markdown)
-            toast.success('Copied to clipboard', { description: 'PRD + tasks exported as Markdown' })
+            toast.success('Copied to clipboard', { description: 'Specification + tasks exported as Markdown' })
         } catch {
             toast.error('Export failed')
         }

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { toast } from 'sonner'
-import { Plus } from 'lucide-react'
+import { Plus, Pencil } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { AppShell } from '@/shared/components/AppShell'
@@ -49,11 +49,36 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
 
     const activeFeature = features.find(f => f.id === activePrdId)
     const activeFeatureTitle = activeFeature
-        ? (activeFeature.description.split('\n')[0].trim() || 'Untitled Feature')
+        ? (activeFeature.title || activeFeature.description.split('\n')[0].trim() || 'Untitled Feature')
         : null
     const [sidebarView, setSidebarView] = useState<SidebarView>('board')
     const [loading, setLoading] = useState(true)
     const [showPrDialog, setShowPrDialog] = useState(false)
+    const [editingTitle, setEditingTitle] = useState(false)
+    const [titleDraft, setTitleDraft] = useState('')
+    const titleInputRef = useRef<HTMLInputElement>(null)
+
+    const handleRenameStart = () => {
+        if (!activeFeature) return
+        setTitleDraft(activeFeatureTitle ?? '')
+        setEditingTitle(true)
+        setTimeout(() => titleInputRef.current?.select(), 0)
+    }
+
+    const handleRenameCommit = async () => {
+        if (!activeFeature || !titleDraft.trim()) {
+            setEditingTitle(false)
+            return
+        }
+        try {
+            await window.relayAPI.renamePrd(activeFeature.id, titleDraft.trim())
+            const freshFeatures = await window.relayAPI.listPrds(activeProject!.id)
+            setFeatures(freshFeatures)
+        } catch {
+            toast.error('Failed to rename feature')
+        }
+        setEditingTitle(false)
+    }
 
     const refreshArchivedCount = useCallback(() => {
         if (activeProject) {
@@ -108,6 +133,9 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
     useIpcListener('loop:stateChange', (data: unknown) => {
         const { state } = data as { state: LoopState }
         setLoopState(state)
+        if (state === 'idle' || state === 'stopped') {
+            useRelayStore.getState().setLoopPrdId(null)
+        }
     }, [setLoopState])
 
     useIpcListener('loop:taskChange', (data: unknown) => {
@@ -124,18 +152,25 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
 
     useIpcListener('loop:tasksUpdated', (data: unknown) => {
         const incoming = data as Task[]
-        // Fix 1 safety net: filter by activePrdId to prevent cross-feature leakage
-        const { activePrdId: currentPrdId, features: currentFeatures } = useRelayStore.getState()
-        const filtered = currentPrdId
-            ? incoming.filter(t => t.prdId === currentPrdId)
-            : incoming
-        setTasks(filtered)
+        const { activePrdId: currentPrdId, loopPrdId, features: currentFeatures } = useRelayStore.getState()
 
-        // Fix 3: Update feature counter after task status changes
-        if (currentPrdId && currentFeatures.length > 0) {
-            const doneCount = filtered.filter(t => t.status === 'done').length
+        // Determine which feature these task updates belong to
+        const updatePrdId = incoming[0]?.prdId ?? loopPrdId
+
+        // Only replace the visible task list if the update is for the active feature
+        if (!currentPrdId || updatePrdId === currentPrdId) {
+            const filtered = currentPrdId
+                ? incoming.filter(t => t.prdId === currentPrdId)
+                : incoming
+            setTasks(filtered)
+        }
+
+        // Always update feature counters regardless of which feature is active
+        if (updatePrdId && currentFeatures.length > 0) {
+            const tasksForFeature = incoming.filter(t => t.prdId === updatePrdId)
+            const doneCount = tasksForFeature.filter(t => t.status === 'done').length
             const updated = currentFeatures.map(f =>
-                f.id === currentPrdId ? { ...f, doneCount, taskCount: filtered.length } : f
+                f.id === updatePrdId ? { ...f, doneCount, taskCount: tasksForFeature.length } : f
             )
             setFeatures(updated)
         }
@@ -253,8 +288,31 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                             <div className="flex items-center gap-2 min-w-0">
                                 {activeFeatureTitle ? (
                                     <>
-                                        <h2 className="text-sm font-semibold truncate max-w-[400px]">{activeFeatureTitle}</h2>
-                                        {activeFeature && (
+                                        {editingTitle ? (
+                                            <input
+                                                ref={titleInputRef}
+                                                value={titleDraft}
+                                                onChange={(e) => setTitleDraft(e.target.value)}
+                                                onBlur={handleRenameCommit}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') handleRenameCommit()
+                                                    if (e.key === 'Escape') setEditingTitle(false)
+                                                }}
+                                                className="text-sm font-semibold bg-transparent border border-border rounded px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring w-[500px] max-w-[60vw]"
+                                            />
+                                        ) : (
+                                            <div className="flex items-center gap-1.5 group/title">
+                                                <h2 className="text-sm font-semibold truncate max-w-[400px]">{activeFeatureTitle}</h2>
+                                                <button
+                                                    onClick={handleRenameStart}
+                                                    className="opacity-0 group-hover/title:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
+                                                    title="Rename feature"
+                                                >
+                                                    <Pencil className="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                        )}
+                                        {activeFeature && !editingTitle && (
                                             <span className="text-[10px] font-medium text-muted-foreground shrink-0">
                                                 {activeFeature.doneCount}/{activeFeature.taskCount} tasks
                                             </span>
@@ -301,7 +359,7 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                                         <div>
                                             <h3 className="text-lg font-semibold mb-1">No features yet</h3>
                                             <p className="text-sm text-muted-foreground max-w-sm">
-                                                Create your first feature to generate a PRD and start building with the AI agent loop.
+                                                Create your first feature to generate a specification document and start building with the AI agent loop.
                                             </p>
                                         </div>
                                         <Button onClick={onNewFeature} className="gap-2">
@@ -334,7 +392,7 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                         {sidebarView === 'prd' && (
                             <div className="p-6 overflow-auto h-full">
                                 <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-lg font-semibold">Product Requirements Document</h2>
+                                    <h2 className="text-lg font-semibold">Feature Specification Document</h2>
                                     {prdMarkdown && (
                                         <Button
                                             size="sm"
@@ -356,7 +414,7 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                                         </ReactMarkdown>
                                     </div>
                                 ) : (
-                                    <p className="text-sm text-muted-foreground">No PRD available.</p>
+                                    <p className="text-sm text-muted-foreground">No specification document available.</p>
                                 )}
                             </div>
                         )}
