@@ -4,13 +4,13 @@ import {
     FolderSync, ChevronRight, Cpu, Terminal, Shield, Zap, Sparkles,
     Key, CheckCircle, Loader2, Sun, Moon, Bell, BellOff, GitCommitHorizontal,
     RotateCcw, Play, Pause, FastForward, Info, Database, Download,
-    RefreshCw, Scale,
+    RefreshCw, Scale, Link,
 } from 'lucide-react'
 import { AVAILABLE_MODELS } from '@shared/pricing'
 import { tierColors } from '@/shared/constants/statusMaps'
 import { getStoredTheme, applyTheme } from '@/lib/theme'
 import { useIpcListener } from '@/shared/hooks/useIpcListener'
-import type { EngineMode, CliToolsPreset, BuildMode } from '@shared/types'
+import type { EngineMode, CliToolsPreset, BuildMode, SessionMode } from '@shared/types'
 
 type Theme = 'light' | 'dark' | 'system'
 
@@ -172,6 +172,7 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
     const [buildMode, setBuildMode] = useState<BuildMode>('review')
     const [commitPrefix, setCommitPrefix] = useState('feat')
     const [commitPrefixInput, setCommitPrefixInput] = useState('')
+    const [sessionMode, setSessionMode] = useState<SessionMode>('per-task')
     const [notificationsEnabled, setNotificationsEnabled] = useState(true)
     const [appVersion, setAppVersion] = useState('')
     const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'up-to-date'>('idle')
@@ -207,6 +208,7 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
             setCommitPrefixInput(p)
         })
         window.relayAPI.getNotificationsEnabled().then(setNotificationsEnabled)
+        window.relayAPI.getSessionMode().then(setSessionMode)
         window.relayAPI.getAppInfo().then(info => setAppVersion(info.version))
     }, [])
 
@@ -278,6 +280,11 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
         const next = !notificationsEnabled
         setNotificationsEnabled(next)
         await window.relayAPI.setNotificationsEnabled(next)
+    }
+
+    const handleSessionModeChange = async (mode: SessionMode) => {
+        setSessionMode(mode)
+        await window.relayAPI.setSessionMode(mode)
     }
 
     const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
@@ -423,6 +430,26 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
                             </div>
                         </div>
                     </SettingsSection>
+
+                    {engineMode === 'claude-code' && (
+                        <SettingsSection title="Session Mode">
+                            <EngineOption
+                                selected={sessionMode === 'per-task'}
+                                onSelect={() => handleSessionModeChange('per-task')}
+                                icon={<Database className="h-4 w-4" />}
+                                label="New session per task"
+                                description="Fresh context for each task"
+                            />
+                            <EngineOption
+                                selected={sessionMode === 'persistent'}
+                                onSelect={() => handleSessionModeChange('persistent')}
+                                icon={<Link className="h-4 w-4" />}
+                                label="Persistent session (1M context)"
+                                description="Keeps one session alive across all tasks. Reduces token usage."
+                                tooltip="Recommended for 5x/Max plan users. Falls back to per-task if session dies."
+                            />
+                        </SettingsSection>
+                    )}
 
                     <SettingsSection title="Appearance">
                         <SettingsRow

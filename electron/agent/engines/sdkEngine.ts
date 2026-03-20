@@ -48,6 +48,18 @@ function getDbForProject(projectId: string) {
   throw new Error('Project not found');
 }
 
+function getProjectPath(projectId: string): string {
+  const projects = store.get('recentProjects', []) as Array<{ path: string }>;
+  for (const p of projects) {
+    try {
+      const db = openDb(p.path);
+      const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
+      if (row) return p.path;
+    } catch { continue; }
+  }
+  return '';
+}
+
 function getProjectContext(projectId: string): string | null {
   try {
     const db = getDbForProject(projectId);
@@ -203,6 +215,7 @@ export const sdkEngine: TaskEngine = {
     try {
       const apiKey = getApiKey();
       const anthropic = getClient(apiKey);
+      const taskProjectPath = getProjectPath(task.projectId);
       const prd = getPrd(task.projectId);
       const projectContext = getProjectContext(task.projectId);
       let buildContext: string | null = null;
@@ -340,16 +353,19 @@ export const sdkEngine: TaskEngine = {
             });
 
             const toolInput = block.input as Record<string, unknown>;
-            const filePath = (toolInput.path ?? toolInput.file_path) as string | undefined;
+            const rawFilePath = (toolInput.path ?? toolInput.file_path) as string | undefined;
+            const displayPath = rawFilePath?.startsWith(taskProjectPath + '/')
+              ? rawFilePath.slice(taskProjectPath.length + 1)
+              : rawFilePath;
             safeSend(win,'agent:activity', {
               id: randomUUID(),
               taskId: task.id,
               type: 'tool_use',
-              content: `Tool: ${block.name}${filePath ? ` — ${filePath}` : ''}`,
+              content: `Tool: ${block.name}${displayPath ? ` — ${displayPath}` : ''}`,
               timestamp: new Date().toISOString(),
               toolName: block.name,
               toolUseId: block.id,
-              filePath: filePath || undefined,
+              filePath: displayPath || undefined,
               toolInput,
             });
 

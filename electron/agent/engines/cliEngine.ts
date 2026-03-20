@@ -7,7 +7,7 @@ import { buildTaskPrompt, TASK_SYSTEM_PROMPT } from '../promptBuilder';
 import { buildCumulativeContext } from '../buildContext';
 import { openDb } from '../../db/connection';
 import { store } from '../../ipc/settings';
-import type { Task, PRD } from '../../../shared/types';
+import type { Task, PRD, SessionMode } from '../../../shared/types';
 import { DEFAULT_MODEL } from '../../../shared/pricing';
 import type { TaskEngine, TaskRunResult, CliToolsPreset } from './types';
 
@@ -30,6 +30,9 @@ function getClaudePath(): string {
   }
   return _claudePath;
 }
+
+let activeSessionAbort: AbortController | null = null;
+let sessionProjectPath: string | null = null;
 
 const CONSERVATIVE_TOOLS = ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'MultiEdit'];
 const FULL_TOOLS = [...CONSERVATIVE_TOOLS, 'Bash', 'WebFetch', 'NotebookEdit'];
@@ -131,9 +134,26 @@ export const cliEngine: TaskEngine = {
         timestamp: new Date().toISOString(),
       });
 
-      const ac = new AbortController();
+      const sessionMode = (store.get('sessionMode') ?? 'per-task') as SessionMode;
+      const usePersistentSession = sessionMode === 'persistent';
 
-      // Bridge the simple abortSignal to the AbortController
+      // Reset stale persistent session if project changed or previous session was aborted
+      if (usePersistentSession) {
+        if (sessionProjectPath !== projectPath || (activeSessionAbort && activeSessionAbort.signal.aborted)) {
+          activeSessionAbort = null;
+          sessionProjectPath = projectPath;
+        }
+      }
+
+      // Fresh AbortController per task — in persistent mode, persistSession: true
+      // keeps the CC process alive across query() calls independently.
+      // If a task is aborted (pause/stop), the next task gets a fresh AC and
+      // the SDK spawns a new persistent process transparently.
+      const ac = new AbortController();
+      if (usePersistentSession) {
+        activeSessionAbort = ac;
+      }
+
       const abortCheck = setInterval(() => {
         if (abortSignal.aborted) {
           ac.abort();
@@ -184,7 +204,7 @@ export const cliEngine: TaskEngine = {
             permissionMode: 'acceptEdits',
             maxTurns: 50,
             systemPrompt: TASK_SYSTEM_PROMPT,
-            persistSession: false,
+            persistSession: usePersistentSession,
             pathToClaudeCodeExecutable: getClaudePath(),
             env: cleanEnv,
             debug: true,
@@ -226,16 +246,19 @@ export const cliEngine: TaskEngine = {
               } else if (block.type === 'tool_use') {
                 toolCalls++;
                 const toolInput = block.input as Record<string, unknown>;
-                const filePath = (toolInput.path ?? toolInput.file_path) as string | undefined;
+                const rawFilePath = (toolInput.path ?? toolInput.file_path) as string | undefined;
+                const displayPath = rawFilePath?.startsWith(projectPath + '/')
+                  ? rawFilePath.slice(projectPath.length + 1)
+                  : rawFilePath;
                 safeSend(win,'agent:activity', {
                   id: randomUUID(),
                   taskId: task.id,
                   type: 'tool_use',
-                  content: `Tool: ${block.name}${filePath ? ` — ${filePath}` : ''}`,
+                  content: `Tool: ${block.name}${displayPath ? ` — ${displayPath}` : ''}`,
                   timestamp: new Date().toISOString(),
                   toolName: block.name,
                   toolUseId: block.id,
-                  filePath: filePath || undefined,
+                  filePath: displayPath || undefined,
                   toolInput,
                 });
               }
@@ -336,3 +359,11 @@ export const cliEngine: TaskEngine = {
     }
   },
 };
+
+export function endCliSession(): void {
+  if (activeSessionAbort) {
+    activeSessionAbort.abort();
+    activeSessionAbort = null;
+  }
+  sessionProjectPath = null;
+}

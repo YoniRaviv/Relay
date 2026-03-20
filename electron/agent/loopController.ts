@@ -2,7 +2,7 @@ import { BrowserWindow, Notification } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import * as Sentry from '@sentry/electron/main';
-import { getEngine } from './engines';
+import { getEngine, cleanupEngine } from './engines';
 import { openDb } from '../db/connection';
 import { store } from '../ipc/settings';
 import { autoCommitTask } from './autoCommit';
@@ -336,6 +336,7 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
     });
     throw error;
   } finally {
+    cleanupEngine();
     loopState = 'idle';
     abortSignal = { aborted: false };
     safeSend(win,'loop:stateChange', { state: 'idle' });

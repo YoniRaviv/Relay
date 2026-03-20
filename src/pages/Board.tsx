@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm'
 import { AppShell } from '@/shared/components/AppShell'
 import { ProjectSidebar, type SidebarView } from '@/modules/project'
 import { KanbanBoard, TaskDetail, ArchiveView } from '@/modules/board'
-import { LoopControls, AgentActivityFeed } from '@/modules/agent'
+import { LoopControls, AgentActivityFeed, RunProjectButton, RunOutputPanel } from '@/modules/agent'
 import { ReviewPanel, PrCreationDialog } from '@/modules/review'
 import { BranchIndicator } from '@/shared/components/BranchIndicator'
 import { ProjectContextBadge } from '@/shared/components/ProjectContextBadge'
@@ -54,6 +54,7 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
     const [sidebarView, setSidebarView] = useState<SidebarView>('board')
     const [loading, setLoading] = useState(true)
     const [showPrDialog, setShowPrDialog] = useState(false)
+    const [activityTab, setActivityTab] = useState<'agent' | 'output'>('agent')
     const [editingTitle, setEditingTitle] = useState(false)
     const [titleDraft, setTitleDraft] = useState('')
     const titleInputRef = useRef<HTMLInputElement>(null)
@@ -325,6 +326,7 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                             <BranchIndicator />
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
+                            <RunProjectButton onRun={() => setActivityTab('output')} />
                             <ModelPicker />
                             <LoopControls onArchiveFeature={activePrdId ? async () => {
                                 await window.relayAPI.archiveFeature(activePrdId)
@@ -374,15 +376,28 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                                         </div>
                                         <div className="h-56 bg-[var(--color-sidebar)] flex flex-col border-t border-border">
                                             <div className="px-4 py-2 flex items-center gap-3 border-b border-border/40">
-                                                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                                <button
+                                                    onClick={() => setActivityTab('agent')}
+                                                    className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+                                                        activityTab === 'agent' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/70'
+                                                    }`}
+                                                >
                                                     Agent Activity
-                                                </span>
-                                                <BuildTimer />
+                                                </button>
+                                                <button
+                                                    onClick={() => setActivityTab('output')}
+                                                    className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+                                                        activityTab === 'output' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/70'
+                                                    }`}
+                                                >
+                                                    Run Output
+                                                </button>
+                                                {activityTab === 'agent' && <BuildTimer />}
                                                 <div className="ml-auto">
                                                     <ProjectContextBadge projectContext={projectContext} scanning={scanningProject} />
                                                 </div>
                                             </div>
-                                            <AgentActivityFeed />
+                                            {activityTab === 'agent' ? <AgentActivityFeed /> : <RunOutputPanel />}
                                         </div>
                                     </>
                                 )}
