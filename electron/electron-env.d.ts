@@ -48,6 +48,7 @@ interface RelayAPI {
   selectFolder(): Promise<string | null>
   scanProject(projectId: string): Promise<{ status: string; context: string }>
   getProjectContext(projectId: string): Promise<string | null>
+  listProjectFiles(projectId: string, query?: string): Promise<string[]>
 
   // PRD
   clarifyPrd(projectId: string, description: string, projectContext?: string, attachments?: import('../shared/types').ImageAttachment[]): Promise<{ status: string; text: string }>

@@ -2,9 +2,13 @@ import { ipcMain, dialog, BrowserWindow } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { execSync } from 'node:child_process';
 import { openDb } from '../db/connection';
 import { store } from './settings';
 import type { Project, RecentProject } from '../../shared/types';
+
+const fileListCache = new Map<string, { files: string[]; timestamp: number }>();
+const FILE_CACHE_TTL = 30_000;
 
 const CONTEXT_FILES = [
   'CLAUDE.md',
@@ -139,6 +143,53 @@ function scanProjectContext(projectPath: string): string {
   return sections.join('\n\n');
 }
 
+function listProjectFiles(projectPath: string, query?: string): string[] {
+  const cacheKey = projectPath;
+  const cached = fileListCache.get(cacheKey);
+  let files: string[];
+
+  if (cached && Date.now() - cached.timestamp < FILE_CACHE_TTL) {
+    files = cached.files;
+  } else {
+    try {
+      const output = execSync('git ls-files', { cwd: projectPath, encoding: 'utf-8', timeout: 5000 });
+      files = output.split('\n').filter(Boolean);
+    } catch {
+      files = [];
+      const walk = (dir: string, prefix: string) => {
+        try {
+          const entries = fs.readdirSync(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            if (entry.name.startsWith('.')) continue;
+            if (IGNORE_DIRS.has(entry.name)) continue;
+            if (entry.isDirectory()) {
+              walk(path.join(dir, entry.name), prefix ? `${prefix}/${entry.name}` : entry.name);
+            } else {
+              files.push(prefix ? `${prefix}/${entry.name}` : entry.name);
+            }
+          }
+        } catch { /* skip unreadable dirs */ }
+      };
+      walk(projectPath, '');
+    }
+
+    files = files.filter(f => {
+      const basename = path.basename(f);
+      return !SENSITIVE_FILE_PATTERNS.some(p => p.test(basename));
+    });
+
+    fileListCache.set(cacheKey, { files, timestamp: Date.now() });
+  }
+
+  if (query) {
+    const q = query.toLowerCase();
+    files = files.filter(f => f.toLowerCase().includes(q));
+  }
+
+  files.sort((a, b) => a.length - b.length);
+  return files.slice(0, 50);
+}
+
 export function registerProjectHandlers(): void {
   ipcMain.handle('project:create', async (_event, params: { name: string; path: string }): Promise<Project> => {
     const relayDir = path.join(params.path, '.relay');
@@ -237,6 +288,23 @@ export function registerProjectHandlers(): void {
       }
     }
     return null;
+  });
+
+  ipcMain.handle('project:listFiles', async (_event, projectId: string, query?: string): Promise<string[]> => {
+    const projects = store.get('recentProjects', []) as RecentProject[];
+    for (const p of projects) {
+      try {
+        const db = openDb(p.path);
+        const row = db.prepare('SELECT id, path FROM projects WHERE id = ?').get(projectId) as Record<string, unknown> | undefined;
+        if (row) {
+          const projectPath = row.path as string;
+          return listProjectFiles(projectPath, query);
+        }
+      } catch {
+        continue;
+      }
+    }
+    return [];
   });
 
   ipcMain.handle('project:selectFolder', async (): Promise<string | null> => {

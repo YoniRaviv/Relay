@@ -36,6 +36,7 @@ const relayAPI = {
   selectFolder: () => ipcRenderer.invoke('project:selectFolder'),
   scanProject: (projectId: string) => ipcRenderer.invoke('project:scan', projectId),
   getProjectContext: (projectId: string) => ipcRenderer.invoke('project:getContext', projectId),
+  listProjectFiles: (projectId: string, query?: string) => ipcRenderer.invoke('project:listFiles', projectId, query),
 
   // PRD
   clarifyPrd: (projectId: string, description: string, projectContext?: string, attachments?: unknown[]) => ipcRenderer.invoke('prd:clarify', projectId, description, projectContext, attachments),

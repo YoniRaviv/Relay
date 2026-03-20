@@ -9,6 +9,8 @@ import { store } from './settings';
 import { safeStorage } from 'electron';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import os from 'node:os';
+import fs from 'node:fs';
+import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import type { EngineMode } from '../agent/engines/types';
 import { DEFAULT_MODEL } from '../../shared/pricing';
@@ -72,6 +74,44 @@ function getProjectPathById(projectId?: string): string | null {
     } catch { continue; }
   }
   return null;
+}
+
+function resolveFileReferences(text: string, projectPath: string): string {
+  const regex = /@([\w./\-()[\]{}]+\.\w+)/g;
+  const matches = [...text.matchAll(regex)];
+  if (matches.length === 0) return '';
+
+  const MAX_PER_FILE = 30 * 1024;
+  const MAX_TOTAL = 100 * 1024;
+  let totalSize = 0;
+  const sections: string[] = [];
+
+  for (const match of matches) {
+    const relPath = match[1];
+    const absPath = path.resolve(projectPath, relPath);
+    if (!absPath.startsWith(projectPath + path.sep)) continue;
+
+    try {
+      const stat = fs.statSync(absPath);
+      if (!stat.isFile()) continue;
+      if (stat.size > MAX_PER_FILE) {
+        sections.push(`### ${relPath}\n(File too large: ${Math.round(stat.size / 1024)}KB, limit ${MAX_PER_FILE / 1024}KB)`);
+        continue;
+      }
+      if (totalSize + stat.size > MAX_TOTAL) {
+        sections.push(`### ${relPath}\n(Skipped: total referenced file size would exceed ${MAX_TOTAL / 1024}KB)`);
+        continue;
+      }
+      const content = fs.readFileSync(absPath, 'utf-8');
+      totalSize += content.length;
+      sections.push(`### ${relPath}\n\`\`\`\n${content}\n\`\`\``);
+    } catch {
+      // File not found or not readable
+    }
+  }
+
+  if (sections.length === 0) return '';
+  return `\n\n## Referenced Files\n${sections.join('\n\n')}`;
 }
 
 function getCliQueryOptions(systemPrompt: string, stderrLines: string[], projectPath?: string | null) {
@@ -224,8 +264,10 @@ export function registerPrdHandlers(): void {
     if (!win) throw new Error('No active window');
 
     const projectPath = getProjectPathById(projectId);
+    const fileContext = projectPath ? resolveFileReferences(description, projectPath) : '';
+    const enrichedDescription = description + fileContext;
     const hasAttachments = !!attachments?.length;
-    const prompt = buildClarifyPrompt(description, projectContext ?? undefined, hasAttachments);
+    const prompt = buildClarifyPrompt(enrichedDescription, projectContext ?? undefined, hasAttachments);
     const systemPrompt = 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent". Return only valid JSON.';
     const contentBlocks = buildContentBlocks(prompt, attachments);
 
@@ -246,8 +288,10 @@ export function registerPrdHandlers(): void {
     if (!win) throw new Error('No active window');
 
     const projectPath = getProjectPathById(projectId);
+    const fileContext = projectPath ? resolveFileReferences(description, projectPath) : '';
+    const enrichedDescription = description + fileContext;
     const hasAttachments = !!attachments?.length;
-    const prompt = buildPrdPrompt(description, clarifications, projectContext ?? undefined, hasAttachments);
+    const prompt = buildPrdPrompt(enrichedDescription, clarifications, projectContext ?? undefined, hasAttachments);
     const contentBlocks = buildContentBlocks(prompt, attachments);
 
     if (hasAttachments) sendStatus(win, `Analyzing ${attachments!.length} attached image${attachments!.length > 1 ? 's' : ''}...`);

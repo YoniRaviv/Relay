@@ -38,7 +38,7 @@ export function RunProjectButton({ onRun }: RunProjectButtonProps) {
                 // No run command detected or failed
             }
         }
-    }, [activeProject, running])
+    }, [activeProject, running, onRun])
 
     useEffect(() => {
         const cleanup = window.relayAPI.on('project:processExit', () => {

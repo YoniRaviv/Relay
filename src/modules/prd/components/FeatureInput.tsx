@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Loader2, SkipForward, ImagePlus, X, ArrowRight, ArrowLeft, Check, PenLine } from 'lucide-react'
+import { Loader2, SkipForward, ImagePlus, X, ArrowRight, ArrowLeft, Check, PenLine, FileCode } from 'lucide-react'
 import { ProjectContextBadge } from '@/shared/components/ProjectContextBadge'
+import { FileAutocomplete } from './FileAutocomplete'
 import type { ImageAttachment } from '@shared/types'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB per file
@@ -41,6 +42,10 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
     const [showCustomInput, setShowCustomInput] = useState<Record<string, boolean>>({})
     const [error, setError] = useState('')
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
+    const [showAutocomplete, setShowAutocomplete] = useState(false)
+    const [autocompleteQuery, setAutocompleteQuery] = useState('')
+    const [atStartIndex, setAtStartIndex] = useState(-1)
 
     const setPhase = useCallback((p: FeatureInputPhase) => {
         setPhaseInternal(p)
@@ -117,6 +122,35 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
         // Reset input so same file can be re-selected
         if (fileInputRef.current) fileInputRef.current.value = ''
     }
+
+    const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const newValue = e.target.value
+        onChange(newValue)
+
+        const cursorPos = e.target.selectionStart
+        const textBeforeCursor = newValue.substring(0, cursorPos)
+        const atMatch = textBeforeCursor.match(/@([^\s@]*)$/)
+
+        if (atMatch) {
+            const atPos = textBeforeCursor.lastIndexOf('@')
+            setAtStartIndex(atPos)
+            setAutocompleteQuery(atMatch[1])
+            setShowAutocomplete(true)
+        } else {
+            setShowAutocomplete(false)
+        }
+    }, [onChange])
+
+    const handleFileTagSelect = useCallback((filePath: string) => {
+        if (atStartIndex < 0) return
+        const before = value.substring(0, atStartIndex)
+        const after = value.substring(atStartIndex + 1 + autocompleteQuery.length)
+        const newValue = `${before}@${filePath} ${after}`
+        onChange(newValue)
+        setShowAutocomplete(false)
+        setAtStartIndex(-1)
+        setTimeout(() => textareaRef.current?.focus(), 0)
+    }, [value, onChange, atStartIndex, autocompleteQuery])
 
     const handleClarify = async () => {
         setError('')
@@ -222,6 +256,37 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
         </div>
     )
 
+    // Extract @file references from text for display as chips
+    const fileRefs = Array.from(new Set(
+        (value.match(/@([\w.\/\-()[\]{}]+\.\w+)/g) || []).map(m => m.slice(1))
+    ))
+
+    const removeFileRef = (ref: string) => {
+        const escaped = ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        onChange(value.replace(new RegExp(`@${escaped}\\s?`, 'g'), ''))
+    }
+
+    const fileTagStrip = fileRefs.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+            {fileRefs.map((ref) => (
+                <span
+                    key={ref}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-xs font-mono text-primary"
+                >
+                    <FileCode className="h-3 w-3" />
+                    <span className="max-w-[200px] truncate">{ref}</span>
+                    <button
+                        type="button"
+                        onClick={() => removeFileRef(ref)}
+                        className="ml-0.5 text-primary/60 hover:text-primary transition-colors"
+                    >
+                        <X className="h-2.5 w-2.5" />
+                    </button>
+                </span>
+            ))}
+        </div>
+    )
+
     if (phase === 'describe') {
         return (
             <div className="space-y-4">
@@ -230,14 +295,26 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
                         <Label htmlFor="feature">Describe the feature you want to build</Label>
                         <ProjectContextBadge projectContext={projectContext} scanning={scanningProject} />
                     </div>
-                    <textarea
-                        id="feature"
-                        className="flex min-h-[200px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-                        placeholder="Describe the feature in detail. What should it do? Who is it for? What problem does it solve? Paste images with Cmd+V."
-                        value={value}
-                        onChange={(e) => onChange(e.target.value)}
-                        onPaste={handlePaste}
-                    />
+                    <div className="relative">
+                        <textarea
+                            ref={textareaRef}
+                            id="feature"
+                            className="flex min-h-[200px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                            placeholder="Describe the feature in detail. Use @filename to reference project files. Paste images with Cmd+V."
+                            value={value}
+                            onChange={handleTextChange}
+                            onPaste={handlePaste}
+                        />
+                        {showAutocomplete && projectId && (
+                            <FileAutocomplete
+                                query={autocompleteQuery}
+                                projectId={projectId}
+                                onSelect={handleFileTagSelect}
+                                onDismiss={() => setShowAutocomplete(false)}
+                            />
+                        )}
+                    </div>
+                    {fileTagStrip}
                 </div>
                 {attachmentStrip}
                 <input
