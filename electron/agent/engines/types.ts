@@ -19,6 +19,6 @@ export interface TaskEngine {
   ): Promise<TaskRunResult>;
 }
 
-export type EngineMode = 'api-key' | 'claude-code';
+export type { EngineMode } from '../../../shared/types';
 
 export type CliToolsPreset = 'conservative' | 'full';

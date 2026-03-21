@@ -17,7 +17,7 @@ export type LoopState = 'idle' | 'running' | 'paused' | 'stopped';
 
 export type BuildMode = 'review' | 'continuous' | 'auto-pilot';
 
-export type EngineMode = 'api-key' | 'claude-code';
+export type EngineMode = 'api-key' | 'claude-code' | 'codex';
 
 export type CliToolsPreset = 'conservative' | 'full';
 

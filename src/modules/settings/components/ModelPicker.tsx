@@ -1,17 +1,27 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Sparkles, ChevronDown, Check } from 'lucide-react'
 import { AVAILABLE_MODELS } from '@shared/pricing'
 import { tierColors } from '@/shared/constants/statusMaps'
 import { useClickOutside } from '@/shared/hooks/useClickOutside'
+import type { EngineMode } from '@shared/types'
 
 export function ModelPicker() {
     const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-20250514')
+    const [engineMode, setEngineMode] = useState<EngineMode>('claude-code')
     const [open, setOpen] = useState(false)
     const ref = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
         window.relayAPI.getSelectedModel().then(setSelectedModel)
+        window.relayAPI.getEngineMode().then(setEngineMode)
     }, [])
+
+    const filteredModels = useMemo(() => {
+        return AVAILABLE_MODELS.filter(m => {
+            if (engineMode === 'codex') return m.engine === 'openai'
+            return m.engine === 'anthropic' || !m.engine
+        })
+    }, [engineMode])
 
     useClickOutside(ref, useCallback(() => setOpen(false), []), open)
 
@@ -43,7 +53,7 @@ export function ModelPicker() {
                             Select Model
                         </span>
                     </div>
-                    {AVAILABLE_MODELS.map((m) => (
+                    {filteredModels.map((m) => (
                         <button
                             key={m.id}
                             onClick={() => handleSelect(m.id)}

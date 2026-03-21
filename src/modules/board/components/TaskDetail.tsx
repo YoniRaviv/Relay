@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { X, Eye, GitCommit, Pause, CheckCircle2, AlertTriangle, Circle, SquareCheck, RotateCcw } from 'lucide-react'
 import { ActionBlock } from '@/modules/agent/components/ActionBlock'
@@ -36,10 +36,38 @@ export function TaskDetail() {
     const setReviewingTaskId = useRelayStore((s) => s.setReviewingTaskId)
     const loopState = useRelayStore((s) => s.loopState)
     const task = tasks.find((t) => t.id === selectedTaskId)
-    const taskActivity = useMemo(
-        () => task ? activityFeed.filter((a) => a.taskId === task.id) : [],
-        [task, activityFeed]
-    )
+    const activeProject = useRelayStore((s) => s.activeProject)
+    const [persistedLogs, setPersistedLogs] = useState<typeof activityFeed>([])
+    const [dbMetrics, setDbMetrics] = useState<{ durationMs: number; toolCalls: number; tokensIn: number; tokensOut: number; filesChanged?: string[] } | null>(null)
+
+    // Load persisted logs + metrics from DB when in-memory activity is empty
+    useEffect(() => {
+        if (!task) return
+        const inMemory = activityFeed.filter((a) => a.taskId === task.id)
+        if (inMemory.length > 0) {
+            setPersistedLogs([])
+            setDbMetrics(null)
+            return
+        }
+        window.relayAPI.getTaskLogs(task.id).then(setPersistedLogs).catch(() => {})
+        // Load metrics + commit files from DB for the summary
+        if (activeProject && (task.status === 'done' || task.status === 'review')) {
+            Promise.all([
+                window.relayAPI.taskMetrics(activeProject.id),
+                task.commitHash ? window.relayAPI.gitCommitFiles(activeProject.id, task.commitHash) : Promise.resolve([]),
+            ]).then(([data, files]) => {
+                const rows = data as Array<{ taskId: string; durationMs: number; toolCalls: number; tokensIn: number; tokensOut: number }>
+                const row = rows.find(r => r.taskId === task.id)
+                if (row) setDbMetrics({ durationMs: row.durationMs, toolCalls: row.toolCalls, tokensIn: row.tokensIn, tokensOut: row.tokensOut, filesChanged: (files as string[]).length > 0 ? files as string[] : undefined })
+            }).catch(() => {})
+        }
+    }, [task?.id, task?.status, activeProject, activityFeed]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    const taskActivity = useMemo(() => {
+        if (!task) return []
+        const inMemory = activityFeed.filter((a) => a.taskId === task.id)
+        return inMemory.length > 0 ? inMemory : persistedLogs
+    }, [task, activityFeed, persistedLogs])
     const groupedActivity = useMemo(() => groupActions(taskActivity), [taskActivity])
 
     if (!task) return null
@@ -183,9 +211,9 @@ export function TaskDetail() {
 
                 {/* Activity / Summary */}
                 <div className="px-5 py-4">
-                    {isCompleted && taskActivity.length > 0 ? (
+                    {isCompleted && (taskActivity.length > 0 || dbMetrics) ? (
                         <CollapsibleSection title="Summary" defaultOpen>
-                            <CompletedTaskSummary activity={taskActivity} />
+                            <CompletedTaskSummary activity={taskActivity} dbMetrics={dbMetrics} />
                         </CollapsibleSection>
                     ) : (
                         <CollapsibleSection title="Activity" defaultOpen>

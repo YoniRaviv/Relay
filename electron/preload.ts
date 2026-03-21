@@ -16,6 +16,7 @@ const relayAPI = {
   getCliToolsPreset: () => ipcRenderer.invoke('cc:getCliToolsPreset'),
   setCliToolsPreset: (preset: string) => ipcRenderer.invoke('cc:setCliToolsPreset', preset),
   checkCliAvailable: () => ipcRenderer.invoke('cc:checkCliAvailable'),
+  checkCodexAvailable: () => ipcRenderer.invoke('cc:checkCodexAvailable'),
   getSelectedModel: () => ipcRenderer.invoke('cc:getSelectedModel'),
   setSelectedModel: (model: string) => ipcRenderer.invoke('cc:setSelectedModel', model),
   getMaxPasses: () => ipcRenderer.invoke('cc:getMaxPasses'),
@@ -59,6 +60,7 @@ const relayAPI = {
   reorderTasks: (tasks: unknown) => ipcRenderer.invoke('tasks:reorder', tasks),
   createTask: (params: { projectId: string; prdId: string; title: string; description: string; acceptanceCriteria: string; priority: string }) => ipcRenderer.invoke('tasks:create', params),
   deleteTask: (taskId: string) => ipcRenderer.invoke('tasks:delete', taskId),
+  getTaskLogs: (taskId: string) => ipcRenderer.invoke('tasks:getLogs', taskId),
 
   // Agent Loop
   startLoop: (projectId?: string, prdId?: string, buildMode?: string) => ipcRenderer.invoke('loop:start', projectId, prdId, buildMode),
@@ -85,6 +87,7 @@ const relayAPI = {
   gitCheckInit: (projectId: string) => ipcRenderer.invoke('git:checkInit', projectId),
   gitInit: (projectId: string) => ipcRenderer.invoke('git:init', projectId),
   gitEnsureGitignore: (projectId: string) => ipcRenderer.invoke('git:ensureGitignore', projectId),
+  gitCommitFiles: (projectId: string, commitHash: string) => ipcRenderer.invoke('git:commitFiles', projectId, commitHash),
 
   // Review
   reviewGetDiff: (projectId: string, taskId?: string) => ipcRenderer.invoke('review:getDiff', projectId, taskId),

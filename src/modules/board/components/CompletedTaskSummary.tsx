@@ -7,11 +7,21 @@ import { TextBlock } from '@/modules/agent/components/TextBlock'
 import { isActionGroup } from '@/shared/types/activity'
 import type { TaskLog } from '@shared/types'
 
-interface CompletedTaskSummaryProps {
-    activity: TaskLog[]
+interface DbMetrics {
+    durationMs: number
+    toolCalls: number
+    tokensIn: number
+    tokensOut: number
+    model?: string
+    filesChanged?: string[]
 }
 
-export function CompletedTaskSummary({ activity }: CompletedTaskSummaryProps) {
+interface CompletedTaskSummaryProps {
+    activity: TaskLog[]
+    dbMetrics?: DbMetrics | null
+}
+
+export function CompletedTaskSummary({ activity, dbMetrics }: CompletedTaskSummaryProps) {
     const [showFullLog, setShowFullLog] = useState(false)
     const summary = useMemo(() => buildTaskSummary(activity), [activity])
     const grouped = useMemo(() => groupActions(activity), [activity])
@@ -32,16 +42,16 @@ export function CompletedTaskSummary({ activity }: CompletedTaskSummaryProps) {
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                     <Clock className="h-3 w-3" />
-                    {formatDuration(summary.durationSec * 1000)}
+                    {formatDuration((summary.durationSec > 0 ? summary.durationSec * 1000 : dbMetrics?.durationMs) ?? 0)}
                 </span>
                 <span className="flex items-center gap-1.5">
                     <Wrench className="h-3 w-3" />
-                    {summary.toolCalls} actions
+                    {summary.toolCalls > 0 ? summary.toolCalls : dbMetrics?.toolCalls ?? 0} actions
                 </span>
-                {summary.filesModified.length > 0 && (
+                {(summary.filesModified.length > 0 || (dbMetrics?.filesChanged?.length ?? 0) > 0) && (
                     <span className="flex items-center gap-1.5">
                         <Pencil className="h-3 w-3" />
-                        {summary.filesModified.length} edited
+                        {summary.filesModified.length > 0 ? summary.filesModified.length : dbMetrics?.filesChanged?.length ?? 0} edited
                     </span>
                 )}
                 {summary.filesRead.length > 0 && (
@@ -53,23 +63,27 @@ export function CompletedTaskSummary({ activity }: CompletedTaskSummaryProps) {
             </div>
 
             {/* Files modified — compact inline list */}
-            {summary.filesModified.length > 0 && (
-                <div className="space-y-1">
-                    <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                        Files changed
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                        {summary.filesModified.map((f) => (
-                            <span
-                                key={f}
-                                className="text-[11px] font-mono bg-amber-500/10 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded px-1.5 py-0.5"
-                            >
-                                {shortPath(f)}
-                            </span>
-                        ))}
+            {(() => {
+                const files = summary.filesModified.length > 0 ? summary.filesModified : dbMetrics?.filesChanged ?? []
+                if (files.length === 0) return null
+                return (
+                    <div className="space-y-1">
+                        <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                            Files changed
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                            {files.map((f) => (
+                                <span
+                                    key={f}
+                                    className="text-[11px] font-mono bg-amber-500/10 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded px-1.5 py-0.5"
+                                >
+                                    {shortPath(f)}
+                                </span>
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            })()}
 
             {/* Tool breakdown — inline chips */}
             {Object.keys(summary.toolBreakdown).length > 0 && (

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { buildPrdPrompt, buildDecomposePrompt, buildClarifyPrompt, buildContentBlocks } from '../agent/prompts';
 import type { ContentBlock } from '../agent/prompts';
 import { streamText, generateText } from '../agent/runner';
+import { streamText as openaiStreamText, generateText as openaiGenerateText } from '../agent/openaiRunner';
 import type { ImageAttachment } from '../../shared/types';
 import { openDb } from '../db/connection';
 import { store } from './settings';
@@ -311,6 +312,9 @@ export function registerPrdHandlers(): void {
     let result: string;
     if (getEngineMode() === 'claude-code') {
       result = await cliGenerateText(systemPrompt, contentBlocks, win, projectPath);
+    } else if (getEngineMode() === 'codex') {
+      const textPrompt = typeof contentBlocks === 'string' ? contentBlocks : prompt;
+      result = await openaiGenerateText(systemPrompt, textPrompt);
     } else {
       const apiKey = getApiKey();
       result = await generateText(apiKey, systemPrompt, contentBlocks);
@@ -336,6 +340,9 @@ export function registerPrdHandlers(): void {
         ? 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent". You have access to the project directory — use Read/Glob/Grep tools to understand the codebase before writing. IMPORTANT: Do NOT narrate your exploration. Do NOT say "Let me look at..." or describe what you are doing. Use tools silently, then output ONLY the final specification document in markdown. Your entire text response must be the specification — no preamble, no commentary.'
         : 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent".';
       await cliStreamText(cliSystemPrompt, contentBlocks, win, 'prd:stream', projectPath);
+    } else if (getEngineMode() === 'codex') {
+      const textPrompt = typeof contentBlocks === 'string' ? contentBlocks : prompt;
+      await openaiStreamText('You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent".', textPrompt, win, 'prd:stream');
     } else {
       const apiKey = getApiKey();
       await streamText(apiKey, 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent".', contentBlocks, win, 'prd:stream');
@@ -352,6 +359,9 @@ export function registerPrdHandlers(): void {
 
     if (getEngineMode() === 'claude-code') {
       const result = await cliGenerateText('You are a senior software architect. Return only valid JSON.', prompt, win, projectPath);
+      win.webContents.send('prd:decomposeStream', { type: 'done', text: result });
+    } else if (getEngineMode() === 'codex') {
+      const result = await openaiGenerateText('You are a senior software architect. Return only valid JSON.', prompt);
       win.webContents.send('prd:decomposeStream', { type: 'done', text: result });
     } else {
       const apiKey = getApiKey();
