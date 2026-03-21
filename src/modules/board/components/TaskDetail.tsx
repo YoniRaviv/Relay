@@ -79,7 +79,7 @@ export function TaskDetail() {
     const criteriaItems = task.acceptanceCriteria ? parseCriteria(task.acceptanceCriteria) : []
 
     return (
-        <div className="w-[420px] bg-[var(--color-sidebar)] flex flex-col h-full overflow-hidden border-l border-border/50">
+        <div className="absolute right-0 top-0 w-[420px] bg-[var(--color-sidebar)] flex flex-col h-full overflow-hidden border-l border-border/50 shadow-xl z-20">
             {/* ── Header ── */}
             <div className="px-5 pt-5 pb-4 border-b border-border/40">
                 <div className="flex items-start justify-between gap-3">
@@ -93,7 +93,7 @@ export function TaskDetail() {
                                     : task.status === 'in_progress'
                                         ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400'
                                         : task.status === 'review'
-                                            ? 'bg-amber-500/10 text-amber-700 dark:bg-yellow-500/10 dark:text-yellow-400'
+                                            ? 'bg-stone-500/10 text-stone-700 dark:bg-amber-500/10 dark:text-amber-400'
                                             : task.status === 'failed'
                                                 ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
                                                 : isCompleted
@@ -133,7 +133,7 @@ export function TaskDetail() {
                 {task.status === 'review' && (
                     <Button
                         size="sm"
-                        className="mt-3 w-full bg-amber-600 hover:bg-amber-700 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white text-[13px]"
+                        className="mt-3 w-full bg-stone-600 hover:bg-stone-700 dark:bg-amber-600 dark:hover:bg-amber-700 text-white text-[13px]"
                         onClick={() => setReviewingTaskId(task.id)}
                     >
                         <Eye className="h-3.5 w-3.5 mr-1.5" />

@@ -1,7 +1,7 @@
 export const statusColors: Record<string, string> = {
         pending: 'text-muted-foreground',
         in_progress: 'text-teal-600 dark:text-teal-400',
-        review: 'text-amber-700 dark:text-yellow-400',
+        review: 'text-stone-700 dark:text-amber-400',
         failed: 'text-rose-600 dark:text-rose-400',
         done: 'text-emerald-600 dark:text-emerald-400',
 }
@@ -17,7 +17,7 @@ export const statusLabels: Record<string, string> = {
 export const statusDots: Record<string, string> = {
         pending: 'bg-stone-400',
         in_progress: 'bg-teal-500 animate-pulse',
-        review: 'bg-amber-500 dark:bg-yellow-500',
+        review: 'bg-stone-500 dark:bg-amber-500',
         failed: 'bg-rose-500',
         done: 'bg-emerald-500',
 }

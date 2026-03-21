@@ -347,7 +347,7 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                     </div>
                 )}
 
-                <div className="flex flex-1 overflow-hidden">
+                <div className="flex flex-1 overflow-hidden relative">
                     <div className="flex-1 flex flex-col overflow-hidden">
                         {sidebarView === 'board' && (
                             <ErrorBoundary fallbackMessage="The board encountered an error.">

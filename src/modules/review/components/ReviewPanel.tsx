@@ -112,13 +112,13 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
 
     return (
         <div className="fixed inset-0 z-40 flex bg-background/80 backdrop-blur-sm">
-            <div className="flex flex-col w-full h-full bg-card border border-border rounded-lg m-4 shadow-xl shadow-black/10 dark:shadow-black/30 overflow-hidden">
+            <div className="flex flex-col w-full h-full bg-card rounded-lg m-4 shadow-xl shadow-black/10 dark:shadow-black/30 overflow-hidden">
                 {/* Header */}
-                <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-[var(--color-sidebar)]">
+                <div className="flex items-center justify-between px-5 py-3 bg-[var(--color-sidebar)] shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
                     <div className="flex items-center gap-3 min-w-0">
                         <span className="text-xs font-mono text-muted-foreground shrink-0">{task.storyId}</span>
                         <h2 className="font-semibold text-sm truncate">{task.title}</h2>
-                        <span className="text-[11px] font-medium uppercase tracking-wide text-amber-700 dark:text-yellow-400 shrink-0">
+                        <span className="text-[11px] font-medium uppercase tracking-wide text-stone-700 dark:text-amber-400 shrink-0">
                             Review
                         </span>
                     </div>
@@ -153,12 +153,12 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
 
                 {/* Reject input bar */}
                 {showRejectInput && (
-                    <div className="flex items-start gap-3 px-5 py-3 border-b border-border bg-destructive/5">
+                    <div className="flex items-start gap-3 px-5 py-3 bg-destructive/5">
                         <textarea
                             value={rejectionNotes}
                             onChange={(e) => setRejectionNotes(e.target.value)}
                             placeholder="Describe what needs to change..."
-                            className="flex-1 px-3 py-2 text-sm rounded-md border border-border bg-background resize-none h-20 focus:outline-none focus:ring-2 focus:ring-ring"
+                            className="flex-1 px-3 py-2 text-sm rounded-md bg-muted/50 ring-1 ring-white/5 resize-none h-20 focus:outline-none focus:ring-2 focus:ring-ring"
                             autoFocus
                         />
                         <div className="flex flex-col gap-1.5">
@@ -180,8 +180,8 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
                 {/* Content */}
                 <div className="flex flex-1 overflow-hidden">
                     {/* File list + acceptance criteria sidebar */}
-                    <div className="w-72 border-r border-border overflow-auto bg-[var(--color-sidebar)]">
-                        <div className="px-3 py-2.5 border-b border-border">
+                    <div className="w-72 overflow-auto bg-[var(--color-sidebar)] shadow-[2px_0_4px_rgba(0,0,0,0.1)] z-10">
+                        <div className="px-3 py-2.5">
                             <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 Changed Files
                             </h3>
@@ -194,7 +194,7 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
 
                         {/* Acceptance criteria checklist */}
                         {task.acceptanceCriteria && (
-                            <div className="border-t border-border px-3 py-2.5">
+                            <div className="mt-2 px-3 py-2.5">
                                 <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                                     Acceptance Criteria
                                 </h3>
@@ -216,7 +216,7 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
                     </div>
 
                     {/* Diff viewer */}
-                    <div className="flex-1 overflow-auto bg-card">
+                    <div className="flex-1 overflow-auto bg-[var(--color-background)]">
                         {loading ? (
                             <div className="flex items-center justify-center h-full">
                                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

@@ -76,7 +76,7 @@ export const TaskCard = React.memo(function TaskCard({ task, isActive, isSelecte
                         : isActive && task.status === 'in_progress'
                             ? 'ring-2 ring-primary ring-offset-1 ring-offset-background'
                             : ''
-            } ${task.status === 'review' && !isSelected ? 'ring-1 ring-amber-600/50 dark:ring-yellow-500/40' : ''
+            } ${task.status === 'review' && !isSelected ? 'ring-1 ring-stone-400 dark:ring-amber-500/40' : ''
             }`}
         >
             <TaskCardContent task={task} isPaused={isPausedInProgress} />
@@ -91,7 +91,7 @@ export const TaskCard = React.memo(function TaskCard({ task, isActive, isSelecte
                         e.stopPropagation()
                         onReview?.()
                     }}
-                    className="w-full mt-2.5 py-1.5 rounded-md text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-yellow-500/15 dark:text-yellow-400 hover:bg-amber-200 dark:hover:bg-yellow-500/25 transition-colors flex items-center justify-center gap-1.5"
+                    className="w-full mt-2.5 py-1.5 rounded-md text-xs font-semibold bg-stone-500/15 text-stone-700 dark:bg-amber-500/15 dark:text-amber-400 hover:bg-stone-500/25 dark:hover:bg-amber-500/25 transition-colors flex items-center justify-center gap-1.5"
                 >
                     <Eye className="h-3.5 w-3.5" />
                     Review Changes
