@@ -20,15 +20,15 @@ import { useRelayStore } from '@/store/useRelayStore'
 import type { Task, TaskStatus } from '@shared/types'
 import type { DecomposedTask } from '@/shared/types/prd'
 
-const COLUMNS: { id: string; title: string; statuses: TaskStatus[] }[] = [
+const ALL_COLUMNS: { id: string; title: string; statuses: TaskStatus[] }[] = [
     { id: 'pending', title: 'Pending', statuses: ['pending'] },
     { id: 'building', title: 'Building', statuses: ['in_progress', 'failed'] },
     { id: 'review', title: 'Human Review', statuses: ['review'] },
     { id: 'complete', title: 'Complete', statuses: ['done'] },
 ]
 
-function getColumnForStatus(status: TaskStatus): string {
-    for (const col of COLUMNS) {
+function getColumnForStatus(status: TaskStatus, columns: typeof ALL_COLUMNS): string {
+    for (const col of columns) {
         if (col.statuses.includes(status)) return col.id
     }
     return 'pending'
@@ -51,6 +51,13 @@ export function KanbanBoard() {
     const setReviewingTaskId = useRelayStore((s) => s.setReviewingTaskId)
     const activeProject = useRelayStore((s) => s.activeProject)
     const activePrdId = useRelayStore((s) => s.activePrdId)
+    const buildMode = useRelayStore((s) => s.buildMode)
+
+    const columns = useMemo(() =>
+        buildMode === 'auto-pilot'
+            ? ALL_COLUMNS.filter((c) => c.id !== 'review')
+            : ALL_COLUMNS,
+    [buildMode])
     const [activeTask, setActiveTask] = useState<Task | null>(null)
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
     const [showAddTask, setShowAddTask] = useState(false)
@@ -100,23 +107,23 @@ export function KanbanBoard() {
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
     )
 
-    // Memoize per-column task lists — only recomputes when tasks array changes
+    // Memoize per-column task lists — only recomputes when tasks array or columns change
     const tasksByColumn = useMemo(() => {
         const map: Record<string, Task[]> = {}
-        for (const col of COLUMNS) {
+        for (const col of columns) {
             map[col.id] = tasks
                 .filter((t) => col.statuses.includes(t.status))
                 .sort((a, b) => a.order - b.order)
         }
         return map
-    }, [tasks])
+    }, [tasks, columns])
 
     const columnTasks = (columnId: string) => tasksByColumn[columnId] ?? []
 
     const findTaskColumn = (taskId: string): string | undefined => {
         const task = tasks.find((t) => t.id === taskId)
         if (!task) return undefined
-        return getColumnForStatus(task.status)
+        return getColumnForStatus(task.status, columns)
     }
 
     const handleDragStart = useCallback(
@@ -142,7 +149,7 @@ export function KanbanBoard() {
 
             const sourceColumn = findTaskColumn(activeId)
             // Determine target column: if we're over a column id directly, use it; otherwise find the task's column
-            const targetColumn = COLUMNS.find((c) => c.id === overId)?.id ?? findTaskColumn(overId)
+            const targetColumn = columns.find((c) => c.id === overId)?.id ?? findTaskColumn(overId)
 
             if (!sourceColumn || !targetColumn) return
 
@@ -178,7 +185,7 @@ export function KanbanBoard() {
 
             setTasks(newTasks)
         },
-        [tasks, setTasks] // eslint-disable-line react-hooks/exhaustive-deps
+        [tasks, setTasks, columns] // eslint-disable-line react-hooks/exhaustive-deps
     )
 
     const handleDragCancel = useCallback(() => {
@@ -209,7 +216,7 @@ export function KanbanBoard() {
                 </div>
             )}
             <div className="flex gap-4 p-6 h-full overflow-x-auto">
-                {COLUMNS.map((col) => (
+                {columns.map((col) => (
                     <KanbanColumn
                         key={col.id}
                         id={col.id}

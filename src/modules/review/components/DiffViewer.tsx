@@ -1,7 +1,7 @@
-import { useMemo, useRef, useState, useCallback, useImperativeHandle, forwardRef } from 'react'
-import { html, parse } from 'diff2html'
+import { useMemo, useState, useCallback, useImperativeHandle, forwardRef } from 'react'
+import { parse } from 'diff2html'
+import type { DiffFile } from 'diff2html/lib/types'
 import { ChevronDown, ChevronRight, FileEdit, FilePlus, FileX, FileText, Columns2, AlignJustify } from 'lucide-react'
-import 'diff2html/bundles/css/diff2html.min.css'
 
 interface DiffViewerProps {
     diffString: string
@@ -14,18 +14,163 @@ export interface DiffViewerHandle {
 }
 
 const fileTypeConfig = {
-    added:   { icon: FilePlus, accent: 'border-l-emerald-500', text: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/5' },
-    deleted: { icon: FileX, accent: 'border-l-rose-500', text: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-500/5' },
-    renamed: { icon: FileText, accent: 'border-l-sky-500', text: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-500/5' },
-    changed: { icon: FileEdit, accent: 'border-l-amber-500', text: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/5' },
+    added:   { icon: FilePlus, accent: 'border-l-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' },
+    deleted: { icon: FileX, accent: 'border-l-rose-500', text: 'text-rose-600 dark:text-rose-400' },
+    renamed: { icon: FileText, accent: 'border-l-sky-500', text: 'text-sky-600 dark:text-sky-400' },
+    changed: { icon: FileEdit, accent: 'border-l-amber-500', text: 'text-amber-600 dark:text-amber-400' },
 } as const
+
+/* ── Unified diff renderer ── */
+function UnifiedDiff({ file }: { file: DiffFile }) {
+    return (
+        <table className="diff-table w-full border-collapse font-mono text-[13px] leading-[1.55]">
+            <tbody>
+                {file.blocks.map((block, bi) => (
+                    <Fragment key={bi}>
+                        {/* Hunk header */}
+                        <tr className="diff-hunk">
+                            <td className="diff-ln diff-ln-hunk" />
+                            <td className="diff-ln diff-ln-hunk" />
+                            <td className="diff-hunk-content" colSpan={2}>
+                                {block.header}
+                            </td>
+                        </tr>
+                        {block.lines.map((line, li) => {
+                            const type = line.type // 'context' | 'insert' | 'delete'
+                            const content = line.content.slice(1) // remove leading +/-/space
+                            const prefix = line.content[0] === '+' ? '+' : line.content[0] === '-' ? '−' : ' '
+                            return (
+                                <tr key={`${bi}-${li}`} className={`diff-row diff-row-${type}`}>
+                                    <td className={`diff-ln diff-ln-old${type !== 'context' ? ` diff-ln-${type}` : ''}`}>
+                                        {line.oldNumber ?? ''}
+                                    </td>
+                                    <td className={`diff-ln diff-ln-new${type !== 'context' ? ` diff-ln-${type}` : ''}`}>
+                                        {line.newNumber ?? ''}
+                                    </td>
+                                    <td className={`diff-prefix diff-prefix-${type}`}>{prefix}</td>
+                                    <td className="diff-content">
+                                        <span className="whitespace-pre">{content || '\n'}</span>
+                                    </td>
+                                </tr>
+                            )
+                        })}
+                    </Fragment>
+                ))}
+            </tbody>
+        </table>
+    )
+}
+
+/* ── Side-by-side diff renderer ── */
+function SideBySideDiff({ file }: { file: DiffFile }) {
+    // Build paired rows: for each hunk, pair deletions with insertions
+    const rows = useMemo(() => {
+        const result: { left: LineData | null; right: LineData | null }[] = []
+        for (const block of file.blocks) {
+            // Hunk header
+            result.push({
+                left: { type: 'hunk', content: block.header, lineNo: undefined },
+                right: { type: 'hunk', content: '', lineNo: undefined },
+            })
+            let delBuffer: LineData[] = []
+            let insBuffer: LineData[] = []
+            const flushBuffers = () => {
+                const max = Math.max(delBuffer.length, insBuffer.length)
+                for (let i = 0; i < max; i++) {
+                    result.push({
+                        left: delBuffer[i] ?? null,
+                        right: insBuffer[i] ?? null,
+                    })
+                }
+                delBuffer = []
+                insBuffer = []
+            }
+            for (const line of block.lines) {
+                if (line.type === 'context') {
+                    flushBuffers()
+                    const d: LineData = { type: 'context', content: line.content.slice(1), lineNo: line.oldNumber }
+                    const d2: LineData = { type: 'context', content: line.content.slice(1), lineNo: line.newNumber }
+                    result.push({ left: d, right: d2 })
+                } else if (line.type === 'delete') {
+                    delBuffer.push({ type: 'delete', content: line.content.slice(1), lineNo: line.oldNumber })
+                } else if (line.type === 'insert') {
+                    insBuffer.push({ type: 'insert', content: line.content.slice(1), lineNo: line.newNumber })
+                }
+            }
+            flushBuffers()
+        }
+        return result
+    }, [file.blocks])
+
+    return (
+        <table className="diff-table w-full border-collapse font-mono text-[13px] leading-[1.55]">
+            <tbody>
+                {rows.map((row, i) => {
+                    const lType = row.left?.type ?? 'empty'
+                    const rType = row.right?.type ?? 'empty'
+                    return (
+                        <tr key={i}>
+                            {/* ── Left side ── */}
+                            {lType === 'hunk' ? (
+                                <>
+                                    <td className="diff-ln diff-ln-hunk" />
+                                    <td className="diff-hunk-content" colSpan={2}>{row.left!.content}</td>
+                                </>
+                            ) : lType === 'empty' ? (
+                                <>
+                                    <td className="diff-ln diff-side-empty" />
+                                    <td className="diff-side-empty" colSpan={2}>&nbsp;</td>
+                                </>
+                            ) : (
+                                <>
+                                    <td className={`diff-ln diff-ln-${lType}`}>{row.left!.lineNo ?? ''}</td>
+                                    <td className={`diff-prefix diff-prefix-${lType}`}>{lType === 'delete' ? '−' : ' '}</td>
+                                    <td className={`diff-content diff-content-sbs diff-content-sbs-${lType}`}>
+                                        <span className="whitespace-pre">{row.left!.content || '\n'}</span>
+                                    </td>
+                                </>
+                            )}
+                            {/* ── Right side ── */}
+                            {rType === 'hunk' ? (
+                                <>
+                                    <td className="diff-ln diff-ln-hunk" />
+                                    <td className="diff-hunk-content" colSpan={2} />
+                                </>
+                            ) : rType === 'empty' ? (
+                                <>
+                                    <td className="diff-ln diff-side-empty" />
+                                    <td className="diff-side-empty" colSpan={2}>&nbsp;</td>
+                                </>
+                            ) : (
+                                <>
+                                    <td className={`diff-ln diff-ln-${rType}`}>{row.right!.lineNo ?? ''}</td>
+                                    <td className={`diff-prefix diff-prefix-${rType}`}>{rType === 'insert' ? '+' : ' '}</td>
+                                    <td className={`diff-content diff-content-sbs diff-content-sbs-${rType}`}>
+                                        <span className="whitespace-pre">{row.right!.content || '\n'}</span>
+                                    </td>
+                                </>
+                            )}
+                        </tr>
+                    )
+                })}
+            </tbody>
+        </table>
+    )
+}
+
+interface LineData {
+    type: 'context' | 'insert' | 'delete' | 'hunk'
+    content: string
+    lineNo: number | undefined
+}
+
+import { Fragment } from 'react'
 
 export const DiffViewer = forwardRef<DiffViewerHandle, DiffViewerProps>(
     function DiffViewer({ diffString, outputFormat: initialFormat = 'line-by-line', onActiveFileChange }, ref) {
         const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
         const [outputFormat, setOutputFormat] = useState(initialFormat)
 
-        // Parse diff metadata upfront, but defer HTML generation until file is expanded
         const parsedFiles = useMemo(() => {
             if (!diffString.trim()) return []
             return parse(diffString)
@@ -40,23 +185,9 @@ export const DiffViewer = forwardRef<DiffViewerHandle, DiffViewerProps>(
                 addedLines: file.addedLines,
                 deletedLines: file.deletedLines,
                 isBinary: file.isBinary,
-                // Lazy: generate HTML only when needed (cached via htmlCache)
-                get html() {
-                    const key = `${file.newName}:${outputFormat}`
-                    if (!htmlCache.current.has(key)) {
-                        htmlCache.current.set(key, html([file], {
-                            drawFileList: false,
-                            matching: 'lines',
-                            outputFormat,
-                        }))
-                    }
-                    return htmlCache.current.get(key)!
-                },
+                file,
             }))
-        }, [parsedFiles, outputFormat])
-
-        // Cache generated HTML to avoid re-rendering on collapse/expand
-        const htmlCache = useRef(new Map<string, string>())
+        }, [parsedFiles])
 
         const toggleCollapse = useCallback((path: string) => {
             setCollapsed((prev) => ({ ...prev, [path]: !prev[path] }))
@@ -79,20 +210,12 @@ export const DiffViewer = forwardRef<DiffViewerHandle, DiffViewerProps>(
             return <p className="text-muted-foreground p-4 text-sm">No changes detected.</p>
         }
 
-        // Auto-collapse files in large diffs to avoid DOM bloat
         const autoCollapse = fileDiffs.length > 10
 
-        // Clear HTML cache when format changes
-        const prevFormat = useRef(outputFormat)
-        if (prevFormat.current !== outputFormat) {
-            htmlCache.current.clear()
-            prevFormat.current = outputFormat
-        }
-
         return (
-            <div className="diff-viewer">
+            <div className="diff-viewer bg-[var(--color-background)] min-h-full">
                 {/* Format toggle */}
-                <div className="flex items-center gap-1 px-3 py-2 border-b border-border bg-muted/30">
+                <div className="flex items-center gap-1 px-4 py-2 bg-[var(--color-secondary)]">
                     <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mr-2">View</span>
                     <button
                         onClick={() => setOutputFormat('line-by-line')}
@@ -133,12 +256,11 @@ export const DiffViewer = forwardRef<DiffViewerHandle, DiffViewerProps>(
                                     toggleCollapse(file.path)
                                     onActiveFileChange?.(file.path)
                                 }}
-                                className={`flex items-center gap-2.5 w-full px-3 py-2.5 text-left border-l-[3px] transition-colors sticky top-0 z-10 ${config.accent} ${config.bg} hover:brightness-95 dark:hover:brightness-110`}
+                                className={`flex items-center gap-2.5 w-full px-4 py-2.5 text-left border-l-[3px] transition-colors sticky top-0 z-10 bg-[var(--color-secondary)] ${config.accent} hover:brightness-95 dark:hover:brightness-110`}
                             >
                                 <Icon className={`h-3.5 w-3.5 shrink-0 ${config.text}`} />
                                 <span className="text-xs font-mono font-medium text-foreground truncate flex-1">{file.path}</span>
 
-                                {/* Stats */}
                                 <div className="flex items-center gap-2 shrink-0 text-[10px] font-mono tabular-nums">
                                     {file.addedLines > 0 && (
                                         <span className="text-emerald-600 dark:text-emerald-400">+{file.addedLines}</span>
@@ -160,12 +282,13 @@ export const DiffViewer = forwardRef<DiffViewerHandle, DiffViewerProps>(
                                 </span>
                             </button>
 
-                            {/* Lazy render: only generate HTML when expanded */}
                             {!isCollapsed && (
-                                <div
-                                    className="text-sm overflow-x-auto"
-                                    dangerouslySetInnerHTML={{ __html: file.html }}
-                                />
+                                <div className="overflow-x-auto">
+                                    {outputFormat === 'line-by-line'
+                                        ? <UnifiedDiff file={file.file} />
+                                        : <SideBySideDiff file={file.file} />
+                                    }
+                                </div>
                             )}
                         </div>
                     )

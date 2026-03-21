@@ -24,12 +24,12 @@ export function KanbanColumn({ id, title, tasks, activeTaskId, onTaskClick, onTa
     const isReview = id === 'review'
 
     return (
-        <div className="flex flex-col flex-1 min-w-[260px] max-w-[380px]">
+        <div className="flex flex-col flex-1 min-w-[260px]">
             <div className="flex items-center gap-2 mb-3 px-3">
                 <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
                 {tasks.length > 0 && (
                     <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                        isReview ? 'bg-amber-500/15 text-amber-700 dark:bg-yellow-500/15 dark:text-yellow-400 font-medium' : 'text-muted-foreground'
+                        isReview ? 'bg-stone-500/15 text-stone-700 dark:bg-amber-500/15 dark:text-amber-400 font-medium' : 'text-muted-foreground'
                     }`}>
                         {tasks.length}
                     </span>

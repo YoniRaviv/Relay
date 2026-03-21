@@ -187,259 +187,130 @@ body {
   background: var(--color-muted-foreground);
 }
 
-/* ── diff2html: reset structure ── */
-.diff-viewer .d2h-wrapper {
-  font-size: 12px;
-  line-height: 1.5;
-}
-.diff-viewer .d2h-file-header {
-  display: none;
-}
-.diff-viewer .d2h-file-diff {
-  border: none;
-  margin: 0;
-}
-.diff-viewer .d2h-diff-table {
-  border-collapse: collapse;
+/* ═══════════════════════════════════════════════════════════════
+   Custom diff renderer — GitHub Desktop style
+   No diff2html HTML, just our own classes with full control.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Table base ── */
+.diff-table {
   font-family: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 12px;
-  width: 100%;
 }
-.diff-viewer .d2h-code-line,
-.diff-viewer .d2h-code-side-line {
-  width: 100%;
-}
-.diff-viewer .d2h-diff-tbody tr {
-  border-color: transparent;
-}
-.diff-viewer .d2h-code-linenumber::after {
-  display: none;
+.diff-table td {
+  padding: 0;
+  vertical-align: top;
+  border: none;
 }
 
-/* ── Line numbers: tight, subtle ── */
-.diff-viewer .d2h-code-linenumber,
-.diff-viewer .d2h-code-side-linenumber {
+/* ── Line numbers ── */
+.diff-ln {
+  width: 45px;
+  min-width: 45px;
+  padding: 0 8px 0 4px;
+  text-align: right;
   color: var(--color-muted-foreground);
   opacity: 0.5;
-  background: transparent;
-  border-color: transparent;
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  padding: 0 6px 0 8px;
-  min-width: 24px;
-  width: auto;
-  text-align: right;
   user-select: none;
+  background: var(--color-background);
+  font-size: 12px;
 }
 
-/* ── Code lines ── */
-.diff-viewer .d2h-code-line {
-  color: var(--color-foreground);
-  padding-left: 4px;
-  border-left: 3px solid transparent;
+/* ── +/- prefix ── */
+.diff-prefix {
+  width: 20px;
+  min-width: 20px;
+  text-align: center;
+  user-select: none;
+  font-weight: 600;
+  background: var(--color-background);
 }
-.diff-viewer .d2h-code-line-ctn {
+
+/* ── Code content ── */
+.diff-content {
   width: 100%;
-}
-.diff-viewer .d2h-code-line-prefix {
-  user-select: none;
-  width: 14px;
-  display: inline-block;
+  padding-left: 4px;
+  background: var(--color-background);
+  color: var(--color-foreground);
 }
 
-/* ── Empty / info ── */
-.diff-viewer .d2h-emptyplaceholder,
-.diff-viewer .d2h-code-side-emptyplaceholder {
-  background: var(--color-muted);
-  border-color: transparent;
-}
-.diff-viewer .d2h-info {
-  background: transparent;
+/* ── Hunk headers (@@ ... @@) — full-width bar ── */
+.diff-hunk td,
+.diff-hunk-content,
+.diff-ln-hunk {
+  background: var(--color-secondary) !important;
   color: var(--color-muted-foreground);
-  opacity: 0.6;
-  border-color: transparent;
-  padding: 4px 8px;
-  font-size: 11px;
+  opacity: 1;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-style: italic;
 }
 
-/* ── File diff tags ── */
-.diff-tag {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  padding: 2px 6px;
-  border-radius: 3px;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.diff-tag-changed {
-  background: #fef3c7;
-  color: #92400e;
-}
-.diff-tag-added {
-  background: #dcfce7;
-  color: #166534;
-}
-.diff-tag-deleted {
-  background: #fee2e2;
-  color: #991b1b;
-}
-.diff-tag-renamed {
-  background: #e0f2fe;
-  color: #075985;
-}
-.dark .diff-tag-changed {
-  background: rgba(251, 191, 36, 0.15);
-  color: #fbbf24;
-}
-.dark .diff-tag-added {
-  background: rgba(34, 197, 94, 0.15);
-  color: #4ade80;
-}
-.dark .diff-tag-deleted {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
-}
-.dark .diff-tag-renamed {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-}
+/* ── Context rows (unchanged) — default bg ── */
+.diff-row-context td { background: var(--color-background); }
 
-/* ── Light mode diff highlights ── */
-.diff-viewer .d2h-ins {
-  background: #ecfdf5;
-}
-.diff-viewer .d2h-ins .d2h-code-line {
-  border-left-color: #22c55e;
-}
-.diff-viewer .d2h-del {
-  background: #fef2f2;
-}
-.diff-viewer .d2h-del .d2h-code-line {
-  border-left-color: #ef4444;
-}
-.diff-viewer .d2h-ins .d2h-code-line-ctn {
-  background: #d1fae5;
-}
-.diff-viewer .d2h-del .d2h-code-line-ctn {
-  background: #fecaca;
-}
-.diff-viewer .d2h-ins .d2h-code-line-ctn ins,
-.diff-viewer .d2h-ins ins {
-  background: #86efac;
-  color: #14532d;
-  text-decoration: none;
-  border-radius: 2px;
-  padding: 0 1px;
-}
-.diff-viewer .d2h-del .d2h-code-line-ctn del,
-.diff-viewer .d2h-del del {
-  background: #fca5a5;
-  color: #450a0a;
-  text-decoration: none;
-  border-radius: 2px;
-  padding: 0 1px;
-}
-/* Light mode: tinted line numbers for changed rows */
-.diff-viewer .d2h-ins .d2h-code-linenumber,
-.diff-viewer .d2h-ins .d2h-code-side-linenumber {
-  opacity: 0.7;
-}
-.diff-viewer .d2h-del .d2h-code-linenumber,
-.diff-viewer .d2h-del .d2h-code-side-linenumber {
-  opacity: 0.7;
-}
-/* Light mode +/- prefix */
-.diff-viewer .d2h-ins .d2h-code-line-prefix {
-  color: #16a34a;
-  font-weight: 600;
-}
-.diff-viewer .d2h-del .d2h-code-line-prefix {
-  color: #dc2626;
-  font-weight: 600;
-}
+/* ── File diff tags (in custom file header buttons) ── */
+.diff-tag { font-size: 9px; font-weight: 600; letter-spacing: 0.05em; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; white-space: nowrap; }
+.diff-tag-changed { background: #fef3c7; color: #92400e; }
+.diff-tag-added   { background: #dcfce7; color: #166534; }
+.diff-tag-deleted  { background: #fee2e2; color: #991b1b; }
+.diff-tag-renamed  { background: #e0f2fe; color: #075985; }
+.dark .diff-tag-changed { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+.dark .diff-tag-added   { background: rgba(34, 197, 94, 0.15);  color: #4ade80; }
+.dark .diff-tag-deleted  { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+.dark .diff-tag-renamed  { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
 
-/* ── Dark mode diff highlights (enhanced contrast) ── */
-.dark .diff-viewer .d2h-file-diff .d2h-code-line {
-  background: var(--color-card);
-}
-.dark .diff-viewer .d2h-ins {
-  background: rgba(34, 197, 94, 0.08);
-}
-.dark .diff-viewer .d2h-ins .d2h-code-line {
-  border-left-color: rgba(34, 197, 94, 0.5);
-}
-.dark .diff-viewer .d2h-del {
-  background: rgba(239, 68, 68, 0.08);
-}
-.dark .diff-viewer .d2h-del .d2h-code-line {
-  border-left-color: rgba(239, 68, 68, 0.5);
-}
-.dark .diff-viewer .d2h-ins .d2h-code-line-ctn {
-  background: rgba(34, 197, 94, 0.14);
-}
-.dark .diff-viewer .d2h-del .d2h-code-line-ctn {
-  background: rgba(239, 68, 68, 0.14);
-}
-.dark .diff-viewer .d2h-ins .d2h-code-line-ctn ins,
-.dark .diff-viewer .d2h-ins ins {
-  background: rgba(34, 197, 94, 0.35);
-  color: #86efac;
-  text-decoration: none;
-  border-radius: 2px;
-  padding: 1px 2px;
-}
-.dark .diff-viewer .d2h-del .d2h-code-line-ctn del,
-.dark .diff-viewer .d2h-del del {
-  background: rgba(239, 68, 68, 0.35);
-  color: #fca5a5;
-  text-decoration: none;
-  border-radius: 2px;
-  padding: 1px 2px;
-}
-/* Dark mode line numbers for ins/del */
-.dark .diff-viewer .d2h-ins .d2h-code-linenumber,
-.dark .diff-viewer .d2h-ins .d2h-code-side-linenumber {
-  background: transparent;
-  opacity: 0.6;
-}
-.dark .diff-viewer .d2h-del .d2h-code-linenumber,
-.dark .diff-viewer .d2h-del .d2h-code-side-linenumber {
-  background: transparent;
-  opacity: 0.6;
-}
-/* Dark mode +/- prefix */
-.dark .diff-viewer .d2h-ins .d2h-code-line-prefix {
-  color: #4ade80;
-  font-weight: 600;
-}
-.dark .diff-viewer .d2h-del .d2h-code-line-prefix {
-  color: #f87171;
-  font-weight: 600;
-}
+/* ═══════════════════════════════════════════════
+   LIGHT MODE — insert/delete colours
+   Works for both unified (via .diff-row-*) and
+   side-by-side (via direct .diff-ln-*, .diff-prefix-*, .diff-content-sbs-*)
+   ═══════════════════════════════════════════════ */
 
-/* ── Side-by-side layout ── */
-.diff-viewer .d2h-file-side-diff {
-  width: 50%;
-}
-.diff-viewer .d2h-code-side-line {
-  border-left: 3px solid transparent;
-}
-.diff-viewer .d2h-ins .d2h-code-side-line {
-  border-left-color: #22c55e;
-}
-.diff-viewer .d2h-del .d2h-code-side-line {
-  border-left-color: #ef4444;
-}
-.dark .diff-viewer .d2h-ins .d2h-code-side-line {
-  border-left-color: rgba(34, 197, 94, 0.5);
-}
-.dark .diff-viewer .d2h-del .d2h-code-side-line {
-  border-left-color: rgba(239, 68, 68, 0.5);
-}
+/* Unified: row-level */
+.diff-row-insert td                { background: #dafbe1; }
+.diff-row-delete td                { background: #ffebe9; }
 
-/* ── Light mode: subtle alternating tint for unchanged lines ── */
-.diff-viewer .d2h-diff-tbody tr:nth-child(even):not(.d2h-ins):not(.d2h-del) .d2h-code-line {
-  background: rgba(0, 0, 0, 0.015);
+/* Line numbers */
+.diff-row-insert .diff-ln, .diff-ln-insert  { background: #c6efce; opacity: 0.8; }
+.diff-row-delete .diff-ln, .diff-ln-delete  { background: #fcd5d3; opacity: 0.8; }
+
+/* Prefix +/- */
+.diff-row-insert .diff-prefix, .diff-prefix-insert { color: #1a7f37; background: #dafbe1; }
+.diff-row-delete .diff-prefix, .diff-prefix-delete { color: #cf222e; background: #ffebe9; }
+
+/* Content (side-by-side) */
+.diff-content-sbs-context { background: var(--color-background); }
+.diff-content-sbs-insert  { background: #dafbe1; }
+.diff-content-sbs-delete  { background: #ffebe9; }
+
+/* ═══════════════════════════════════════════════
+   DARK MODE
+   ═══════════════════════════════════════════════ */
+
+/* Unified: row-level */
+.dark .diff-row-insert td          { background: #12261e; }
+.dark .diff-row-delete td          { background: #2d1215; }
+
+/* Line numbers */
+.dark .diff-row-insert .diff-ln, .dark .diff-ln-insert { background: #0d3321; opacity: 0.85; }
+.dark .diff-row-delete .diff-ln, .dark .diff-ln-delete { background: #3c1418; opacity: 0.85; }
+
+/* Prefix +/- */
+.dark .diff-row-insert .diff-prefix, .dark .diff-prefix-insert { color: #3fb950; background: #12261e; }
+.dark .diff-row-delete .diff-prefix, .dark .diff-prefix-delete { color: #f85149; background: #2d1215; }
+
+/* Content (side-by-side) */
+.dark .diff-content-sbs-insert { background: #12261e; }
+.dark .diff-content-sbs-delete { background: #2d1215; }
+
+/* Hunk headers — dark mode */
+.dark .diff-hunk td,
+.dark .diff-hunk-content,
+.dark .diff-ln-hunk                { background: #252220 !important; }
+
+/* ── Side-by-side empty placeholder ── */
+.diff-side-empty {
+  background: var(--color-muted);
+}
+.dark .diff-side-empty {
+  background: rgba(255, 255, 255, 0.03);
 }
