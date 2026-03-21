@@ -5,6 +5,14 @@ import { store } from '../ipc/settings';
 
 const DEFAULT_CODEX_MODEL = 'gpt-5.4';
 
+function safeSend(win: BrowserWindow, channel: string, ...args: unknown[]): void {
+  try {
+    if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+      win.webContents.send(channel, ...args);
+    }
+  } catch { /* suppress */ }
+}
+
 function getModel(): string {
   return (store.get('selectedModel') ?? DEFAULT_CODEX_MODEL) as string;
 }
@@ -33,16 +41,12 @@ export async function streamText(
       if (item.type === 'agent_message') {
         const text = item.text;
         fullText += text;
-        try {
-          if (!win.isDestroyed()) win.webContents.send(channel, { type: 'delta', text });
-        } catch { /* suppress */ }
+        safeSend(win, channel, { type: 'delta', text });
       }
     }
   }
 
-  try {
-    if (!win.isDestroyed()) win.webContents.send(channel, { type: 'done', text: fullText });
-  } catch { /* suppress */ }
+  safeSend(win, channel, { type: 'done', text: fullText });
   return fullText;
 }
 

@@ -222,6 +222,15 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
     const handleEngineChange = async (mode: EngineMode) => {
         setEngineMode(mode)
         await window.relayAPI.setEngineMode(mode)
+        // Auto-select a valid default model for the new engine
+        const defaults: Record<string, string> = {
+            'codex': 'gpt-5.4',
+            'claude-code': 'claude-sonnet-4-20250514',
+            'api-key': 'claude-sonnet-4-20250514',
+        }
+        const newDefault = defaults[mode] ?? 'claude-sonnet-4-20250514'
+        setSelectedModel(newDefault)
+        await window.relayAPI.setSelectedModel(newDefault)
     }
 
     const handlePresetChange = async (preset: CliToolsPreset) => {
@@ -342,7 +351,7 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
                             <SettingsSection title="CLI Status">
                                 <SettingsRow
                                     icon={<Terminal className="h-4 w-4" />}
-                                    label={cliAvailable?.available ? 'Claude Code SDK Available' : 'Claude Code SDK Not Found'}
+                                    label={cliAvailable?.available ? 'Claude Code CLI Available' : 'Claude Code CLI Not Found'}
                                     description={
                                         cliAvailable?.available
                                             ? 'Ready to use your existing authentication'
@@ -374,6 +383,24 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
                                 />
                             </SettingsSection>
                         </>
+                    )}
+
+                    {engineMode === 'codex' && (
+                        <SettingsSection title="CLI Status">
+                            <SettingsRow
+                                icon={<Terminal className="h-4 w-4" />}
+                                label={codexAvailable?.available ? 'Codex CLI Available' : 'Codex CLI Not Found'}
+                                description={
+                                    codexAvailable?.available
+                                        ? 'Ready to use your existing authentication'
+                                        : codexAvailable?.error ?? 'Checking...'
+                                }
+                            >
+                                <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${
+                                    codexAvailable === null ? 'bg-muted-foreground/40' : codexAvailable.available ? 'bg-green-500' : 'bg-red-500'
+                                }`} />
+                            </SettingsRow>
+                        </SettingsSection>
                     )}
 
                     <SettingsSection title="Agent Loop">
@@ -501,27 +528,9 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
                             icon={<Braces className="h-4 w-4" />}
                             label="OpenAI Codex"
                             description="Uses your existing Codex CLI authentication"
-                            tooltip="Supports GPT-4o, o3, and other OpenAI models"
+                            tooltip="Supports GPT-5.4, GPT-5.3 Codex, and other OpenAI models"
                         />
                     </SettingsSection>
-
-                    {engineMode === 'codex' && (
-                        <SettingsSection title="Codex CLI Status">
-                            <SettingsRow
-                                icon={<Terminal className="h-4 w-4" />}
-                                label={codexAvailable?.available ? 'Codex CLI Available' : 'Codex CLI Not Found'}
-                                description={
-                                    codexAvailable?.available
-                                        ? 'Ready to use your existing authentication'
-                                        : codexAvailable?.error ?? 'Checking...'
-                                }
-                            >
-                                <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${
-                                    codexAvailable === null ? 'bg-muted-foreground/40' : codexAvailable.available ? 'bg-green-500' : 'bg-red-500'
-                                }`} />
-                            </SettingsRow>
-                        </SettingsSection>
-                    )}
 
                     <SettingsSection title="Model">
                         {AVAILABLE_MODELS.filter(m => {
