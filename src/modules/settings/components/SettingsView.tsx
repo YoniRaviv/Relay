@@ -4,7 +4,7 @@ import {
     FolderSync, ChevronRight, Cpu, Terminal, Shield, Zap, Sparkles,
     Key, CheckCircle, Loader2, Sun, Moon, Bell, BellOff, GitCommitHorizontal,
     RotateCcw, Play, Pause, FastForward, Info, Database, Download,
-    RefreshCw, Scale, Link,
+    RefreshCw, Scale, Link, Braces,
 } from 'lucide-react'
 import { AVAILABLE_MODELS } from '@shared/pricing'
 import { tierColors } from '@/shared/constants/statusMaps'
@@ -167,6 +167,7 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
     const [apiKeyInput, setApiKeyInput] = useState('')
     const [apiKeyStatus, setApiKeyStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
     const [hasApiKey, setHasApiKey] = useState(false)
+    const [codexAvailable, setCodexAvailable] = useState<{ available: boolean; error?: string } | null>(null)
     const [theme, setTheme] = useState<Theme>(getStoredTheme)
     const [maxPasses, setMaxPasses] = useState(5)
     const [buildMode, setBuildMode] = useState<BuildMode>('review')
@@ -201,6 +202,7 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
         window.relayAPI.getSelectedModel().then(setSelectedModel)
         window.relayAPI.checkCliAvailable().then(setCliAvailable)
         window.relayAPI.getSettings().then(s => setHasApiKey(s.hasApiKey))
+        window.relayAPI.checkCodexAvailable().then(setCodexAvailable)
         window.relayAPI.getMaxPasses().then(setMaxPasses)
         window.relayAPI.getBuildMode().then(setBuildMode)
         window.relayAPI.getCommitPrefix().then((p) => {
@@ -220,6 +222,15 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
     const handleEngineChange = async (mode: EngineMode) => {
         setEngineMode(mode)
         await window.relayAPI.setEngineMode(mode)
+        // Auto-select a valid default model for the new engine
+        const defaults: Record<string, string> = {
+            'codex': 'gpt-5.4',
+            'claude-code': 'claude-sonnet-4-20250514',
+            'api-key': 'claude-sonnet-4-20250514',
+        }
+        const newDefault = defaults[mode] ?? 'claude-sonnet-4-20250514'
+        setSelectedModel(newDefault)
+        await window.relayAPI.setSelectedModel(newDefault)
     }
 
     const handlePresetChange = async (preset: CliToolsPreset) => {
@@ -340,7 +351,7 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
                             <SettingsSection title="CLI Status">
                                 <SettingsRow
                                     icon={<Terminal className="h-4 w-4" />}
-                                    label={cliAvailable?.available ? 'Claude Code SDK Available' : 'Claude Code SDK Not Found'}
+                                    label={cliAvailable?.available ? 'Claude Code CLI Available' : 'Claude Code CLI Not Found'}
                                     description={
                                         cliAvailable?.available
                                             ? 'Ready to use your existing authentication'
@@ -372,6 +383,24 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
                                 />
                             </SettingsSection>
                         </>
+                    )}
+
+                    {engineMode === 'codex' && (
+                        <SettingsSection title="CLI Status">
+                            <SettingsRow
+                                icon={<Terminal className="h-4 w-4" />}
+                                label={codexAvailable?.available ? 'Codex CLI Available' : 'Codex CLI Not Found'}
+                                description={
+                                    codexAvailable?.available
+                                        ? 'Ready to use your existing authentication'
+                                        : codexAvailable?.error ?? 'Checking...'
+                                }
+                            >
+                                <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${
+                                    codexAvailable === null ? 'bg-muted-foreground/40' : codexAvailable.available ? 'bg-green-500' : 'bg-red-500'
+                                }`} />
+                            </SettingsRow>
+                        </SettingsSection>
                     )}
 
                     <SettingsSection title="Agent Loop">
@@ -493,10 +522,21 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
                             description="Uses your existing Claude Code authentication"
                             tooltip="Requires Claude Code CLI installed and authenticated via `claude login`"
                         />
+                        <EngineOption
+                            selected={engineMode === 'codex'}
+                            onSelect={() => handleEngineChange('codex')}
+                            icon={<Braces className="h-4 w-4" />}
+                            label="OpenAI Codex"
+                            description="Uses your existing Codex CLI authentication"
+                            tooltip="Supports GPT-5.4, GPT-5.3 Codex, and other OpenAI models"
+                        />
                     </SettingsSection>
 
                     <SettingsSection title="Model">
-                        {AVAILABLE_MODELS.map((m) => (
+                        {AVAILABLE_MODELS.filter(m => {
+                            if (engineMode === 'codex') return m.engine === 'openai'
+                            return m.engine === 'anthropic' || !m.engine
+                        }).map((m) => (
                             <EngineOption
                                 key={m.id}
                                 selected={selectedModel === m.id}

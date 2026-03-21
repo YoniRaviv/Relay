@@ -293,6 +293,17 @@ export function registerGitHandlers(): void {
     ensureGitignore(projectPath);
     return { status: 'ok' };
   });
+
+  ipcMain.handle('git:commitFiles', async (_event, projectId: string, commitHash: string) => {
+    const projectPath = getProjectPath(projectId);
+    const git = simpleGit(projectPath);
+    try {
+      const result = await git.raw(['diff-tree', '--no-commit-id', '--name-only', '-r', commitHash]);
+      return result.trim().split('\n').filter(Boolean);
+    } catch {
+      return [];
+    }
+  });
 }
 
 /** Common gitignore patterns by project type, keyed by signature file */

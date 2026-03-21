@@ -258,7 +258,7 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
 
     // Extract @file references from text for display as chips
     const fileRefs = Array.from(new Set(
-        (value.match(/@([\w.\/\-()[\]{}]+\.\w+)/g) || []).map(m => m.slice(1))
+        (value.match(/@([\w./\-()[\]{}]+\.\w+)/g) || []).map(m => m.slice(1))
     ))
 
     const removeFileRef = (ref: string) => {

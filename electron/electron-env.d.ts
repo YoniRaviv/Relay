@@ -28,6 +28,7 @@ interface RelayAPI {
   getCliToolsPreset(): Promise<import('../shared/types').CliToolsPreset>
   setCliToolsPreset(preset: import('../shared/types').CliToolsPreset): Promise<void>
   checkCliAvailable(): Promise<{ available: boolean; path?: string; error?: string }>
+  checkCodexAvailable(): Promise<{ available: boolean; path?: string; error?: string }>
   getSelectedModel(): Promise<string>
   setSelectedModel(model: string): Promise<void>
   getMaxPasses(): Promise<number>
@@ -71,6 +72,7 @@ interface RelayAPI {
   reorderTasks(tasks: unknown): Promise<unknown>
   createTask(params: { projectId: string; prdId: string; title: string; description: string; acceptanceCriteria: string; priority: string }): Promise<{ status: string; task: import('../shared/types').Task }>
   deleteTask(taskId: string): Promise<unknown>
+  getTaskLogs(taskId: string): Promise<import('../shared/types').TaskLog[]>
 
   // Agent Loop
   startLoop(projectId?: string, prdId?: string, buildMode?: import('../shared/types').BuildMode): Promise<unknown>
@@ -97,6 +99,7 @@ interface RelayAPI {
   gitCheckInit(projectId: string): Promise<{ initialized: boolean }>
   gitInit(projectId: string): Promise<{ status: string }>
   gitEnsureGitignore(projectId: string): Promise<{ status: string }>
+  gitCommitFiles(projectId: string, commitHash: string): Promise<string[]>
 
   // Review
   reviewGetDiff(projectId: string, taskId?: string): Promise<string>

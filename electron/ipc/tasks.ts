@@ -166,4 +166,28 @@ export function registerTasksHandlers(): void {
     }
     throw new Error('Task not found');
   });
+
+  ipcMain.handle('tasks:getLogs', async (_event, taskId: string) => {
+    const projects = store.get('recentProjects', []) as Array<{ path: string }>;
+    for (const p of projects) {
+      try {
+        const db = openDb(p.path);
+        const task = db.prepare('SELECT id FROM tasks WHERE id = ?').get(taskId);
+        if (!task) continue;
+
+        const rows = db.prepare(
+          `SELECT * FROM task_logs WHERE task_id = ? ORDER BY timestamp ASC`
+        ).all(taskId) as Record<string, unknown>[];
+
+        return rows.map(row => ({
+          id: row.id as string,
+          taskId: row.task_id as string,
+          type: row.type as string,
+          content: row.content as string,
+          timestamp: row.timestamp as string,
+        }));
+      } catch { continue; }
+    }
+    return [];
+  });
 }

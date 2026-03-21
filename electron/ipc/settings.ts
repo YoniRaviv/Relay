@@ -40,6 +40,26 @@ function findClaudeBinary(): { found: boolean; path?: string; error?: string } {
   }
 }
 
+function findCodexBinary(): { found: boolean; path?: string; error?: string } {
+  try {
+    const homedir = os.homedir();
+    const extraPaths = [
+      `${homedir}/.local/bin`,
+      `${homedir}/.nvm/versions/node/current/bin`,
+      '/usr/local/bin',
+      '/opt/homebrew/bin',
+    ];
+    const envPath = [...extraPaths, process.env.PATH ?? ''].join(':');
+    const codexPath = execFileSync('which', ['codex'], {
+      encoding: 'utf-8',
+      env: { ...process.env, PATH: envPath },
+    }).trim();
+    return { found: true, path: codexPath };
+  } catch {
+    return { found: false, error: 'Codex CLI not found. Install it with: npm install -g @openai/codex' };
+  }
+}
+
 export function registerSettingsHandlers(): void {
   ipcMain.handle('cc:checkAuth', async (): Promise<AuthStatus> => {
     // In CLI engine mode, verify the CLI is actually available
@@ -49,6 +69,13 @@ export function registerSettingsHandlers(): void {
       return cliCheck.found
         ? { valid: true }
         : { valid: false, error: 'Claude Code CLI not found. Install it or switch to API Key mode.' };
+    }
+
+    if (engineMode === 'codex') {
+      const codexCheck = findCodexBinary();
+      return codexCheck.found
+        ? { valid: true }
+        : { valid: false, error: 'Codex CLI not found. Install it with: npm install -g @openai/codex' };
     }
 
     // In dev mode, allow a dummy key for testing without a real API key
@@ -151,6 +178,13 @@ export function registerSettingsHandlers(): void {
   // Check if Claude Code CLI binary is installed and reachable
   ipcMain.handle('cc:checkCliAvailable', async (): Promise<{ available: boolean; path?: string; error?: string }> => {
     const result = findClaudeBinary();
+    return result.found
+      ? { available: true, path: result.path }
+      : { available: false, error: result.error };
+  });
+
+  ipcMain.handle('cc:checkCodexAvailable', async () => {
+    const result = findCodexBinary();
     return result.found
       ? { available: true, path: result.path }
       : { available: false, error: result.error };
