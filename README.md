@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-  <video src="https://github.com/user-attachments/assets/ad634c2d-c016-4cb5-8ff8-5188a281df25" width="800" height="800" controls></video>
+  <video src="https://github.com/user-attachments/assets/ad634c2d-c016-4cb5-8ff8-5188a281df25" width="800" height="800" autoplay muted playsinline loop></video>
 </p>
 
 > **macOS note:** If you see "app is damaged and should be moved to trash" after installing, run this in Terminal:
