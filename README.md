@@ -9,6 +9,7 @@
   Describe a feature → AI generates a specification → decomposes into tasks → autonomous agent builds each task → you review via approve/reject gate.
 </p>
 
+
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS-black?logo=apple" alt="Platform" />
   <img src="https://img.shields.io/badge/electron-30-teal" alt="Electron" />
@@ -22,7 +23,7 @@
 </p>
 
 <p align="center">
-  <img src="public/screenshots/Kanban-build-loop.png" alt="Relay — Kanban Build Loop" width="800" />
+  <video src="[https://github.com...](https://github.com/user-attachments/assets/ad634c2d-c016-4cb5-8ff8-5188a281df25)" width="800" height="800" controls></video>
 </p>
 
 > **macOS note:** If you see "app is damaged and should be moved to trash" after installing, run this in Terminal:
