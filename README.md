@@ -22,15 +22,15 @@
   <a href="https://github.com/YoniRaviv/Relay/releases/latest/download/Relay-Mac-Installer.dmg"><img src="https://img.shields.io/badge/Download-Mac%20(dmg)-000?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Mac" /></a>
 </p>
 
-<p align="center">
-  <video src="https://github.com/user-attachments/assets/ad634c2d-c016-4cb5-8ff8-5188a281df25" width="800" height="800" autoplay muted playsinline loop></video>
-</p>
-
 > **macOS note:** If you see "app is damaged and should be moved to trash" after installing, run this in Terminal:
 > ```bash
 > xattr -cr /Applications/Relay.app
 > ```
 > This removes the macOS quarantine flag. The app is not signed with an Apple Developer certificate yet.
+
+<p align="center">
+  <video src="https://github.com/user-attachments/assets/ad634c2d-c016-4cb5-8ff8-5188a281df25" width="800" height="800" autoplay muted playsinline loop></video>
+</p>
 
 ---
 
