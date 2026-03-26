@@ -149,6 +149,11 @@ export function registerGitHandlers(): void {
     return withGitLock(async () => {
       const projectPath = getProjectPath(projectId);
       const git = simpleGit(projectPath);
+      // Verify clean working tree before switching branches
+      const status = await git.status();
+      if (!status.isClean()) {
+        throw new Error('Cannot create branch with uncommitted changes. Please commit or stash your changes first.');
+      }
       // Checkout base, pull latest, create new branch
       await git.checkout(baseBranch);
       try {
@@ -301,7 +306,17 @@ export function registerGitHandlers(): void {
 
   ipcMain.handle('git:ensureGitignore', async (_event, projectId: string) => {
     const projectPath = getProjectPath(projectId);
-    ensureGitignore(projectPath);
+    const modified = ensureGitignore(projectPath);
+    // Auto-commit .gitignore if it was modified to avoid false "uncommitted changes" dialogs
+    if (modified) {
+      try {
+        const git = simpleGit(projectPath);
+        await git.add('.gitignore');
+        await git.commit('chore: update .gitignore [relay]');
+      } catch {
+        // Non-critical — if commit fails (e.g., no git init yet), the user will see the diff
+      }
+    }
     return { status: 'ok' };
   });
 
@@ -420,7 +435,8 @@ const UNIVERSAL_PATTERNS = [
   '*.sublime-workspace',
 ];
 
-function ensureGitignore(projectPath: string): void {
+/** Returns true if .gitignore was modified */
+function ensureGitignore(projectPath: string): boolean {
   const gitignorePath = path.join(projectPath, '.gitignore');
   try {
     const existing = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf-8') : '';
@@ -448,8 +464,11 @@ function ensureGitignore(projectPath: string): void {
       const unique = [...new Set(toAdd)];
       const base = existing.endsWith('\n') || existing === '' ? existing : existing + '\n';
       fs.writeFileSync(gitignorePath, base + unique.join('\n') + '\n', 'utf-8');
+      return true;
     }
+    return false;
   } catch {
     // Best effort — don't block on gitignore issues
+    return false;
   }
 }

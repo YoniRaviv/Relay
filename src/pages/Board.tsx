@@ -163,7 +163,20 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
         else if (store.selectedTaskId) store.setSelectedTaskId(null)
     }
 
-    useKeyboardShortcuts({ onToggleLoop: toggleLoop, onClosePanel: closePanel })
+    useKeyboardShortcuts({
+        onToggleLoop: toggleLoop,
+        onClosePanel: closePanel,
+        onNewFeature,
+        onToggleLoopStart: toggleLoop,
+        onSettings: () => setSidebarView('settings'),
+        onJumpToActiveTask: () => {
+            const { currentTaskId } = useRelayStore.getState()
+            if (currentTaskId) {
+                useRelayStore.getState().setSelectedTaskId(currentTaskId)
+            }
+        },
+        onFocusBoard: () => setSidebarView('board'),
+    })
 
     // Listen for agent loop events
     useIpcListener('agent:activity', (data: unknown) => {
@@ -362,10 +375,12 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                                     <h2 className="text-sm font-semibold">Kanban Board</h2>
                                 )}
                             </div>
-                            <BranchIndicator />
+                            <div className="flex items-center gap-2">
+                                <BranchIndicator />
+                                <RunProjectButton onRun={() => setActivityTab('output')} />
+                            </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                            <RunProjectButton onRun={() => setActivityTab('output')} />
                             <ModelPicker />
                             <LoopControls onArchiveFeature={activePrdId ? async () => {
                                 await window.relayAPI.archiveFeature(activePrdId)
