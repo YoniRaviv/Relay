@@ -3,10 +3,10 @@ import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import * as Sentry from '@sentry/electron/main';
 import { getEngine, cleanupEngine } from './engines';
-import { openDb } from '../db/connection';
 import { store } from '../ipc/settings';
+import { getDbForProject, getProjectPath as getProjectPathFromHelper } from '../db/projectLookup';
 import { autoCommitTask } from './autoCommit';
-import { createWipCommit, getProjectPath as getProjectPathFromHelper } from '../git/commitHelper';
+import { createWipCommit } from '../git/commitHelper';
 import { cleanStaleLockFile } from '../git/lock';
 import type { Task, BuildMode } from '../../shared/types';
 
@@ -31,19 +31,6 @@ let loopState: 'idle' | 'running' | 'paused' | 'stopped' = 'idle';
 let abortSignal = { aborted: false };
 const loopEvents = new EventEmitter();
 
-function getDbForProject(projectId: string) {
-  const projects = store.get('recentProjects', []) as Array<{ path: string }>;
-  for (const p of projects) {
-    try {
-      const db = openDb(p.path);
-      const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
-      if (row) return db;
-    } catch {
-      continue;
-    }
-  }
-  throw new Error('Project not found');
-}
 
 function rowToTask(row: Record<string, unknown>): Task {
   return {

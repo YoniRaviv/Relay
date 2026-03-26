@@ -4,8 +4,8 @@ import { Codex } from '@openai/codex-sdk';
 import type { ThreadEvent, ThreadItem } from '@openai/codex-sdk';
 import { buildTaskPrompt, TASK_SYSTEM_PROMPT } from '../promptBuilder';
 import { buildCumulativeContext } from '../buildContext';
-import { openDb } from '../../db/connection';
 import { store } from '../../ipc/settings';
+import { getDbForProject, getProjectPath } from '../../db/projectLookup';
 import type { Task, PRD } from '../../../shared/types';
 import type { TaskEngine, TaskRunResult } from './types';
 
@@ -17,29 +17,6 @@ function safeSend(win: BrowserWindow, channel: string, ...args: unknown[]): void
   } catch { /* suppress */ }
 }
 
-function getDbForProject(projectId: string) {
-  const projects = store.get('recentProjects', []) as Array<{ path: string }>;
-  for (const p of projects) {
-    try {
-      const db = openDb(p.path);
-      const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
-      if (row) return db;
-    } catch { continue; }
-  }
-  throw new Error('Project not found');
-}
-
-function getProjectPath(projectId: string): string {
-  const projects = store.get('recentProjects', []) as Array<{ path: string }>;
-  for (const p of projects) {
-    try {
-      const db = openDb(p.path);
-      const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
-      if (row) return p.path;
-    } catch { continue; }
-  }
-  throw new Error('Project path not found');
-}
 
 function getProjectContext(projectId: string): string | null {
   try {

@@ -5,9 +5,9 @@ import os from 'node:os';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { buildTaskPrompt, TASK_SYSTEM_PROMPT } from '../promptBuilder';
 import { buildCumulativeContext } from '../buildContext';
-import { openDb } from '../../db/connection';
 import { store } from '../../ipc/settings';
-import type { Task, PRD } from '../../../shared/types';
+import { getDbForProject, getProjectPath } from '../../db/projectLookup';
+import type { Task, PRD, SessionMode } from '../../../shared/types';
 import { DEFAULT_MODEL } from '../../../shared/pricing';
 import type { TaskEngine, TaskRunResult, CliToolsPreset } from './types';
 
@@ -39,33 +39,6 @@ let loopSessionId: string | null = null;
 const CONSERVATIVE_TOOLS = ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'MultiEdit'];
 const FULL_TOOLS = [...CONSERVATIVE_TOOLS, 'Bash', 'WebFetch', 'NotebookEdit'];
 
-function getDbForProject(projectId: string) {
-  const projects = store.get('recentProjects', []) as Array<{ path: string }>;
-  for (const p of projects) {
-    try {
-      const db = openDb(p.path);
-      const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
-      if (row) return db;
-    } catch {
-      continue;
-    }
-  }
-  throw new Error('Project not found');
-}
-
-function getProjectPath(projectId: string): string {
-  const projects = store.get('recentProjects', []) as Array<{ path: string }>;
-  for (const p of projects) {
-    try {
-      const db = openDb(p.path);
-      const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
-      if (row) return p.path;
-    } catch {
-      continue;
-    }
-  }
-  throw new Error('Project path not found');
-}
 
 function getProjectContext(projectId: string): string | null {
   try {
@@ -188,9 +161,9 @@ export const cliEngine: TaskEngine = {
             permissionMode: 'acceptEdits',
             maxTurns: 50,
             systemPrompt: TASK_SYSTEM_PROMPT,
-            // Resume previous session for shared context across tasks in the same loop run.
-            // First task has no loopSessionId, so it starts fresh. Subsequent tasks resume.
-            ...(loopSessionId ? { resume: loopSessionId } : {}),
+            // Resume previous session for shared context (only when persistent mode is enabled)
+            ...((store.get('sessionMode') as SessionMode ?? 'per-task') === 'persistent' && loopSessionId
+              ? { resume: loopSessionId } : {}),
             pathToClaudeCodeExecutable: getClaudePath(),
             env: cleanEnv,
             debug: true,
@@ -264,10 +237,12 @@ export const cliEngine: TaskEngine = {
               detectedModel = (message as { model?: string }).model;
             }
 
-            // Capture session_id for shared context across loop tasks
-            const resultSessionId = (message as { session_id?: string }).session_id;
-            if (resultSessionId) {
-              loopSessionId = resultSessionId;
+            // Capture session_id for shared context (only in persistent mode)
+            if ((store.get('sessionMode') as SessionMode ?? 'per-task') === 'persistent') {
+              const resultSessionId = (message as { session_id?: string }).session_id;
+              if (resultSessionId) {
+                loopSessionId = resultSessionId;
+              }
             }
 
             if (message.subtype !== 'success') {

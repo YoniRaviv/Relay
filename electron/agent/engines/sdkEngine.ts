@@ -6,6 +6,7 @@ import { buildTaskPrompt, TASK_SYSTEM_PROMPT } from '../promptBuilder';
 import { buildCumulativeContext } from '../buildContext';
 import { openDb } from '../../db/connection';
 import { store } from '../../ipc/settings';
+import { getDbForProject, getProjectPath } from '../../db/projectLookup';
 import { safeStorage } from 'electron';
 import type { Task, PRD } from '../../../shared/types';
 import type Anthropic from '@anthropic-ai/sdk';
@@ -34,31 +35,6 @@ function getApiKey(): string {
   }
 }
 
-function getDbForProject(projectId: string) {
-  const projects = store.get('recentProjects', []) as Array<{ path: string }>;
-  for (const p of projects) {
-    try {
-      const db = openDb(p.path);
-      const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
-      if (row) return db;
-    } catch {
-      continue;
-    }
-  }
-  throw new Error('Project not found');
-}
-
-function getProjectPath(projectId: string): string {
-  const projects = store.get('recentProjects', []) as Array<{ path: string }>;
-  for (const p of projects) {
-    try {
-      const db = openDb(p.path);
-      const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
-      if (row) return p.path;
-    } catch { continue; }
-  }
-  return '';
-}
 
 function getProjectContext(projectId: string): string | null {
   try {

@@ -1,6 +1,5 @@
 import { ipcMain } from 'electron';
-import { openDb } from '../db/connection';
-import { store } from './settings';
+import { getDbForProject } from '../db/projectLookup';
 import { calculateCost, getModelLabel } from '../../shared/pricing';
 
 export interface ProjectMetricsData {
@@ -32,20 +31,6 @@ export interface TaskMetricRow {
   cost: number;
   model: string | null;
   modelLabel: string;
-}
-
-function getDbForProject(projectId: string) {
-  const projects = store.get('recentProjects', []) as Array<{ path: string }>;
-  for (const p of projects) {
-    try {
-      const db = openDb(p.path);
-      const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
-      if (row) return db;
-    } catch {
-      continue;
-    }
-  }
-  throw new Error('Project not found');
 }
 
 export function registerMetricsHandlers(): void {
