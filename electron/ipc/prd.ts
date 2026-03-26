@@ -353,16 +353,16 @@ export function registerPrdHandlers(): void {
     return { status: 'ok' };
   }));
 
-  ipcMain.handle('prd:decompose', withSentry('prd:decompose', async (_event, _projectId: string, prdMarkdown: string, _projectContext?: string) => {
+  ipcMain.handle('prd:decompose', withSentry('prd:decompose', async (_event, projectId: string, prdMarkdown: string, _projectContext?: string) => {
     const win = BrowserWindow.getFocusedWindow();
     if (!win) throw new Error('No active window');
 
-    // Decompose is pure text transformation — the PRD already encodes all codebase knowledge.
-    // Pass null projectPath to force single-turn (maxTurns: 1, no tools), and skip redundant projectContext.
+    const projectPath = getProjectPathById(projectId);
+    // Skip redundant projectContext — it's already encoded in the PRD markdown.
     const prompt = buildDecomposePrompt(prdMarkdown);
 
     if (getEngineMode() === 'claude-code') {
-      const result = await cliGenerateText('You are a senior software architect. Return only valid JSON.', prompt, win, null);
+      const result = await cliGenerateText('You are a senior software architect. Return only valid JSON.', prompt, win, projectPath);
       win.webContents.send('prd:decomposeStream', { type: 'done', text: result });
     } else if (getEngineMode() === 'codex') {
       const result = await openaiGenerateText('You are a senior software architect. Return only valid JSON.', prompt);
@@ -379,6 +379,7 @@ export function registerPrdHandlers(): void {
     projectId: string;
     description: string;
     markdown: string;
+    title?: string;
     tasks: Array<{
       storyId: string;
       title: string;
@@ -401,8 +402,8 @@ export function registerPrdHandlers(): void {
     const now = new Date().toISOString();
 
     const insertPrd = db.prepare(
-      `INSERT INTO prd (id, project_id, description, markdown, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 'approved', ?, ?)`
+      `INSERT INTO prd (id, project_id, description, markdown, title, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 'approved', ?, ?)`
     );
 
     const insertTask = db.prepare(
@@ -412,7 +413,7 @@ export function registerPrdHandlers(): void {
 
     // Wrap PRD + all tasks in a single transaction to prevent orphaned PRDs on crash
     const saveAll = db.transaction(() => {
-      insertPrd.run(prdId, data.projectId, data.description, data.markdown, now, now);
+      insertPrd.run(prdId, data.projectId, data.description, data.markdown, data.title ?? null, now, now);
       data.tasks.forEach((task, i) => {
         insertTask.run(
           randomUUID(), data.projectId, prdId, task.storyId,

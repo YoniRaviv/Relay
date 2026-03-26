@@ -304,8 +304,8 @@ export function LoopControls({ onArchiveFeature }: LoopControlsProps = {}) {
             <div className="flex items-center gap-2">
                 {featureComplete ? (
                     <>
-                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Complete</span>
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium shrink-0">Complete</span>
                         <FeatureCompleteActions
                             prUrl={prUrl}
                             hasRemote={hasRemote}

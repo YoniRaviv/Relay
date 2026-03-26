@@ -22,6 +22,8 @@ export type FeatureInputPhase = 'describe' | 'clarifying' | 'answering'
 interface FeatureInputProps {
     value: string
     onChange: (value: string) => void
+    featureName: string
+    onFeatureNameChange: (name: string) => void
     onGenerate: (clarifications?: string) => void
     onManualMode?: () => void
     loading: boolean
@@ -34,7 +36,7 @@ interface FeatureInputProps {
     onPhaseChange?: (phase: FeatureInputPhase) => void
 }
 
-export function FeatureInput({ value, onChange, onGenerate, onManualMode, loading, projectId, projectContext, scanningProject, attachments, onAddAttachment, onRemoveAttachment, onPhaseChange }: FeatureInputProps) {
+export function FeatureInput({ value, onChange, featureName, onFeatureNameChange, onGenerate, onManualMode, loading, projectId, projectContext, scanningProject, attachments, onAddAttachment, onRemoveAttachment, onPhaseChange }: FeatureInputProps) {
     const [phase, setPhaseInternal] = useState<FeatureInputPhase>('describe')
     const [questions, setQuestions] = useState<ClarifyQuestion[]>([])
     const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -290,6 +292,17 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
     if (phase === 'describe') {
         return (
             <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="featureName" className="text-xs text-muted-foreground">Feature name <span className="font-normal">(optional)</span></Label>
+                    <input
+                        id="featureName"
+                        type="text"
+                        value={featureName}
+                        onChange={(e) => onFeatureNameChange(e.target.value)}
+                        placeholder="e.g., User Settings Page"
+                        className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                </div>
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
                         <Label htmlFor="feature">Describe the feature you want to build</Label>

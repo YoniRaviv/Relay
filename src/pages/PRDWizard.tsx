@@ -21,6 +21,8 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         scanningProject,
         wizardStep,
         setWizardStep,
+        featureName,
+        setFeatureName,
         featureDescription,
         setFeatureDescription,
         prdMarkdown,
@@ -228,18 +230,26 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         setSaving(true)
         setError('')
         try {
+            // Determine feature title: user-provided name, or extract from PRD heading, or fallback
+            let title = featureName.trim()
+            if (!title && prdMarkdown) {
+                const headingMatch = prdMarkdown.match(/^#\s+(?:PRD:\s*)?(.+)/m)
+                if (headingMatch) title = headingMatch[1].trim()
+            }
+
             await window.relayAPI.savePrd({
                 projectId: activeProject.id,
                 description: featureDescription || (manualMode ? validTasks[0].title : ''),
                 markdown: prdMarkdown || (manualMode ? `# ${featureDescription || 'Manual Feature'}\n\nManual tasks — no spec generated.` : ''),
                 tasks: validTasks,
+                title: title || undefined,
             })
             onComplete()
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to save')
             setSaving(false)
         }
-    }, [activeProject, featureDescription, prdMarkdown, tasks, manualMode, onComplete])
+    }, [activeProject, featureName, featureDescription, prdMarkdown, tasks, manualMode, onComplete])
 
     const handleManualMode = () => {
         setManualMode(true)
@@ -374,6 +384,8 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                             <FeatureInput
                                 value={featureDescription}
                                 onChange={setFeatureDescription}
+                                featureName={featureName}
+                                onFeatureNameChange={setFeatureName}
                                 onGenerate={generatePrd}
                                 onManualMode={handleManualMode}
                                 loading={streaming}

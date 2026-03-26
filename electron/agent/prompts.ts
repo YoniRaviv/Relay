@@ -79,9 +79,9 @@ export function buildPrdPrompt(featureDescription: string, clarifications?: stri
 ${featureDescription}${clarificationBlock}${projectContextBlock(projectContext)}${imageHint}
 
 ## Output Format
-Write the PRD in markdown with the following sections:
+Write the PRD in markdown with the following sections. IMPORTANT: The first heading MUST be a concise feature name (3-5 words, not a sentence), formatted as:
 
-# PRD: [Feature Title]
+# PRD: [Concise Feature Name]
 
 ## 1. Introduction
 Brief overview of the feature and its purpose.
@@ -117,14 +117,15 @@ export function buildDecomposePrompt(prdMarkdown: string, projectContext?: strin
 ${prdMarkdown}${projectContextBlock(projectContext)}
 
 ## Instructions
-Break this PRD into sequential implementation tasks. Each task will be executed by an autonomous AI coding agent with full file read/write access. Tasks can and should be substantial.
+Break this PRD into sequential implementation tasks. Each task will be executed by an autonomous AI coding agent with full file read/write access in a single session with limited context.
 
 Guidelines:
-- Aim for 3-10 tasks. Prefer fewer, meatier tasks over many granular ones.
+- **Task sizing**: Each task must be completable in one agent session. If a task touches more than 5-8 files or requires more than 3 conceptual steps, split it. Aim for 5-12 tasks.
+- **Dependency order**: Schema/data changes first, then backend logic, then UI components, then integration/polish.
 - Every task must produce a visible, functional change.
 - Do NOT create separate tasks for: types/interfaces, error handling, tests, documentation, or validation. These belong as acceptance criteria within the task that implements the feature.
 - If the project directory is empty or has no source code, the first task should scaffold the project (stack, folder structure, dependencies, config). If the project already has code, work within the existing structure — no scaffolding tasks.
-- Order by dependency (foundations first).
+- Acceptance criteria must be specific and verifiable — not vague ("works correctly"). Each criterion should be something the agent can check.
 
 ## Output Format
 Return a JSON array of tasks. ONLY output the JSON, no other text.

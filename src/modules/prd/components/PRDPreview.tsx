@@ -24,6 +24,7 @@ const ANALYZING_MESSAGES = [
 export function PRDPreview({ markdown, streaming, agentStatus, onEdit, onApprove }: PRDPreviewProps) {
     const containerRef = useRef<HTMLDivElement>(null)
     const [messageIndex, setMessageIndex] = useState(0)
+    const [visible, setVisible] = useState(true)
 
     useEffect(() => {
         if (streaming && containerRef.current) {
@@ -31,13 +32,18 @@ export function PRDPreview({ markdown, streaming, agentStatus, onEdit, onApprove
         }
     }, [markdown, streaming])
 
-    // Rotate status messages while streaming with no content yet
+    // Rotate status messages with fade animation while streaming with no content yet
     useEffect(() => {
         if (!streaming || markdown) return
         setMessageIndex(0)
+        setVisible(true)
         const interval = setInterval(() => {
-            setMessageIndex(i => (i + 1) % ANALYZING_MESSAGES.length)
-        }, 3500)
+            setVisible(false)
+            setTimeout(() => {
+                setMessageIndex(i => (i + 1) % ANALYZING_MESSAGES.length)
+                setVisible(true)
+            }, 300)
+        }, 5000)
         return () => clearInterval(interval)
     }, [streaming, markdown])
 
@@ -62,8 +68,10 @@ export function PRDPreview({ markdown, streaming, agentStatus, onEdit, onApprove
                         )}
                     </div>
                 ) : streaming ? (
-                    <div className="flex items-center justify-center py-12 text-sm text-muted-foreground transition-opacity duration-300">
-                        {ANALYZING_MESSAGES[messageIndex]}
+                    <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+                        <span className={`transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`}>
+                            {ANALYZING_MESSAGES[messageIndex]}
+                        </span>
                     </div>
                 ) : null}
             </div>

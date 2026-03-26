@@ -156,6 +156,8 @@
 .prose-tight ul, .prose-tight ol { margin-top: 0.3em; margin-bottom: 0.3em; }
 .prose-tight li { margin-top: 0.1em; margin-bottom: 0.1em; }
 .prose-tight hr { margin-top: 0.8em; margin-bottom: 0.8em; }
+/* Prevent IDs (e.g., FR-C1) from breaking across lines in table cells */
+.prose-tight td:first-child { white-space: nowrap; }
 
 body {
   margin: 0;

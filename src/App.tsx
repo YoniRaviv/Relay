@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback, type ReactNode } from 'react'
 import { Setup } from '@/pages/Setup'
 import { PRDWizard } from '@/pages/PRDWizard'
 import { Board } from '@/pages/Board'
+import { BranchSetupDialog } from '@/modules/agent/components/BranchSetupDialog'
 import { useRelayStore } from '@/store/useRelayStore'
 import { useIpcListener } from '@/shared/hooks/useIpcListener'
 import type { Project } from '@shared/types'
@@ -58,6 +59,7 @@ function ViewTransition({ viewKey, children }: { viewKey: string; children: Reac
 
 function App() {
   const [view, setView] = useState<AppView>('loading')
+  const [showBranchDialog, setShowBranchDialog] = useState(false)
   const {
     setAuthStatus, setActiveProject, setRecentProjects,
     setPrd, setPrdMarkdown, setTasks, setActivePrdId, setFeatures,
@@ -192,6 +194,28 @@ function App() {
         await selectFeature(project.id, features[0].id)
       }
     }
+    // Show branch setup dialog before navigating to board
+    setShowBranchDialog(true)
+  }
+
+  const handleBranchConfirm = async (branchName: string, baseBranch: string) => {
+    const project = useRelayStore.getState().activeProject
+    if (!project) return
+    await window.relayAPI.gitCreateBranch(project.id, branchName, baseBranch)
+    useRelayStore.getState().setFeatureBranch(branchName)
+    useRelayStore.getState().setBaseBranch(baseBranch)
+    useRelayStore.getState().setCurrentBranch(branchName)
+    // Save branch to PRD record
+    const prdId = useRelayStore.getState().activePrdId
+    if (prdId) {
+      await window.relayAPI.prdSetFeatureBranch(prdId, branchName)
+    }
+    setShowBranchDialog(false)
+    setView('board')
+  }
+
+  const handleBranchSkip = () => {
+    setShowBranchDialog(false)
     setView('board')
   }
 
@@ -231,6 +255,7 @@ function App() {
     setPrdMarkdown('')
     setActivePrdId(null)
     useRelayStore.getState().setWizardStep(0)
+    useRelayStore.getState().setFeatureName('')
     useRelayStore.getState().setFeatureDescription('')
     useRelayStore.getState().setFeatureAttachments([])
     setView('prd-wizard')
@@ -286,9 +311,18 @@ function App() {
   }
 
   return (
-    <ViewTransition viewKey={view}>
-      {renderView()}
-    </ViewTransition>
+    <>
+      <ViewTransition viewKey={view}>
+        {renderView()}
+      </ViewTransition>
+      {showBranchDialog && (
+        <BranchSetupDialog
+          onConfirm={handleBranchConfirm}
+          onCancel={handleBranchSkip}
+          confirmLabel="Create Branch"
+        />
+      )}
+    </>
   )
 }
 

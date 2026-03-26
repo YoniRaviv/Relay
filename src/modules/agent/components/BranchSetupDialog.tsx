@@ -8,6 +8,7 @@ import { useRelayStore } from '@/store/useRelayStore'
 interface BranchSetupDialogProps {
     onConfirm: (branchName: string, baseBranch: string) => Promise<void>
     onCancel: () => void
+    confirmLabel?: string
 }
 
 function slugify(text: string): string {
@@ -23,7 +24,7 @@ function slugify(text: string): string {
     return lastDash > 10 ? truncated.slice(0, lastDash) : truncated
 }
 
-export function BranchSetupDialog({ onConfirm, onCancel }: BranchSetupDialogProps) {
+export function BranchSetupDialog({ onConfirm, onCancel, confirmLabel = 'Create Branch & Start' }: BranchSetupDialogProps) {
     const { activeProject, branches, setBranches, setCurrentBranch } = useRelayStore()
     const [baseBranch, setBaseBranch] = useState('')
     const [branchName, setBranchName] = useState('')
@@ -49,12 +50,15 @@ export function BranchSetupDialog({ onConfirm, onCancel }: BranchSetupDialogProp
                 const defaultBase = preferred.find(b => info.branches.includes(b)) ?? info.current
                 setBaseBranch(defaultBase)
 
-                // Generate branch name from active PRD title
-                const { prd, features, activePrdId } = useRelayStore.getState()
-                const prdTitle = prd?.description
-                    ?? features.find(f => f.id === activePrdId)?.description
-                    ?? 'new-feature'
-                setBranchName(`feature/${slugify(prdTitle)}`)
+                // Generate branch name from feature title (smart name) or description
+                const { prd, features, activePrdId, featureName } = useRelayStore.getState()
+                const activeFeature = features.find(f => f.id === activePrdId)
+                const nameSource = featureName.trim()
+                    || activeFeature?.title
+                    || prd?.description
+                    || activeFeature?.description
+                    || 'new-feature'
+                setBranchName(`feature/${slugify(nameSource)}`)
             } catch {
                 setError('Failed to fetch branches')
             } finally {
@@ -212,7 +216,7 @@ export function BranchSetupDialog({ onConfirm, onCancel }: BranchSetupDialogProp
                             </Button>
                             <Button size="sm" onClick={handleConfirm} disabled={!branchName.trim() || !baseBranch || loading}>
                                 {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <GitBranch className="h-3.5 w-3.5 mr-1.5" />}
-                                Create Branch & Start
+                                {confirmLabel}
                             </Button>
                         </div>
                     </>
