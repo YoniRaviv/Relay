@@ -139,15 +139,34 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
     while (loopState as string === 'running') {
       const task = getNextPendingTask(projectId, prdId);
       if (!task) {
-        safeSend(win,'agent:activity', {
-          id: randomUUID(),
-          taskId: null,
-          type: 'text',
-          content: 'All tasks complete. Loop finished.',
-          timestamp: new Date().toISOString(),
-        });
-        safeSend(win,'loop:allTasksComplete', { projectId });
-        sendNotification('Build Complete', 'All tasks have been completed.');
+        // Check if ALL tasks are truly done (not just no pending tasks left)
+        const db = getDbForProject(projectId);
+        const notDoneQuery = prdId
+          ? `SELECT COUNT(*) as c FROM tasks WHERE project_id = ? AND prd_id = ? AND status != 'done'`
+          : `SELECT COUNT(*) as c FROM tasks WHERE project_id = ? AND status != 'done'`;
+        const notDoneParams = prdId ? [projectId, prdId] : [projectId];
+        const { c: notDoneCount } = db.prepare(notDoneQuery).get(...notDoneParams) as { c: number };
+
+        if (notDoneCount === 0) {
+          safeSend(win,'agent:activity', {
+            id: randomUUID(),
+            taskId: null,
+            type: 'text',
+            content: 'All tasks complete. Loop finished.',
+            timestamp: new Date().toISOString(),
+          });
+          safeSend(win,'loop:allTasksComplete', { projectId });
+          sendNotification('Build Complete', 'All tasks have been completed.');
+        } else {
+          safeSend(win,'agent:activity', {
+            id: randomUUID(),
+            taskId: null,
+            type: 'text',
+            content: `No pending tasks remaining. ${notDoneCount} task(s) still awaiting review.`,
+            timestamp: new Date().toISOString(),
+          });
+          sendNotification('Loop Paused', `${notDoneCount} task(s) awaiting review.`);
+        }
         break;
       }
 

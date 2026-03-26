@@ -232,6 +232,7 @@ function App() {
     setActivePrdId(null)
     useRelayStore.getState().setWizardStep(0)
     useRelayStore.getState().setFeatureDescription('')
+    useRelayStore.getState().setFeatureAttachments([])
     setView('prd-wizard')
   }
 

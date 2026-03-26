@@ -51,10 +51,35 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
     const activeFeatureTitle = activeFeature
         ? (activeFeature.title || activeFeature.description.split('\n')[0].trim() || 'Untitled Feature')
         : null
-    const [sidebarView, setSidebarView] = useState<SidebarView>('board')
+    const projectId = activeProject?.id
+    const viewStateKey = projectId ? `relay:viewState:${projectId}` : null
+
+    const [sidebarView, setSidebarView] = useState<SidebarView>(() => {
+        if (!viewStateKey) return 'board'
+        try {
+            const saved = localStorage.getItem(viewStateKey)
+            if (saved) {
+                const parsed = JSON.parse(saved)
+                if (parsed.sidebarView) return parsed.sidebarView as SidebarView
+            }
+        } catch { /* ignore */ }
+        return 'board'
+    })
     const [loading, setLoading] = useState(true)
     const [showPrDialog, setShowPrDialog] = useState(false)
     const [activityTab, setActivityTab] = useState<'agent' | 'output'>('agent')
+
+    // Persist view state to localStorage
+    useEffect(() => {
+        if (!viewStateKey) return
+        try {
+            const existing = localStorage.getItem(viewStateKey)
+            const state = existing ? JSON.parse(existing) : {}
+            state.sidebarView = sidebarView
+            if (selectedTaskId) state.selectedTaskId = selectedTaskId
+            localStorage.setItem(viewStateKey, JSON.stringify(state))
+        } catch { /* ignore */ }
+    }, [viewStateKey, sidebarView, selectedTaskId])
     const [editingTitle, setEditingTitle] = useState(false)
     const [titleDraft, setTitleDraft] = useState('')
     const titleInputRef = useRef<HTMLInputElement>(null)
@@ -93,7 +118,21 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
         if (activeProject) {
             setLoading(true)
             window.relayAPI.listTasks(activeProject.id, activePrdId ?? undefined)
-                .then(setTasks)
+                .then((loadedTasks) => {
+                    setTasks(loadedTasks)
+                    // Restore selected task from persisted view state
+                    if (!selectedTaskId && viewStateKey) {
+                        try {
+                            const saved = localStorage.getItem(viewStateKey)
+                            if (saved) {
+                                const { selectedTaskId: savedId } = JSON.parse(saved)
+                                if (savedId && loadedTasks.some((t: Task) => t.id === savedId)) {
+                                    useRelayStore.getState().setSelectedTaskId(savedId)
+                                }
+                            }
+                        } catch { /* ignore */ }
+                    }
+                })
                 .catch(() => toast.error('Failed to load tasks'))
                 .finally(() => setLoading(false))
 
@@ -103,7 +142,7 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
             // Ensure .gitignore has .relay/ entry for existing projects
             window.relayAPI.gitEnsureGitignore(activeProject.id).catch(() => {})
         }
-    }, [activeProject, activePrdId, setTasks, refreshArchivedCount])
+    }, [activeProject, activePrdId, setTasks, refreshArchivedCount]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // Keyboard shortcuts — Space toggles pause/resume only (Start requires the branch setup dialog via LoopControls)
     const toggleLoop = () => {

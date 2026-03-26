@@ -115,14 +115,14 @@ function resolveFileReferences(text: string, projectPath: string): string {
   return `\n\n## Referenced Files\n${sections.join('\n\n')}`;
 }
 
-function getCliQueryOptions(systemPrompt: string, stderrLines: string[], projectPath?: string | null) {
+function getCliQueryOptions(systemPrompt: string, stderrLines: string[], projectPath?: string | null, maxTurnsOverride?: number) {
   const selectedModel = (store.get('selectedModel') ?? DEFAULT_MODEL) as string;
   const hasProjectPath = !!projectPath;
   return {
     systemPrompt,
     model: selectedModel,
     cwd: projectPath ?? os.homedir(),
-    maxTurns: hasProjectPath ? 15 : 1,
+    maxTurns: maxTurnsOverride ?? (hasProjectPath ? 15 : 1),
     allowedTools: hasProjectPath ? ['Read', 'Glob', 'Grep'] : ([] as string[]),
     permissionMode: 'acceptEdits' as const,
     persistSession: false,
@@ -155,6 +155,7 @@ async function cliStreamText(
   win: BrowserWindow,
   channel: string,
   projectPath?: string | null,
+  maxTurnsOverride?: number,
 ): Promise<string> {
   const textChunks: string[] = [];
   let hasContent = false;
@@ -169,7 +170,7 @@ async function cliStreamText(
 
   const session = query({
     prompt,
-    options: getCliQueryOptions(systemPrompt, stderrLines, projectPath),
+    options: getCliQueryOptions(systemPrompt, stderrLines, projectPath, maxTurnsOverride),
   });
 
   try {
@@ -251,6 +252,7 @@ async function cliGenerateText(
   userMessage: string | ContentBlock[],
   win?: BrowserWindow,
   projectPath?: string | null,
+  maxTurnsOverride?: number,
 ): Promise<string> {
   const textChunks: string[] = [];
   const stderrLines: string[] = [];
@@ -263,7 +265,7 @@ async function cliGenerateText(
 
   const session = query({
     prompt,
-    options: getCliQueryOptions(systemPrompt, stderrLines, projectPath),
+    options: getCliQueryOptions(systemPrompt, stderrLines, projectPath, maxTurnsOverride),
   });
 
   try {
@@ -311,7 +313,8 @@ export function registerPrdHandlers(): void {
 
     let result: string;
     if (getEngineMode() === 'claude-code') {
-      result = await cliGenerateText(systemPrompt, contentBlocks, win, projectPath);
+      // Clarify doesn't need deep exploration — cap at 5 turns (enough for a quick codebase peek)
+      result = await cliGenerateText(systemPrompt, contentBlocks, win, projectPath, 5);
     } else if (getEngineMode() === 'codex') {
       const textPrompt = typeof contentBlocks === 'string' ? contentBlocks : prompt;
       result = await openaiGenerateText(systemPrompt, textPrompt);
@@ -350,15 +353,16 @@ export function registerPrdHandlers(): void {
     return { status: 'ok' };
   }));
 
-  ipcMain.handle('prd:decompose', withSentry('prd:decompose', async (_event, projectId: string, prdMarkdown: string, projectContext?: string) => {
+  ipcMain.handle('prd:decompose', withSentry('prd:decompose', async (_event, _projectId: string, prdMarkdown: string, _projectContext?: string) => {
     const win = BrowserWindow.getFocusedWindow();
     if (!win) throw new Error('No active window');
 
-    const projectPath = getProjectPathById(projectId);
-    const prompt = buildDecomposePrompt(prdMarkdown, projectContext ?? undefined);
+    // Decompose is pure text transformation — the PRD already encodes all codebase knowledge.
+    // Pass null projectPath to force single-turn (maxTurns: 1, no tools), and skip redundant projectContext.
+    const prompt = buildDecomposePrompt(prdMarkdown);
 
     if (getEngineMode() === 'claude-code') {
-      const result = await cliGenerateText('You are a senior software architect. Return only valid JSON.', prompt, win, projectPath);
+      const result = await cliGenerateText('You are a senior software architect. Return only valid JSON.', prompt, win, null);
       win.webContents.send('prd:decomposeStream', { type: 'done', text: result });
     } else if (getEngineMode() === 'codex') {
       const result = await openaiGenerateText('You are a senior software architect. Return only valid JSON.', prompt);

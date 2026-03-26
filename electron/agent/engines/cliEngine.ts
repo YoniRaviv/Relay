@@ -7,7 +7,7 @@ import { buildTaskPrompt, TASK_SYSTEM_PROMPT } from '../promptBuilder';
 import { buildCumulativeContext } from '../buildContext';
 import { openDb } from '../../db/connection';
 import { store } from '../../ipc/settings';
-import type { Task, PRD, SessionMode } from '../../../shared/types';
+import type { Task, PRD } from '../../../shared/types';
 import { DEFAULT_MODEL } from '../../../shared/pricing';
 import type { TaskEngine, TaskRunResult, CliToolsPreset } from './types';
 
@@ -31,8 +31,10 @@ function getClaudePath(): string {
   return _claudePath;
 }
 
-let activeSessionAbort: AbortController | null = null;
-let sessionProjectPath: string | null = null;
+// Shared context across tasks within a single loop run.
+// The first task captures the sessionId from the result; subsequent tasks
+// pass `resume: loopSessionId` to continue the same conversation.
+let loopSessionId: string | null = null;
 
 const CONSERVATIVE_TOOLS = ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'MultiEdit'];
 const FULL_TOOLS = [...CONSERVATIVE_TOOLS, 'Bash', 'WebFetch', 'NotebookEdit'];
@@ -134,25 +136,7 @@ export const cliEngine: TaskEngine = {
         timestamp: new Date().toISOString(),
       });
 
-      const sessionMode = (store.get('sessionMode') ?? 'per-task') as SessionMode;
-      const usePersistentSession = sessionMode === 'persistent';
-
-      // Reset stale persistent session if project changed or previous session was aborted
-      if (usePersistentSession) {
-        if (sessionProjectPath !== projectPath || (activeSessionAbort && activeSessionAbort.signal.aborted)) {
-          activeSessionAbort = null;
-          sessionProjectPath = projectPath;
-        }
-      }
-
-      // Fresh AbortController per task — in persistent mode, persistSession: true
-      // keeps the CC process alive across query() calls independently.
-      // If a task is aborted (pause/stop), the next task gets a fresh AC and
-      // the SDK spawns a new persistent process transparently.
       const ac = new AbortController();
-      if (usePersistentSession) {
-        activeSessionAbort = ac;
-      }
 
       const abortCheck = setInterval(() => {
         if (abortSignal.aborted) {
@@ -204,13 +188,14 @@ export const cliEngine: TaskEngine = {
             permissionMode: 'acceptEdits',
             maxTurns: 50,
             systemPrompt: TASK_SYSTEM_PROMPT,
-            persistSession: usePersistentSession,
+            // Resume previous session for shared context across tasks in the same loop run.
+            // First task has no loopSessionId, so it starts fresh. Subsequent tasks resume.
+            ...(loopSessionId ? { resume: loopSessionId } : {}),
             pathToClaudeCodeExecutable: getClaudePath(),
             env: cleanEnv,
             debug: true,
             stderr: (data: string) => {
               console.error('[cliEngine:stderr]', data);
-              // Surface stderr to UI so the user can see CLI errors
               safeSend(win, 'agent:activity', {
                 id: randomUUID(),
                 taskId: task.id,
@@ -277,6 +262,12 @@ export const cliEngine: TaskEngine = {
             }
             if ((message as { model?: string }).model) {
               detectedModel = (message as { model?: string }).model;
+            }
+
+            // Capture session_id for shared context across loop tasks
+            const resultSessionId = (message as { session_id?: string }).session_id;
+            if (resultSessionId) {
+              loopSessionId = resultSessionId;
             }
 
             if (message.subtype !== 'success') {
@@ -361,9 +352,5 @@ export const cliEngine: TaskEngine = {
 };
 
 export function endCliSession(): void {
-  if (activeSessionAbort) {
-    activeSessionAbort.abort();
-    activeSessionAbort = null;
-  }
-  sessionProjectPath = null;
+  loopSessionId = null;
 }

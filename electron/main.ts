@@ -8,6 +8,7 @@ import { closeAllDbs } from './db/connection'
 import { stopProject } from './runner/projectRunner'
 import { buildAppMenu } from './menu'
 import { initAutoUpdater, registerUpdaterHandlers } from './updater'
+import { getLoopState } from './agent/loopController'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -75,6 +76,25 @@ function createWindow() {
       })
     })
   }
+
+  // Warn before closing if the build loop is still running
+  win.on('close', (e) => {
+    const state = getLoopState()
+    if (state === 'running' || state === 'paused') {
+      const choice = dialog.showMessageBoxSync(win!, {
+        type: 'warning',
+        buttons: ['Cancel', 'Close'],
+        defaultId: 0,
+        cancelId: 0,
+        title: 'Build Loop Running',
+        message: 'The build loop is still running. In-progress work may be lost.',
+        detail: 'Are you sure you want to close Relay?',
+      })
+      if (choice === 0) {
+        e.preventDefault()
+      }
+    }
+  })
 
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
