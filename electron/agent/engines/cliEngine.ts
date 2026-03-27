@@ -161,6 +161,7 @@ export const cliEngine: TaskEngine = {
             permissionMode: 'acceptEdits',
             maxTurns: 50,
             systemPrompt: TASK_SYSTEM_PROMPT,
+            persistSession: false,
             // Resume previous session for shared context (only when persistent mode is enabled)
             ...((store.get('sessionMode') as SessionMode ?? 'per-task') === 'persistent' && loopSessionId
               ? { resume: loopSessionId } : {}),

@@ -149,13 +149,18 @@ export function registerGitHandlers(): void {
     return withGitLock(async () => {
       const projectPath = getProjectPath(projectId);
       const git = simpleGit(projectPath);
-      // Verify clean working tree before switching branches
-      const status = await git.status();
-      if (!status.isClean()) {
-        throw new Error('Cannot create branch with uncommitted changes. Please commit or stash your changes first.');
+      const branchSummary = await git.branch();
+      const currentBranch = branchSummary.current;
+
+      if (currentBranch !== baseBranch) {
+        // Need to switch — check for uncommitted changes and stash if needed
+        const status = await git.status();
+        if (!status.isClean()) {
+          await git.stash(['push', '-m', `relay:auto-stash-before-branch-${branchName}`]);
+        }
+        await git.checkout(baseBranch);
       }
-      // Checkout base, pull latest, create new branch
-      await git.checkout(baseBranch);
+
       try {
         await git.pull();
       } catch {

@@ -258,6 +258,7 @@ function App() {
     useRelayStore.getState().setFeatureName('')
     useRelayStore.getState().setFeatureDescription('')
     useRelayStore.getState().setFeatureAttachments([])
+    useRelayStore.getState().setIncludeTests(false)
     setView('prd-wizard')
   }
 

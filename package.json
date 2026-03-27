@@ -22,6 +22,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@openai/codex-sdk": "^0.116.0",
+    "@radix-ui/react-switch": "^1.2.6",
     "@sentry/electron": "^7.10.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.2.1",

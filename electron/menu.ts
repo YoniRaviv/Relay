@@ -118,6 +118,12 @@ export function buildAppMenu(): void {
                     click: () => sendToRenderer('menu:navigate', 'summary'),
                 },
                 { type: 'separator' },
+                {
+                    label: 'Jump to Active Task',
+                    accelerator: 'CmdOrCtrl+J',
+                    click: () => sendToRenderer('menu:jumpToActiveTask'),
+                },
+                { type: 'separator' },
                 ...(isDev ? [
                     { role: 'reload' as const },
                     { role: 'forceReload' as const },

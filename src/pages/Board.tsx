@@ -76,7 +76,7 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
             const existing = localStorage.getItem(viewStateKey)
             const state = existing ? JSON.parse(existing) : {}
             state.sidebarView = sidebarView
-            if (selectedTaskId) state.selectedTaskId = selectedTaskId
+            state.selectedTaskId = selectedTaskId ?? null
             localStorage.setItem(viewStateKey, JSON.stringify(state))
         } catch { /* ignore */ }
     }, [viewStateKey, sidebarView, selectedTaskId])
@@ -163,20 +163,7 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
         else if (store.selectedTaskId) store.setSelectedTaskId(null)
     }
 
-    useKeyboardShortcuts({
-        onToggleLoop: toggleLoop,
-        onClosePanel: closePanel,
-        onNewFeature,
-        onToggleLoopStart: toggleLoop,
-        onSettings: () => setSidebarView('settings'),
-        onJumpToActiveTask: () => {
-            const { currentTaskId } = useRelayStore.getState()
-            if (currentTaskId) {
-                useRelayStore.getState().setSelectedTaskId(currentTaskId)
-            }
-        },
-        onFocusBoard: () => setSidebarView('board'),
-    })
+    useKeyboardShortcuts({ onToggleLoop: toggleLoop, onClosePanel: closePanel })
 
     // Listen for agent loop events
     useIpcListener('agent:activity', (data: unknown) => {
@@ -251,6 +238,13 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
     useIpcListener('menu:navigate', (view: unknown) => {
         if (view === 'board' || view === 'prd' || view === 'summary' || view === 'archive') {
             setSidebarView(view as SidebarView)
+        }
+    }, [])
+    useIpcListener('menu:jumpToActiveTask', () => {
+        const { currentTaskId } = useRelayStore.getState()
+        if (currentTaskId) {
+            useRelayStore.getState().setSelectedTaskId(currentTaskId)
+            setSidebarView('board')
         }
     }, [])
     useIpcListener('menu:loopToggle', toggleLoop, [])

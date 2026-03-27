@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { Loader2, SkipForward, ImagePlus, X, ArrowRight, ArrowLeft, Check, PenLine, FileCode } from 'lucide-react'
 import { ProjectContextBadge } from '@/shared/components/ProjectContextBadge'
 import { FileAutocomplete } from './FileAutocomplete'
@@ -24,6 +25,8 @@ interface FeatureInputProps {
     onChange: (value: string) => void
     featureName: string
     onFeatureNameChange: (name: string) => void
+    includeTests: boolean
+    onIncludeTestsChange: (include: boolean) => void
     onGenerate: (clarifications?: string) => void
     onManualMode?: () => void
     loading: boolean
@@ -36,7 +39,7 @@ interface FeatureInputProps {
     onPhaseChange?: (phase: FeatureInputPhase) => void
 }
 
-export function FeatureInput({ value, onChange, featureName, onFeatureNameChange, onGenerate, onManualMode, loading, projectId, projectContext, scanningProject, attachments, onAddAttachment, onRemoveAttachment, onPhaseChange }: FeatureInputProps) {
+export function FeatureInput({ value, onChange, featureName, onFeatureNameChange, includeTests, onIncludeTestsChange, onGenerate, onManualMode, loading, projectId, projectContext, scanningProject, attachments, onAddAttachment, onRemoveAttachment, onPhaseChange }: FeatureInputProps) {
     const [phase, setPhaseInternal] = useState<FeatureInputPhase>('describe')
     const [questions, setQuestions] = useState<ClarifyQuestion[]>([])
     const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -338,7 +341,7 @@ export function FeatureInput({ value, onChange, featureName, onFeatureNameChange
                     className="hidden"
                     onChange={handleFileSelect}
                 />
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                     <Button
                         variant="outline"
                         size="sm"
@@ -349,6 +352,14 @@ export function FeatureInput({ value, onChange, featureName, onFeatureNameChange
                         <ImagePlus className="h-3.5 w-3.5" />
                         Attach images
                     </Button>
+                    <div className="flex items-center gap-2">
+                        <Switch
+                            id="include-tests"
+                            checked={includeTests}
+                            onCheckedChange={onIncludeTestsChange}
+                        />
+                        <Label htmlFor="include-tests" className="text-xs text-muted-foreground cursor-pointer">Include unit tests</Label>
+                    </div>
                 </div>
                 {error && (
                     <p className="text-sm text-destructive text-center">{error}</p>

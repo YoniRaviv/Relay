@@ -46,8 +46,10 @@ interface PRDSlice {
   features: FeatureSummary[];
   decomposedTasks: Task[];
   featureAttachments: ImageAttachment[];
+  includeTests: boolean;
   setWizardStep: (step: number) => void;
   setFeatureName: (name: string) => void;
+  setIncludeTests: (include: boolean) => void;
   setFeatureDescription: (desc: string) => void;
   setPrdMarkdown: (md: string | ((prev: string) => string)) => void;
   setPrd: (prd: PRD | null) => void;
@@ -135,8 +137,10 @@ export const useRelayStore = create<RelayStore>((set) => ({
   features: [],
   decomposedTasks: [],
   featureAttachments: [],
+  includeTests: false,
   setWizardStep: (wizardStep) => set({ wizardStep }),
   setFeatureName: (featureName) => set({ featureName }),
+  setIncludeTests: (includeTests) => set({ includeTests }),
   setFeatureDescription: (featureDescription) => set({ featureDescription }),
   setPrdMarkdown: (prdMarkdown) =>
     set((state) => ({
