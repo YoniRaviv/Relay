@@ -3,7 +3,8 @@ import { useEffect, useRef } from 'react'
 export function useIpcListener(
     event: string,
     handler: (...args: unknown[]) => void,
-    _deps?: React.DependencyList
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _deps?: unknown[]
 ) {
     // Keep handler in a ref so the IPC listener never re-registers,
     // but always calls the latest handler closure

@@ -369,6 +369,7 @@ export function resumeLoop(win?: BrowserWindow): void {
 export function stopLoop(win?: BrowserWindow): void {
   abortSignal.aborted = true;
   loopState = 'stopped';
+  cleanupEngine();
   loopEvents.emit('stateChange');
   if (win) safeSend(win,'loop:stateChange', { state: 'stopped' });
 }

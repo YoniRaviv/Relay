@@ -10,22 +10,10 @@ export function AgentActivityFeed() {
     const activityFeed = useRelayStore((s) => s.activityFeed)
     const bottomRef = useRef<HTMLDivElement>(null)
 
-    // Incremental grouping: only reprocess when new items are appended.
-    // Falls back to full reprocess when the feed is cleared/reset (length shrinks).
-    const cacheRef = useRef<{ length: number; result: ReturnType<typeof groupActions> }>({ length: 0, result: [] })
-    const grouped = useMemo(() => {
-        if (activityFeed.length < cacheRef.current.length) {
-            // Feed was cleared — full reprocess
-            cacheRef.current = { length: activityFeed.length, result: groupActions(activityFeed) }
-        } else if (activityFeed.length > cacheRef.current.length) {
-            // New items appended — full reprocess (groupActions pairs tool_use with tool_result
-            // across items, so incremental append isn't safe without duplicating pairing state).
-            // The key optimisation is avoiding reprocess when the reference changes but length doesn't.
-            cacheRef.current = { length: activityFeed.length, result: groupActions(activityFeed) }
-        }
-        // Same length = same result (feed is append-only within a session)
-        return cacheRef.current.result
-    }, [activityFeed])
+    // Only reprocess when feed length changes (feed is append-only within a session).
+    // Using activityFeed.length as dep avoids reprocess when Zustand produces a new
+    // array reference with the same contents.
+    const grouped = useMemo(() => groupActions(activityFeed), [activityFeed.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

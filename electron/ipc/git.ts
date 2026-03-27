@@ -152,13 +152,23 @@ export function registerGitHandlers(): void {
       const branchSummary = await git.branch();
       const currentBranch = branchSummary.current;
 
+      let didStash = false;
       if (currentBranch !== baseBranch) {
         // Need to switch — check for uncommitted changes and stash if needed
         const status = await git.status();
         if (!status.isClean()) {
           await git.stash(['push', '-m', `relay:auto-stash-before-branch-${branchName}`]);
+          didStash = true;
         }
-        await git.checkout(baseBranch);
+        try {
+          await git.checkout(baseBranch);
+        } catch (err) {
+          // Restore stash before propagating the error
+          if (didStash) {
+            try { await git.stash(['pop']); } catch { /* best effort */ }
+          }
+          throw err;
+        }
       }
 
       try {

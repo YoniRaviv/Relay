@@ -210,12 +210,14 @@ async function openProjectFolder(): Promise<void> {
     });
 
     if (result.canceled || result.filePaths.length === 0) return;
-    win.webContents.send('menu:openProject', result.filePaths[0]);
+    if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+        win.webContents.send('menu:openProject', result.filePaths[0]);
+    }
 }
 
 function sendToRenderer(channel: string, ...args: unknown[]): void {
     const win = BrowserWindow.getFocusedWindow();
-    if (win) {
+    if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) {
         win.webContents.send(channel, ...args);
     }
 }

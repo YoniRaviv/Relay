@@ -353,6 +353,7 @@ export function registerPrdHandlers(): void {
     return { status: 'ok' };
   }));
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ipcMain.handle('prd:decompose', withSentry('prd:decompose', async (_event, projectId: string, prdMarkdown: string, _projectContext?: string) => {
     const win = BrowserWindow.getFocusedWindow();
     if (!win) throw new Error('No active window');

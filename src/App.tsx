@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback, type ReactNode } from 'react'
 import { Setup } from '@/pages/Setup'
 import { PRDWizard } from '@/pages/PRDWizard'
 import { Board } from '@/pages/Board'
-import { BranchSetupDialog } from '@/modules/agent/components/BranchSetupDialog'
+import { BranchSetupDialog } from '@/modules/agent'
 import { useRelayStore } from '@/store/useRelayStore'
 import { useIpcListener } from '@/shared/hooks/useIpcListener'
 import type { Project } from '@shared/types'
@@ -227,8 +227,9 @@ function App() {
         'The agent loop is still active. Switching projects will stop it and discard any in-progress work.\n\nContinue?'
       )
       if (!confirmed) return
-      window.relayAPI.stopLoop()
     }
+    // Always stop loop to clear stale engine state (e.g. session IDs)
+    window.relayAPI.stopLoop()
     // #38: Clear all state on project switch (not just project/PRD slices)
     setActiveProject(null)
     setProjectContext(null)
