@@ -1,19 +1,6 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { detectRunCommand, startProject, stopProject, isProjectRunning } from '../runner/projectRunner';
-import { store } from './settings';
-import { openDb } from '../db/connection';
-
-function getProjectPath(projectId: string): string {
-  const projects = store.get('recentProjects', []) as Array<{ path: string }>;
-  for (const p of projects) {
-    try {
-      const db = openDb(p.path);
-      const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
-      if (row) return p.path;
-    } catch { continue; }
-  }
-  throw new Error('Project not found');
-}
+import { getProjectPath } from '../db/projectLookup';
 
 export function registerRunnerHandlers(): void {
   ipcMain.handle('runner:detect', async (_event, projectId: string) => {

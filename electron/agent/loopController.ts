@@ -3,10 +3,10 @@ import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import * as Sentry from '@sentry/electron/main';
 import { getEngine, cleanupEngine } from './engines';
-import { openDb } from '../db/connection';
 import { store } from '../ipc/settings';
+import { getDbForProject, getProjectPath as getProjectPathFromHelper } from '../db/projectLookup';
 import { autoCommitTask } from './autoCommit';
-import { createWipCommit, getProjectPath as getProjectPathFromHelper } from '../git/commitHelper';
+import { createWipCommit } from '../git/commitHelper';
 import { cleanStaleLockFile } from '../git/lock';
 import type { Task, BuildMode } from '../../shared/types';
 
@@ -31,19 +31,6 @@ let loopState: 'idle' | 'running' | 'paused' | 'stopped' = 'idle';
 let abortSignal = { aborted: false };
 const loopEvents = new EventEmitter();
 
-function getDbForProject(projectId: string) {
-  const projects = store.get('recentProjects', []) as Array<{ path: string }>;
-  for (const p of projects) {
-    try {
-      const db = openDb(p.path);
-      const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
-      if (row) return db;
-    } catch {
-      continue;
-    }
-  }
-  throw new Error('Project not found');
-}
 
 function rowToTask(row: Record<string, unknown>): Task {
   return {
@@ -139,15 +126,34 @@ export async function startLoop(projectId: string, win: BrowserWindow, prdId?: s
     while (loopState as string === 'running') {
       const task = getNextPendingTask(projectId, prdId);
       if (!task) {
-        safeSend(win,'agent:activity', {
-          id: randomUUID(),
-          taskId: null,
-          type: 'text',
-          content: 'All tasks complete. Loop finished.',
-          timestamp: new Date().toISOString(),
-        });
-        safeSend(win,'loop:allTasksComplete', { projectId });
-        sendNotification('Build Complete', 'All tasks have been completed.');
+        // Check if ALL tasks are truly done (not just no pending tasks left)
+        const db = getDbForProject(projectId);
+        const notDoneQuery = prdId
+          ? `SELECT COUNT(*) as c FROM tasks WHERE project_id = ? AND prd_id = ? AND status != 'done'`
+          : `SELECT COUNT(*) as c FROM tasks WHERE project_id = ? AND status != 'done'`;
+        const notDoneParams = prdId ? [projectId, prdId] : [projectId];
+        const { c: notDoneCount } = db.prepare(notDoneQuery).get(...notDoneParams) as { c: number };
+
+        if (notDoneCount === 0) {
+          safeSend(win,'agent:activity', {
+            id: randomUUID(),
+            taskId: null,
+            type: 'text',
+            content: 'All tasks complete. Loop finished.',
+            timestamp: new Date().toISOString(),
+          });
+          safeSend(win,'loop:allTasksComplete', { projectId });
+          sendNotification('Build Complete', 'All tasks have been completed.');
+        } else {
+          safeSend(win,'agent:activity', {
+            id: randomUUID(),
+            taskId: null,
+            type: 'text',
+            content: `No pending tasks remaining. ${notDoneCount} task(s) still awaiting review.`,
+            timestamp: new Date().toISOString(),
+          });
+          sendNotification('Loop Paused', `${notDoneCount} task(s) awaiting review.`);
+        }
         break;
       }
 
@@ -363,6 +369,7 @@ export function resumeLoop(win?: BrowserWindow): void {
 export function stopLoop(win?: BrowserWindow): void {
   abortSignal.aborted = true;
   loopState = 'stopped';
+  cleanupEngine();
   loopEvents.emit('stateChange');
   if (win) safeSend(win,'loop:stateChange', { state: 'stopped' });
 }

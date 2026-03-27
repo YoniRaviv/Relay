@@ -34,7 +34,7 @@ export function GitHistoryPanel() {
         window.relayAPI.gitLog(activeProject.id)
             .then((logs) => setGitHistory((logs as GitLogEntry[]).slice(0, 15)))
             .catch(() => setGitHistory([]))
-    }, [activeProject, currentBranch])
+    }, [activeProject, currentBranch]) // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         refreshCommits()

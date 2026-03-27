@@ -3,8 +3,17 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { FolderOpen, Plus, Clock } from 'lucide-react'
+import { FolderOpen, Plus, Clock, FolderPlus } from 'lucide-react'
 import type { RecentProject, Project } from '@shared/types'
+
+function slugifyName(name: string): string {
+    return name.trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '') || 'new-project'
+}
 
 interface ProjectSelectorProps {
     onProjectSelected: (project: Project) => void
@@ -73,18 +82,25 @@ export function ProjectSelector({ onProjectSelected }: ProjectSelectorProps) {
                 </div>
 
                 <div className="space-y-2">
-                    <Label>Project Folder</Label>
+                    <Label>Parent Folder</Label>
                     <div className="flex gap-2">
                         <Input
                             readOnly
                             value={selectedPath}
-                            placeholder="Select a folder..."
+                            placeholder="Select where to create the project..."
                             className="flex-1"
                         />
                         <Button variant="outline" onClick={selectFolder}>
                             <FolderOpen className="h-4 w-4" />
                         </Button>
                     </div>
+                    {selectedPath && projectName.trim() && (
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <FolderPlus className="h-3 w-3 shrink-0" />
+                            <span className="shrink-0">Will create:</span>
+                            <span className="font-mono truncate">{selectedPath}/{slugifyName(projectName)}</span>
+                        </div>
+                    )}
                 </div>
 
                 {error && <p className="text-sm text-destructive">{error}</p>}

@@ -192,20 +192,33 @@ function listProjectFiles(projectPath: string, query?: string): string[] {
 
 export function registerProjectHandlers(): void {
   ipcMain.handle('project:create', async (_event, params: { name: string; path: string }): Promise<Project> => {
-    const relayDir = path.join(params.path, '.relay');
+    // Create a subfolder named after the project inside the selected parent folder
+    const folderName = params.name.trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || 'new-project';
+    const projectPath = path.join(params.path, folderName);
+
+    if (!fs.existsSync(projectPath)) {
+      fs.mkdirSync(projectPath, { recursive: true });
+    }
+
+    const relayDir = path.join(projectPath, '.relay');
     if (!fs.existsSync(relayDir)) {
       fs.mkdirSync(relayDir, { recursive: true });
     }
 
-    const db = openDb(params.path);
+    const db = openDb(projectPath);
     const id = randomUUID();
     const now = new Date().toISOString();
 
     db.prepare(
       `INSERT INTO projects (id, name, path, status, created_at, updated_at) VALUES (?, ?, ?, 'active', ?, ?)`
-    ).run(id, params.name, params.path, now, now);
+    ).run(id, params.name, projectPath, now, now);
 
-    const project: Project = { id, name: params.name, path: params.path, status: 'active', createdAt: now, updatedAt: now };
+    const project: Project = { id, name: params.name, path: projectPath, status: 'active', createdAt: now, updatedAt: now };
 
     addToRecent(project);
     return project;

@@ -25,7 +25,18 @@ const navItems: { id: SidebarView; label: string; icon: React.ReactNode }[] = [
 ]
 
 export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFeature, onSelectFeature, onDeleteFeature, onArchiveFeature, onSwitchProject }: ProjectSidebarProps) {
-    const { features, activePrdId, archivedFeatures } = useRelayStore()
+    const { features, activePrdId, archivedFeatures, loopState } = useRelayStore()
+
+    const handleSelectFeature = (prdId: string) => {
+        if (prdId === activePrdId) return
+        if (loopState === 'running' || loopState === 'paused') {
+            if (!window.confirm('The build loop is active on the current feature. Switch anyway? The loop will be stopped.')) {
+                return
+            }
+            window.relayAPI.stopLoop()
+        }
+        onSelectFeature?.(prdId)
+    }
 
     return (
         <div className="flex flex-col h-full p-4">
@@ -101,7 +112,7 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                                     }`}
                                 >
                                     <button
-                                        onClick={() => onSelectFeature?.(f.id)}
+                                        onClick={() => handleSelectFeature(f.id)}
                                         className="flex-1 text-left px-2 py-1.5 text-[13px] flex items-center gap-2 min-w-0"
                                     >
                                         {isComplete ? (

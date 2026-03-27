@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { Loader2, SkipForward, ImagePlus, X, ArrowRight, ArrowLeft, Check, PenLine, FileCode } from 'lucide-react'
 import { ProjectContextBadge } from '@/shared/components/ProjectContextBadge'
 import { FileAutocomplete } from './FileAutocomplete'
@@ -22,6 +23,10 @@ export type FeatureInputPhase = 'describe' | 'clarifying' | 'answering'
 interface FeatureInputProps {
     value: string
     onChange: (value: string) => void
+    featureName: string
+    onFeatureNameChange: (name: string) => void
+    includeTests: boolean
+    onIncludeTestsChange: (include: boolean) => void
     onGenerate: (clarifications?: string) => void
     onManualMode?: () => void
     loading: boolean
@@ -34,7 +39,7 @@ interface FeatureInputProps {
     onPhaseChange?: (phase: FeatureInputPhase) => void
 }
 
-export function FeatureInput({ value, onChange, onGenerate, onManualMode, loading, projectId, projectContext, scanningProject, attachments, onAddAttachment, onRemoveAttachment, onPhaseChange }: FeatureInputProps) {
+export function FeatureInput({ value, onChange, featureName, onFeatureNameChange, includeTests, onIncludeTestsChange, onGenerate, onManualMode, loading, projectId, projectContext, scanningProject, attachments, onAddAttachment, onRemoveAttachment, onPhaseChange }: FeatureInputProps) {
     const [phase, setPhaseInternal] = useState<FeatureInputPhase>('describe')
     const [questions, setQuestions] = useState<ClarifyQuestion[]>([])
     const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -291,6 +296,17 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
         return (
             <div className="space-y-4">
                 <div className="space-y-2">
+                    <Label htmlFor="featureName" className="text-xs text-muted-foreground">Feature name <span className="font-normal">(optional)</span></Label>
+                    <input
+                        id="featureName"
+                        type="text"
+                        value={featureName}
+                        onChange={(e) => onFeatureNameChange(e.target.value)}
+                        placeholder="e.g., User Settings Page"
+                        className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                </div>
+                <div className="space-y-2">
                     <div className="flex items-center justify-between">
                         <Label htmlFor="feature">Describe the feature you want to build</Label>
                         <ProjectContextBadge projectContext={projectContext} scanning={scanningProject} />
@@ -325,7 +341,7 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
                     className="hidden"
                     onChange={handleFileSelect}
                 />
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                     <Button
                         variant="outline"
                         size="sm"
@@ -336,6 +352,14 @@ export function FeatureInput({ value, onChange, onGenerate, onManualMode, loadin
                         <ImagePlus className="h-3.5 w-3.5" />
                         Attach images
                     </Button>
+                    <div className="flex items-center gap-2">
+                        <Switch
+                            id="include-tests"
+                            checked={includeTests}
+                            onCheckedChange={onIncludeTestsChange}
+                        />
+                        <Label htmlFor="include-tests" className="text-xs text-muted-foreground cursor-pointer">Include unit tests</Label>
+                    </div>
                 </div>
                 {error && (
                     <p className="text-sm text-destructive text-center">{error}</p>

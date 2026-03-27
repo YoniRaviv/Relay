@@ -79,10 +79,12 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
         setSubmitting(true)
         try {
             await window.relayAPI.reviewApprove(activeProject.id, task.id, commitMessage)
+            toast.success('Task approved and committed')
             setShowCommitDialog(false)
             onClose()
         } catch (err) {
-            console.error('Failed to approve:', err)
+            const msg = err instanceof Error ? err.message : 'Unknown error'
+            toast.error('Failed to approve task', { description: msg })
         } finally {
             setSubmitting(false)
         }
@@ -93,11 +95,13 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
         setSubmitting(true)
         try {
             await window.relayAPI.reviewReject(activeProject.id, task.id, rejectionNotes)
+            toast.success('Task rejected and returned to pending')
             setShowRejectInput(false)
             setRejectionNotes('')
             onClose()
         } catch (err) {
-            console.error('Failed to reject:', err)
+            const msg = err instanceof Error ? err.message : 'Unknown error'
+            toast.error('Failed to reject task', { description: msg })
         } finally {
             setSubmitting(false)
         }
@@ -168,7 +172,7 @@ export function ReviewPanel({ task, onClose }: ReviewPanelProps) {
                                 onClick={handleReject}
                                 disabled={!rejectionNotes.trim() || submitting}
                             >
-                                {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Reject & Retry'}
+                                {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Reject & Redo'}
                             </Button>
                             <Button size="sm" variant="ghost" onClick={() => setShowRejectInput(false)}>
                                 Cancel

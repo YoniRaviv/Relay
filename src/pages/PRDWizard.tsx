@@ -21,6 +21,8 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         scanningProject,
         wizardStep,
         setWizardStep,
+        featureName,
+        setFeatureName,
         featureDescription,
         setFeatureDescription,
         prdMarkdown,
@@ -28,6 +30,8 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         featureAttachments,
         addFeatureAttachment,
         removeFeatureAttachment,
+        includeTests,
+        setIncludeTests,
     } = useRelayStore()
 
     const [streaming, setStreaming] = useState(false)
@@ -182,9 +186,14 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
             setError('Specification generation timed out. Please try again.')
         }, 10 * 60 * 1000)
         try {
+            // Append test preference so PRD prompt picks it up naturally
+            const { includeTests: wantTests } = useRelayStore.getState()
+            const enrichedDescription = wantTests
+                ? featureDescription + '\n\n[Include unit tests as part of the implementation requirements and acceptance criteria.]'
+                : featureDescription + '\n\n[Do NOT include unit tests, test files, or testing requirements in the specification or tasks.]'
             await window.relayAPI.generatePrd(
                 activeProject?.id ?? '',
-                featureDescription,
+                enrichedDescription,
                 clarifications,
                 projectContext ?? undefined,
                 featureAttachments.length > 0 ? featureAttachments : undefined,
@@ -228,18 +237,26 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         setSaving(true)
         setError('')
         try {
+            // Determine feature title: user-provided name, or extract from PRD heading, or fallback
+            let title = featureName.trim()
+            if (!title && prdMarkdown) {
+                const headingMatch = prdMarkdown.match(/^#\s+(?:PRD:\s*)?(.+)/m)
+                if (headingMatch) title = headingMatch[1].trim()
+            }
+
             await window.relayAPI.savePrd({
                 projectId: activeProject.id,
                 description: featureDescription || (manualMode ? validTasks[0].title : ''),
                 markdown: prdMarkdown || (manualMode ? `# ${featureDescription || 'Manual Feature'}\n\nManual tasks — no spec generated.` : ''),
                 tasks: validTasks,
+                title: title || undefined,
             })
             onComplete()
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to save')
             setSaving(false)
         }
-    }, [activeProject, featureDescription, prdMarkdown, tasks, manualMode, onComplete])
+    }, [activeProject, featureName, featureDescription, prdMarkdown, tasks, manualMode, onComplete])
 
     const handleManualMode = () => {
         setManualMode(true)
@@ -374,6 +391,10 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                             <FeatureInput
                                 value={featureDescription}
                                 onChange={setFeatureDescription}
+                                featureName={featureName}
+                                onFeatureNameChange={setFeatureName}
+                                includeTests={includeTests}
+                                onIncludeTestsChange={setIncludeTests}
                                 onGenerate={generatePrd}
                                 onManualMode={handleManualMode}
                                 loading={streaming}

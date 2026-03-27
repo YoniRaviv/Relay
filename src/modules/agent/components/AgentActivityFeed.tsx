@@ -10,7 +10,10 @@ export function AgentActivityFeed() {
     const activityFeed = useRelayStore((s) => s.activityFeed)
     const bottomRef = useRef<HTMLDivElement>(null)
 
-    const grouped = useMemo(() => groupActions(activityFeed), [activityFeed])
+    // Only reprocess when feed length changes (feed is append-only within a session).
+    // Using activityFeed.length as dep avoids reprocess when Zustand produces a new
+    // array reference with the same contents.
+    const grouped = useMemo(() => groupActions(activityFeed), [activityFeed.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

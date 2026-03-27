@@ -123,35 +123,36 @@ export function FeatureCompleteActions({ prUrl, hasRemote, prChecked, onShowPrDi
 
     return (
         <>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
                 <Button
                     size="sm"
                     variant="outline"
                     className="h-7 gap-1 text-xs"
                     onClick={() => setShowSummary(!showSummary)}
+                    title={`${totalTasks} tasks completed`}
                 >
                     <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                    {totalTasks} tasks
+                    {totalTasks}
                 </Button>
                 <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 gap-1 text-xs"
+                    className="h-7 w-7 p-0"
                     onClick={handleExport}
+                    title="Export as Markdown"
                 >
                     <FileDown className="h-3.5 w-3.5" />
-                    Export
                 </Button>
                 {renderPrButton()}
                 {onArchiveFeature && prUrl && (
                     <Button
                         size="sm"
                         variant="outline"
-                        className="h-7 gap-1 text-xs"
+                        className="h-7 w-7 p-0"
                         onClick={onArchiveFeature}
+                        title="Archive feature"
                     >
                         <Archive className="h-3.5 w-3.5" />
-                        Archive
                     </Button>
                 )}
             </div>

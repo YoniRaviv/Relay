@@ -38,6 +38,7 @@ export interface FeatureSummary extends PRD {
 // ── PRD Slice ──
 interface PRDSlice {
   wizardStep: number;
+  featureName: string;
   featureDescription: string;
   prdMarkdown: string;
   prd: PRD | null;
@@ -45,7 +46,10 @@ interface PRDSlice {
   features: FeatureSummary[];
   decomposedTasks: Task[];
   featureAttachments: ImageAttachment[];
+  includeTests: boolean;
   setWizardStep: (step: number) => void;
+  setFeatureName: (name: string) => void;
+  setIncludeTests: (include: boolean) => void;
   setFeatureDescription: (desc: string) => void;
   setPrdMarkdown: (md: string | ((prev: string) => string)) => void;
   setPrd: (prd: PRD | null) => void;
@@ -125,6 +129,7 @@ export const useRelayStore = create<RelayStore>((set) => ({
 
   // PRD
   wizardStep: 0,
+  featureName: '',
   featureDescription: '',
   prdMarkdown: '',
   prd: null,
@@ -132,7 +137,10 @@ export const useRelayStore = create<RelayStore>((set) => ({
   features: [],
   decomposedTasks: [],
   featureAttachments: [],
+  includeTests: false,
   setWizardStep: (wizardStep) => set({ wizardStep }),
+  setFeatureName: (featureName) => set({ featureName }),
+  setIncludeTests: (includeTests) => set({ includeTests }),
   setFeatureDescription: (featureDescription) => set({ featureDescription }),
   setPrdMarkdown: (prdMarkdown) =>
     set((state) => ({

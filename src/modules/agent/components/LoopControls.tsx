@@ -25,6 +25,11 @@ export function LoopControls({ onArchiveFeature }: LoopControlsProps = {}) {
     const [hasRemote, setHasRemote] = useState<boolean | null>(null)
     const [prChecked, setPrChecked] = useState(false)
 
+    // Sync build mode from persisted settings on mount
+    useEffect(() => {
+        window.relayAPI.getBuildMode().then(setBuildMode)
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
     // Show idle controls when viewing a different feature than the one the loop is running for
     const isLoopOnDifferentFeature = loopPrdId && activePrdId && loopPrdId !== activePrdId
     const effectiveLoopState: LoopState = isLoopOnDifferentFeature ? 'idle' : loopState
@@ -275,7 +280,7 @@ export function LoopControls({ onArchiveFeature }: LoopControlsProps = {}) {
                         {buildModeOptions.map(({ mode, label, description }) => (
                             <button
                                 key={mode}
-                                onClick={() => { setBuildMode(mode); setModeOpen(false) }}
+                                onClick={() => { setBuildMode(mode); window.relayAPI.setBuildMode(mode); setModeOpen(false) }}
                                 className={`flex items-start gap-2.5 w-full px-3 py-2.5 text-left transition-colors ${
                                     buildMode === mode ? 'bg-accent/60' : 'hover:bg-accent/30'
                                 }`}
@@ -304,8 +309,8 @@ export function LoopControls({ onArchiveFeature }: LoopControlsProps = {}) {
             <div className="flex items-center gap-2">
                 {featureComplete ? (
                     <>
-                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Complete</span>
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium shrink-0">Complete</span>
                         <FeatureCompleteActions
                             prUrl={prUrl}
                             hasRemote={hasRemote}

@@ -4,26 +4,11 @@ import { promisify } from 'node:util';
 import fs from 'node:fs';
 import path from 'node:path';
 import simpleGit from 'simple-git';
-import { store } from './settings';
-import { openDb } from '../db/connection';
+import { getProjectPath } from '../db/projectLookup';
 import { withGitLock } from '../git/lock';
 import { withSentry } from './withSentry';
 
 const execFileAsync = promisify(execFile);
-
-function getProjectPath(projectId: string): string {
-  const projects = store.get('recentProjects', []) as Array<{ path: string }>;
-  for (const p of projects) {
-    try {
-      const db = openDb(p.path);
-      const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
-      if (row) return p.path;
-    } catch {
-      continue;
-    }
-  }
-  throw new Error('Project not found');
-}
 
 export interface FileChange {
   path: string;
@@ -43,10 +28,36 @@ export function registerGitHandlers(): void {
     // Also include untracked files as diffs
     const status = await git.status();
     let untrackedDiff = '';
-    for (const file of status.not_added.filter(f => !f.startsWith('.relay/') && !f.startsWith('.relay\\'))) {
+    const MAX_UNTRACKED_FILES = 50;
+    const MAX_FILE_SIZE = 100 * 1024; // 100KB
+    const untrackedFiles = status.not_added.filter(f => !f.startsWith('.relay/') && !f.startsWith('.relay\\'));
+    let fileCount = 0;
+    for (const file of untrackedFiles) {
+      if (fileCount >= MAX_UNTRACKED_FILES) {
+        untrackedDiff += `\n# ... ${untrackedFiles.length - fileCount} more untracked files not shown\n`;
+        break;
+      }
       try {
-        const content = fs.readFileSync(path.resolve(projectPath, file), 'utf-8');
+        const absPath = path.resolve(projectPath, file);
+        const stat = fs.statSync(absPath);
+        if (stat.size > MAX_FILE_SIZE) {
+          untrackedDiff += `diff --git a/${file} b/${file}\nnew file mode 100644\n--- /dev/null\n+++ b/${file}\n@@ -0,0 +1 @@\n+(file too large to preview — ${Math.round(stat.size / 1024)}KB)\n`;
+          fileCount++;
+          continue;
+        }
+        // Skip binary files (check for null bytes in first 8KB)
+        const fd = fs.openSync(absPath, 'r');
+        const probe = Buffer.alloc(Math.min(8192, stat.size));
+        fs.readSync(fd, probe, 0, probe.length, 0);
+        fs.closeSync(fd);
+        if (probe.includes(0)) {
+          untrackedDiff += `diff --git a/${file} b/${file}\nnew file mode 100644\n--- /dev/null\n+++ b/${file}\n@@ -0,0 +1 @@\n+(binary file)\n`;
+          fileCount++;
+          continue;
+        }
+        const content = fs.readFileSync(absPath, 'utf-8');
         untrackedDiff += `diff --git a/${file} b/${file}\nnew file mode 100644\n--- /dev/null\n+++ b/${file}\n@@ -0,0 +1,${content.split('\n').length} @@\n${content.split('\n').map(l => `+${l}`).join('\n')}\n`;
+        fileCount++;
       } catch {
         // skip files we can't read
       }
@@ -138,8 +149,28 @@ export function registerGitHandlers(): void {
     return withGitLock(async () => {
       const projectPath = getProjectPath(projectId);
       const git = simpleGit(projectPath);
-      // Checkout base, pull latest, create new branch
-      await git.checkout(baseBranch);
+      const branchSummary = await git.branch();
+      const currentBranch = branchSummary.current;
+
+      let didStash = false;
+      if (currentBranch !== baseBranch) {
+        // Need to switch — check for uncommitted changes and stash if needed
+        const status = await git.status();
+        if (!status.isClean()) {
+          await git.stash(['push', '-m', `relay:auto-stash-before-branch-${branchName}`]);
+          didStash = true;
+        }
+        try {
+          await git.checkout(baseBranch);
+        } catch (err) {
+          // Restore stash before propagating the error
+          if (didStash) {
+            try { await git.stash(['pop']); } catch { /* best effort */ }
+          }
+          throw err;
+        }
+      }
+
       try {
         await git.pull();
       } catch {
@@ -290,7 +321,17 @@ export function registerGitHandlers(): void {
 
   ipcMain.handle('git:ensureGitignore', async (_event, projectId: string) => {
     const projectPath = getProjectPath(projectId);
-    ensureGitignore(projectPath);
+    const modified = ensureGitignore(projectPath);
+    // Auto-commit .gitignore if it was modified to avoid false "uncommitted changes" dialogs
+    if (modified) {
+      try {
+        const git = simpleGit(projectPath);
+        await git.add('.gitignore');
+        await git.commit('chore: update .gitignore [relay]');
+      } catch {
+        // Non-critical — if commit fails (e.g., no git init yet), the user will see the diff
+      }
+    }
     return { status: 'ok' };
   });
 
@@ -409,7 +450,8 @@ const UNIVERSAL_PATTERNS = [
   '*.sublime-workspace',
 ];
 
-function ensureGitignore(projectPath: string): void {
+/** Returns true if .gitignore was modified */
+function ensureGitignore(projectPath: string): boolean {
   const gitignorePath = path.join(projectPath, '.gitignore');
   try {
     const existing = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf-8') : '';
@@ -437,8 +479,11 @@ function ensureGitignore(projectPath: string): void {
       const unique = [...new Set(toAdd)];
       const base = existing.endsWith('\n') || existing === '' ? existing : existing + '\n';
       fs.writeFileSync(gitignorePath, base + unique.join('\n') + '\n', 'utf-8');
+      return true;
     }
+    return false;
   } catch {
     // Best effort — don't block on gitignore issues
+    return false;
   }
 }

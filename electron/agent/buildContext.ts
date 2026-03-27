@@ -2,20 +2,8 @@ import simpleGit from 'simple-git';
 import fs from 'node:fs';
 import path from 'node:path';
 import { openDb } from '../db/connection';
-import { store } from '../ipc/settings';
+import { getProjectPath } from '../db/projectLookup';
 import type { Task } from '../../shared/types';
-
-function getProjectPath(projectId: string): string {
-    const projects = store.get('recentProjects', []) as Array<{ path: string }>;
-    for (const p of projects) {
-        try {
-            const db = openDb(p.path);
-            const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
-            if (row) return p.path;
-        } catch { continue; }
-    }
-    throw new Error('Project not found');
-}
 
 /**
  * Build cumulative context for the next task in the loop.
@@ -64,22 +52,19 @@ export async function buildCumulativeContext(
 
     const IGNORE_PREFIXES = ['node_modules/', '.relay/', 'dist/', 'build/', '.next/', '.nuxt/', 'target/', '__pycache__/', '.venv/', 'venv/', 'vendor/', 'coverage/'];
 
-    for (const t of completedTasks) {
-        if (!t.commit_hash) continue;
-        try {
-            const show = await git.show([
-                (t.commit_hash as string), '--name-only', '--format='
-            ]);
-            for (const line of show.trim().split('\n')) {
-                const file = line.trim();
-                if (!file) continue;
-                if (IGNORE_PREFIXES.some(p => file.startsWith(p))) continue;
-                modifiedFiles.add(file);
-                // Cap at 100 files to prevent bloat from large commits
-                if (modifiedFiles.size >= 100) break;
-            }
-        } catch {
-            // commit may not exist (reverted, etc.)
+    // Fetch all commit file lists in parallel for faster context building
+    const showResults = await Promise.all(
+        completedTasks
+            .filter(t => t.commit_hash)
+            .map(t => git.show([(t.commit_hash as string), '--name-only', '--format=']).catch(() => ''))
+    );
+    for (const show of showResults) {
+        for (const line of show.trim().split('\n')) {
+            const file = line.trim();
+            if (!file) continue;
+            if (IGNORE_PREFIXES.some(p => file.startsWith(p))) continue;
+            modifiedFiles.add(file);
+            if (modifiedFiles.size >= 100) break;
         }
         if (modifiedFiles.size >= 100) break;
     }

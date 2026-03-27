@@ -115,14 +115,14 @@ function resolveFileReferences(text: string, projectPath: string): string {
   return `\n\n## Referenced Files\n${sections.join('\n\n')}`;
 }
 
-function getCliQueryOptions(systemPrompt: string, stderrLines: string[], projectPath?: string | null) {
+function getCliQueryOptions(systemPrompt: string, stderrLines: string[], projectPath?: string | null, maxTurnsOverride?: number) {
   const selectedModel = (store.get('selectedModel') ?? DEFAULT_MODEL) as string;
   const hasProjectPath = !!projectPath;
   return {
     systemPrompt,
     model: selectedModel,
     cwd: projectPath ?? os.homedir(),
-    maxTurns: hasProjectPath ? 15 : 1,
+    maxTurns: maxTurnsOverride ?? (hasProjectPath ? 15 : 1),
     allowedTools: hasProjectPath ? ['Read', 'Glob', 'Grep'] : ([] as string[]),
     permissionMode: 'acceptEdits' as const,
     persistSession: false,
@@ -155,6 +155,7 @@ async function cliStreamText(
   win: BrowserWindow,
   channel: string,
   projectPath?: string | null,
+  maxTurnsOverride?: number,
 ): Promise<string> {
   const textChunks: string[] = [];
   let hasContent = false;
@@ -169,7 +170,7 @@ async function cliStreamText(
 
   const session = query({
     prompt,
-    options: getCliQueryOptions(systemPrompt, stderrLines, projectPath),
+    options: getCliQueryOptions(systemPrompt, stderrLines, projectPath, maxTurnsOverride),
   });
 
   try {
@@ -251,6 +252,7 @@ async function cliGenerateText(
   userMessage: string | ContentBlock[],
   win?: BrowserWindow,
   projectPath?: string | null,
+  maxTurnsOverride?: number,
 ): Promise<string> {
   const textChunks: string[] = [];
   const stderrLines: string[] = [];
@@ -263,7 +265,7 @@ async function cliGenerateText(
 
   const session = query({
     prompt,
-    options: getCliQueryOptions(systemPrompt, stderrLines, projectPath),
+    options: getCliQueryOptions(systemPrompt, stderrLines, projectPath, maxTurnsOverride),
   });
 
   try {
@@ -311,7 +313,8 @@ export function registerPrdHandlers(): void {
 
     let result: string;
     if (getEngineMode() === 'claude-code') {
-      result = await cliGenerateText(systemPrompt, contentBlocks, win, projectPath);
+      // Clarify doesn't need deep exploration — cap at 5 turns (enough for a quick codebase peek)
+      result = await cliGenerateText(systemPrompt, contentBlocks, win, projectPath, 5);
     } else if (getEngineMode() === 'codex') {
       const textPrompt = typeof contentBlocks === 'string' ? contentBlocks : prompt;
       result = await openaiGenerateText(systemPrompt, textPrompt);
@@ -350,12 +353,14 @@ export function registerPrdHandlers(): void {
     return { status: 'ok' };
   }));
 
-  ipcMain.handle('prd:decompose', withSentry('prd:decompose', async (_event, projectId: string, prdMarkdown: string, projectContext?: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ipcMain.handle('prd:decompose', withSentry('prd:decompose', async (_event, projectId: string, prdMarkdown: string, _projectContext?: string) => {
     const win = BrowserWindow.getFocusedWindow();
     if (!win) throw new Error('No active window');
 
     const projectPath = getProjectPathById(projectId);
-    const prompt = buildDecomposePrompt(prdMarkdown, projectContext ?? undefined);
+    // Skip redundant projectContext — it's already encoded in the PRD markdown.
+    const prompt = buildDecomposePrompt(prdMarkdown);
 
     if (getEngineMode() === 'claude-code') {
       const result = await cliGenerateText('You are a senior software architect. Return only valid JSON.', prompt, win, projectPath);
@@ -375,6 +380,7 @@ export function registerPrdHandlers(): void {
     projectId: string;
     description: string;
     markdown: string;
+    title?: string;
     tasks: Array<{
       storyId: string;
       title: string;
@@ -397,8 +403,8 @@ export function registerPrdHandlers(): void {
     const now = new Date().toISOString();
 
     const insertPrd = db.prepare(
-      `INSERT INTO prd (id, project_id, description, markdown, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 'approved', ?, ?)`
+      `INSERT INTO prd (id, project_id, description, markdown, title, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 'approved', ?, ?)`
     );
 
     const insertTask = db.prepare(
@@ -408,7 +414,7 @@ export function registerPrdHandlers(): void {
 
     // Wrap PRD + all tasks in a single transaction to prevent orphaned PRDs on crash
     const saveAll = db.transaction(() => {
-      insertPrd.run(prdId, data.projectId, data.description, data.markdown, now, now);
+      insertPrd.run(prdId, data.projectId, data.description, data.markdown, data.title ?? null, now, now);
       data.tasks.forEach((task, i) => {
         insertTask.run(
           randomUUID(), data.projectId, prdId, task.storyId,

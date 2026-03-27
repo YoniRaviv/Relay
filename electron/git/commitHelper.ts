@@ -2,7 +2,7 @@ import simpleGit from 'simple-git';
 import fs from 'node:fs';
 import path from 'node:path';
 import { openDb } from '../db/connection';
-import { store } from '../ipc/settings';
+import { getProjectPath } from '../db/projectLookup';
 
 /** Ensure critical ignore patterns exist before any commit to prevent staging node_modules etc. */
 function ensureMinimalGitignore(projectPath: string): void {
@@ -17,20 +17,6 @@ function ensureMinimalGitignore(projectPath: string): void {
             fs.writeFileSync(gitignorePath, base + toAdd.join('\n') + '\n', 'utf-8');
         }
     } catch { /* best effort */ }
-}
-
-function getProjectPath(projectId: string): string {
-    const projects = store.get('recentProjects', []) as Array<{ path: string }>;
-    for (const p of projects) {
-        try {
-            const db = openDb(p.path);
-            const row = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
-            if (row) return p.path;
-        } catch {
-            continue;
-        }
-    }
-    throw new Error('Project not found');
 }
 
 /**
@@ -139,11 +125,24 @@ export async function getTaskDiff(projectId: string, taskId: string): Promise<st
     let untrackedDiff = '';
     const fs = await import('node:fs');
     const path = await import('node:path');
-    for (const file of status.not_added.filter(f => !f.startsWith('.relay/') && !f.startsWith('.relay\\'))) {
+    const MAX_UNTRACKED_FILES = 50;
+    const MAX_FILE_SIZE = 100 * 1024;
+    const untrackedFiles = status.not_added.filter(f => !f.startsWith('.relay/') && !f.startsWith('.relay\\'));
+    let fileCount = 0;
+    for (const file of untrackedFiles) {
+        if (fileCount >= MAX_UNTRACKED_FILES) break;
         try {
-            const content = fs.readFileSync(path.resolve(projectPath, file), 'utf-8');
+            const absPath = path.resolve(projectPath, file);
+            const stat = fs.statSync(absPath);
+            if (stat.size > MAX_FILE_SIZE) {
+                untrackedDiff += `diff --git a/${file} b/${file}\nnew file mode 100644\n--- /dev/null\n+++ b/${file}\n@@ -0,0 +1 @@\n+(file too large to preview — ${Math.round(stat.size / 1024)}KB)\n`;
+                fileCount++;
+                continue;
+            }
+            const content = fs.readFileSync(absPath, 'utf-8');
             const lines = content.split('\n');
             untrackedDiff += `diff --git a/${file} b/${file}\nnew file mode 100644\n--- /dev/null\n+++ b/${file}\n@@ -0,0 +1,${lines.length} @@\n${lines.map(l => `+${l}`).join('\n')}\n`;
+            fileCount++;
         } catch {
             // skip
         }

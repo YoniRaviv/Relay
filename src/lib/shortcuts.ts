@@ -5,7 +5,10 @@ interface ShortcutHandlers {
   onClosePanel?: () => void
 }
 
-export function useKeyboardShortcuts({ onToggleLoop, onClosePanel }: ShortcutHandlers) {
+export function useKeyboardShortcuts({
+  onToggleLoop,
+  onClosePanel,
+}: ShortcutHandlers) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       // Ignore if user is typing in an input/textarea
@@ -19,6 +22,12 @@ export function useKeyboardShortcuts({ onToggleLoop, onClosePanel }: ShortcutHan
 
       if (e.code === 'Escape' && onClosePanel) {
         onClosePanel()
+      }
+
+      // Cmd+L — Toggle loop (pause/resume)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'l' && onToggleLoop) {
+        e.preventDefault()
+        onToggleLoop()
       }
     }
 

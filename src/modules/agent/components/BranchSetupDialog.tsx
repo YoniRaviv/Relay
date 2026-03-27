@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { X, GitBranch, Loader2, ChevronDown, Search } from 'lucide-react'
+import { X, GitBranch, Loader2, ChevronDown, Search, GitMerge } from 'lucide-react'
 import { useRelayStore } from '@/store/useRelayStore'
 
 interface BranchSetupDialogProps {
     onConfirm: (branchName: string, baseBranch: string) => Promise<void>
     onCancel: () => void
+    confirmLabel?: string
 }
 
 function slugify(text: string): string {
@@ -23,46 +24,79 @@ function slugify(text: string): string {
     return lastDash > 10 ? truncated.slice(0, lastDash) : truncated
 }
 
-export function BranchSetupDialog({ onConfirm, onCancel }: BranchSetupDialogProps) {
+export function BranchSetupDialog({ onConfirm, onCancel, confirmLabel = 'Create Branch & Start' }: BranchSetupDialogProps) {
     const { activeProject, branches, setBranches, setCurrentBranch } = useRelayStore()
     const [baseBranch, setBaseBranch] = useState('')
     const [branchName, setBranchName] = useState('')
     const [loading, setLoading] = useState(false)
     const [fetchingBranches, setFetchingBranches] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [noGitRepo, setNoGitRepo] = useState(false)
+    const [initializingGit, setInitializingGit] = useState(false)
     const [showDropdown, setShowDropdown] = useState(false)
     const [filterText, setFilterText] = useState('')
     const filterInputRef = useRef<HTMLInputElement>(null)
 
-    // Fetch branches and generate default name
-    useEffect(() => {
+    const loadBranches = async () => {
         if (!activeProject) return
-        const init = async () => {
-            setFetchingBranches(true)
+        setFetchingBranches(true)
+        setError(null)
+        setNoGitRepo(false)
+        try {
+            const info = await window.relayAPI.gitBranch(activeProject.id)
+            setBranches(info.branches)
+            setCurrentBranch(info.current)
+
+            // Default base branch: prefer main, then master, then current
+            const preferred = ['main', 'master', 'develop']
+            const defaultBase = preferred.find(b => info.branches.includes(b)) ?? info.current
+            setBaseBranch(defaultBase)
+
+            // Generate branch name from feature title (smart name) or description
+            const { prd, features, activePrdId, featureName } = useRelayStore.getState()
+            const activeFeature = features.find(f => f.id === activePrdId)
+            const nameSource = featureName.trim()
+                || activeFeature?.title
+                || prd?.description
+                || activeFeature?.description
+                || 'new-feature'
+            setBranchName(`feature/${slugify(nameSource)}`)
+        } catch {
+            // Check if git is simply not initialized
             try {
-                const info = await window.relayAPI.gitBranch(activeProject.id)
-                setBranches(info.branches)
-                setCurrentBranch(info.current)
-
-                // Default base branch: prefer main, then master, then current
-                const preferred = ['main', 'master', 'develop']
-                const defaultBase = preferred.find(b => info.branches.includes(b)) ?? info.current
-                setBaseBranch(defaultBase)
-
-                // Generate branch name from active PRD title
-                const { prd, features, activePrdId } = useRelayStore.getState()
-                const prdTitle = prd?.description
-                    ?? features.find(f => f.id === activePrdId)?.description
-                    ?? 'new-feature'
-                setBranchName(`feature/${slugify(prdTitle)}`)
+                const check = await window.relayAPI.gitCheckInit(activeProject.id)
+                if (!check.initialized) {
+                    setNoGitRepo(true)
+                } else {
+                    setError('Failed to fetch branches')
+                }
             } catch {
                 setError('Failed to fetch branches')
-            } finally {
-                setFetchingBranches(false)
             }
+        } finally {
+            setFetchingBranches(false)
         }
-        init()
+    }
+
+    // Fetch branches and generate default name
+    useEffect(() => {
+        loadBranches()
     }, [activeProject?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleGitInit = async () => {
+        if (!activeProject) return
+        setInitializingGit(true)
+        setError(null)
+        try {
+            await window.relayAPI.gitInit(activeProject.id)
+            await loadBranches()
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to initialize git repository')
+            setNoGitRepo(false)
+        } finally {
+            setInitializingGit(false)
+        }
+    }
 
     const filteredBranches = filterText
         ? branches.filter(b => b.toLowerCase().includes(filterText.toLowerCase()))
@@ -112,6 +146,38 @@ export function BranchSetupDialog({ onConfirm, onCancel }: BranchSetupDialogProp
                     <div className="flex items-center justify-center py-12">
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     </div>
+                ) : noGitRepo ? (
+                    <>
+                        <div className="p-5 space-y-4">
+                            <div className="flex flex-col items-center gap-3 py-4 text-center">
+                                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                                    <GitMerge className="h-6 w-6 text-muted-foreground" />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-sm font-medium">No git repository found</p>
+                                    <p className="text-xs text-muted-foreground max-w-xs">
+                                        This project isn't tracked by git yet. Initialize a repository to enable branching and code review.
+                                    </p>
+                                </div>
+                                <div className="text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-2 w-full text-left space-y-0.5">
+                                    <p>This will:</p>
+                                    <p>• Run <span className="font-mono">git init</span></p>
+                                    <p>• Create a <span className="font-mono">.gitignore</span> for your project type</p>
+                                    <p>• Make an initial commit</p>
+                                </div>
+                                {error && <p className="text-xs text-destructive">{error}</p>}
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2 px-5 py-3 border-t border-border">
+                            <Button variant="outline" size="sm" onClick={onCancel} disabled={initializingGit}>
+                                Cancel
+                            </Button>
+                            <Button size="sm" onClick={handleGitInit} disabled={initializingGit}>
+                                {initializingGit ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <GitMerge className="h-3.5 w-3.5 mr-1.5" />}
+                                Initialize Repository
+                            </Button>
+                        </div>
+                    </>
                 ) : (
                     <>
                         <div className="p-5 space-y-4">
@@ -212,7 +278,7 @@ export function BranchSetupDialog({ onConfirm, onCancel }: BranchSetupDialogProp
                             </Button>
                             <Button size="sm" onClick={handleConfirm} disabled={!branchName.trim() || !baseBranch || loading}>
                                 {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <GitBranch className="h-3.5 w-3.5 mr-1.5" />}
-                                Create Branch & Start
+                                {confirmLabel}
                             </Button>
                         </div>
                     </>
