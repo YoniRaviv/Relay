@@ -2,7 +2,7 @@
   "name": "relay",
   "productName": "Relay",
   "private": true,
-  "version": "0.9.3-beta.1",
+  "version": "0.9.4-beta.1",
   "description": "Relay is a tool for managing your software development process autonomously.",
   "author": "Yoni Raviv",
   "license": "GPL-3.0-or-later",
