@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Loader2, SkipForward, ImagePlus, X, ArrowRight, ArrowLeft, Check, PenLine, FileCode, MessageSquare, FileText } from 'lucide-react'
+import { Loader2, SkipForward, ImagePlus, X, ArrowRight, ArrowLeft, Check, PenLine, FileCode } from 'lucide-react'
 import { ProjectContextBadge } from '@/shared/components/ProjectContextBadge'
 import { FileAutocomplete } from './FileAutocomplete'
 import type { ImageAttachment } from '@shared/types'
@@ -28,8 +28,8 @@ interface FeatureInputProps {
     includeTests: boolean
     onIncludeTestsChange: (include: boolean) => void
     onGenerate: (clarifications?: string) => void
-    onBrainstorm?: () => void
-    onManualMode?: () => void
+    generateLabel?: string
+    skipClarify?: boolean
     loading: boolean
     projectId?: string | null
     projectContext?: string | null
@@ -40,7 +40,7 @@ interface FeatureInputProps {
     onPhaseChange?: (phase: FeatureInputPhase) => void
 }
 
-export function FeatureInput({ value, onChange, featureName, onFeatureNameChange, includeTests, onIncludeTestsChange, onGenerate, onBrainstorm, onManualMode, loading, projectId, projectContext, scanningProject, attachments, onAddAttachment, onRemoveAttachment, onPhaseChange }: FeatureInputProps) {
+export function FeatureInput({ value, onChange, featureName, onFeatureNameChange, includeTests, onIncludeTestsChange, onGenerate, generateLabel, skipClarify, loading, projectId, projectContext, scanningProject, attachments, onAddAttachment, onRemoveAttachment, onPhaseChange }: FeatureInputProps) {
     const [phase, setPhaseInternal] = useState<FeatureInputPhase>('describe')
     const [questions, setQuestions] = useState<ClarifyQuestion[]>([])
     const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -366,27 +366,10 @@ export function FeatureInput({ value, onChange, featureName, onFeatureNameChange
                     <p className="text-sm text-destructive text-center">{error}</p>
                 )}
                 <div className="flex gap-2">
-                    <Button onClick={handleClarify} disabled={!value.trim() || loading} className="flex-1 gap-1.5">
-                        <FileText className="h-3.5 w-3.5" />
-                        Generate Specification
+                    <Button onClick={skipClarify ? () => onGenerate() : handleClarify} disabled={!value.trim() || loading} className="flex-1 gap-1.5">
+                        {generateLabel || 'Generate Specification'}
                     </Button>
-                    {onBrainstorm && (
-                        <Button variant="outline" onClick={onBrainstorm} disabled={!value.trim() || loading} className="flex-1 gap-1.5">
-                            <MessageSquare className="h-3.5 w-3.5" />
-                            Brainstorm
-                        </Button>
-                    )}
                 </div>
-                {onManualMode && (
-                    <div className="border-t border-border pt-4 mt-2">
-                        <button
-                            onClick={onManualMode}
-                            className="w-full py-2.5 rounded-md border border-dashed border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors"
-                        >
-                            Skip specification — add tasks manually
-                        </button>
-                    </div>
-                )}
             </div>
         )
     }

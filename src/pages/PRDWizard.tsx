@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { StepIndicator, FeatureInput, PRDPreview, PRDEditor, TaskReview, BrainstormChat } from '@/modules/prd'
+import { StepIndicator, FeatureInput, PRDPreview, PRDEditor, TaskReview, BrainstormChat, ModeSelector } from '@/modules/prd'
 import type { FeatureInputPhase } from '@/modules/prd'
 import { useRelayStore } from '@/store/useRelayStore'
 import { useIpcListener } from '@/shared/hooks/useIpcListener'
@@ -52,6 +52,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
     const [error, setError] = useState('')
     const [agentStatus, setAgentStatus] = useState('')
     const [manualMode, setManualMode] = useState(false)
+    const [modeSelected, setModeSelected] = useState(false)
     const [brainstormStreaming, setBrainstormStreaming] = useState(false)
     const [brainstormFinalizing, setBrainstormFinalizing] = useState(false)
 
@@ -426,12 +427,17 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         // Don't allow back while streaming/decomposing/brainstorming
         if (streaming || decomposing || brainstormStreaming || brainstormFinalizing) return
 
-        if (wizardStep === 0) {
-            // First step — exit wizard entirely
+        if (wizardStep === 0 && !modeSelected) {
+            // Mode selector — exit wizard entirely
             onBack()
+        } else if (wizardStep === 0 && modeSelected) {
+            // Description input → back to mode selector
+            setModeSelected(false)
+            clearBrainstormState()
         } else if (manualMode && wizardStep === 3) {
-            // Manual mode tasks → back to describe
+            // Manual mode tasks → back to mode selector
             setManualMode(false)
+            setModeSelected(false)
             setTasks([])
             setFeaturePhase('describe')
             setWizardStep(0)
@@ -496,8 +502,8 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                 {/* Steps */}
                 <div className="px-5 py-2 flex-1">
                     <StepIndicator
-                        steps={manualMode ? MANUAL_STEPS : isBrainstorm ? BRAINSTORM_STEPS : PRD_STEPS}
-                        currentStep={manualMode ? (wizardStep === 0 ? 0 : 1) : effectiveStep}
+                        steps={!modeSelected ? ['Choose Mode'] : manualMode ? MANUAL_STEPS : isBrainstorm ? BRAINSTORM_STEPS : PRD_STEPS}
+                        currentStep={!modeSelected ? 0 : manualMode ? (wizardStep === 0 ? 0 : 1) : effectiveStep}
                     />
                 </div>
 
@@ -526,7 +532,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                     {/* Step title */}
                     <div className="mb-8">
                         <h1 className="text-lg font-semibold text-foreground">
-                            {effectiveStep === 0 && (featurePhase === 'answering' ? 'A few questions to refine the specification' : 'Describe your feature')}
+                            {effectiveStep === 0 && (!modeSelected ? 'New Feature' : featurePhase === 'answering' ? 'A few questions to refine the specification' : 'Describe your feature')}
                             {effectiveStep === 1 && !isBrainstorm && (streaming ? 'Generating feature specification document...' : 'Review your feature specification')}
                             {effectiveStep === 1 && isBrainstorm && 'Brainstorm your feature'}
                             {effectiveStep === 2 && !isBrainstorm && 'Edit specification'}
@@ -538,7 +544,7 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                             {effectiveStep === 5 && isBrainstorm && 'Confirm'}
                         </h1>
                         <p className="text-sm text-muted-foreground mt-1">
-                            {effectiveStep === 0 && (featurePhase === 'answering' ? 'Answer what you can — skip the rest and we\'ll make reasonable assumptions.' : 'What are you building? Be as detailed as you like.')}
+                            {effectiveStep === 0 && (!modeSelected ? 'Choose how you\'d like to get started.' : featurePhase === 'answering' ? 'Answer what you can — skip the rest and we\'ll make reasonable assumptions.' : 'What are you building? Be as detailed as you like.')}
                             {effectiveStep === 1 && !isBrainstorm && (streaming ? 'Claude is writing your feature specification document.' : 'Make sure this captures what you want to build.')}
                             {effectiveStep === 1 && isBrainstorm && 'Have a conversation to explore your idea. Click Finalize Design when ready.'}
                             {effectiveStep === 2 && !isBrainstorm && 'Refine the markdown directly, then save.'}
@@ -556,7 +562,19 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                     )}
 
                     <div key={effectiveStep} className="view-transition-enter">
-                        {wizardStep === 0 && !streaming && (
+                        {wizardStep === 0 && !streaming && !modeSelected && (
+                            <ModeSelector onSelect={(mode) => {
+                                setWizardMode(mode)
+                                if (mode === 'manual') {
+                                    setModeSelected(true)
+                                    handleManualMode()
+                                } else {
+                                    setModeSelected(true)
+                                }
+                            }} />
+                        )}
+
+                        {wizardStep === 0 && !streaming && modeSelected && (
                             <FeatureInput
                                 value={featureDescription}
                                 onChange={setFeatureDescription}
@@ -564,9 +582,9 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                                 onFeatureNameChange={setFeatureName}
                                 includeTests={includeTests}
                                 onIncludeTestsChange={setIncludeTests}
-                                onGenerate={generatePrd}
-                                onBrainstorm={startBrainstorm}
-                                onManualMode={handleManualMode}
+                                onGenerate={wizardMode === 'brainstorm' ? () => startBrainstorm() : generatePrd}
+                                generateLabel={wizardMode === 'brainstorm' ? 'Start Brainstorming' : 'Generate Specification'}
+                                skipClarify={wizardMode === 'brainstorm'}
                                 loading={streaming}
                                 projectId={activeProject?.id}
                                 projectContext={projectContext}
