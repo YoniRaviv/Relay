@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import { buildBrainstormSystemPrompt, buildBrainstormFinalizePrompt, buildContentBlocks } from '../agent/prompts';
 import { getClient } from '../agent/runner';
+import { generateText as codexGenerateText } from '../agent/openaiRunner';
 import { store } from './settings';
 import { safeStorage } from 'electron';
 import { openDb } from '../db/connection';
@@ -183,13 +184,7 @@ async function generateWithSdk(session: BrainstormSession): Promise<string> {
 }
 
 async function generateWithCli(session: BrainstormSession): Promise<string> {
-  // Serialize conversation history into a single prompt for CLI mode
-  const historyText = session.messages.map(m => {
-    const role = m.role === 'user' ? 'User' : 'Assistant';
-    const content = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
-    return `${role}: ${content}`;
-  }).join('\n\n');
-
+  const historyText = serializeHistory(session);
   const fullPrompt = `${session.systemPrompt}\n\n## Conversation so far\n${historyText}\n\nAssistant:`;
   const textChunks: string[] = [];
   const stderrLines: string[] = [];
@@ -229,10 +224,22 @@ async function generateWithCli(session: BrainstormSession): Promise<string> {
   return textChunks.join('');
 }
 
+function serializeHistory(session: BrainstormSession): string {
+  return session.messages.map(m => {
+    const role = m.role === 'user' ? 'User' : 'Assistant';
+    const content = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
+    return `${role}: ${content}`;
+  }).join('\n\n');
+}
+
 async function generateResponse(session: BrainstormSession): Promise<string> {
   const engine = getEngineMode();
   if (engine === 'api-key') {
     return generateWithSdk(session);
+  }
+  if (engine === 'codex') {
+    const history = serializeHistory(session);
+    return codexGenerateText(session.systemPrompt, history);
   }
   return generateWithCli(session);
 }
@@ -271,12 +278,7 @@ async function streamWithCli(
   win: BrowserWindow,
   channel: string,
 ): Promise<string> {
-  const historyText = session.messages.map(m => {
-    const role = m.role === 'user' ? 'User' : 'Assistant';
-    const content = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
-    return `${role}: ${content}`;
-  }).join('\n\n');
-
+  const historyText = serializeHistory(session);
   const fullPrompt = `${session.systemPrompt}\n\n## Conversation so far\n${historyText}\n\nAssistant:`;
   const textChunks: string[] = [];
   const stderrLines: string[] = [];
@@ -327,6 +329,14 @@ async function streamFinalize(
   const engine = getEngineMode();
   if (engine === 'api-key') {
     return streamWithSdk(session, win, channel);
+  }
+  if (engine === 'codex') {
+    // Codex doesn't support custom event types, so generate non-streaming and emit finalize events
+    const history = serializeHistory(session);
+    const result = await codexGenerateText(session.systemPrompt, history);
+    safeSend(win, channel, { type: 'finalize-delta', text: result });
+    safeSend(win, channel, { type: 'finalize-done', text: result });
+    return result;
   }
   return streamWithCli(session, win, channel);
 }
