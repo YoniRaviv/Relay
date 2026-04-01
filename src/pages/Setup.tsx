@@ -27,9 +27,9 @@ export function Setup({ initialStep = 0, onComplete }: SetupProps) {
         <div className="flex items-center justify-center min-h-screen p-4">
             <Card className="w-[520px]">
                 <CardHeader className="text-center">
-                    <CardTitle className="text-2xl">Relay</CardTitle>
+                    <CardTitle className="text-2xl">Relay Studio</CardTitle>
                     <CardDescription>
-                        {step === 0 && 'Choose how Relay connects to Claude'}
+                        {step === 0 && 'Choose how Relay Studio connects to Claude'}
                         {step === 1 && 'Configure your connection'}
                         {step === 2 && 'Select or create a project'}
                     </CardDescription>

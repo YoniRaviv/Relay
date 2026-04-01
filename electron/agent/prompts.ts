@@ -35,7 +35,7 @@ export function buildClarifyPrompt(featureDescription: string, projectContext?: 
   const imageHint = hasAttachments
     ? '\n\nReference images are attached. Analyze the visual designs carefully — incorporate layout, component structure, colors, spacing, and interaction patterns you observe into your questions and response.'
     : '';
-  return `You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent". A user wants to build the following feature. Before writing a PRD, ask 3-5 essential clarifying questions to fill in gaps.
+  return `You are a senior product manager. When signing or attributing the document, use the author name "Relay Studio Agent". A user wants to build the following feature. Before writing a PRD, ask 3-5 essential clarifying questions to fill in gaps.
 
 ## Feature Request
 ${featureDescription}${projectContextBlock(projectContext)}${imageHint}
@@ -73,7 +73,7 @@ export function buildPrdPrompt(featureDescription: string, clarifications?: stri
     ? '\n\nReference images are attached. Analyze the visual designs carefully — incorporate layout, component structure, colors, spacing, and interaction patterns you observe into your response.'
     : '';
 
-  return `You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent". Generate a detailed Product Requirements Document (PRD) for the following feature request.
+  return `You are a senior product manager. When signing or attributing the document, use the author name "Relay Studio Agent". Generate a detailed Product Requirements Document (PRD) for the following feature request.
 
 ## Feature Request
 ${featureDescription}${clarificationBlock}${projectContextBlock(projectContext)}${imageHint}

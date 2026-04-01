@@ -11,7 +11,7 @@ initTheme()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ErrorBoundary fallbackMessage="Relay encountered an unexpected error. Please restart the app.">
+    <ErrorBoundary fallbackMessage="Relay Studio encountered an unexpected error. Please restart the app.">
       <App />
       <Toaster position="bottom-right" richColors closeButton />
     </ErrorBoundary>

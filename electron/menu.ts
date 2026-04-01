@@ -180,7 +180,7 @@ export function buildAppMenu(): void {
             label: 'Help',
             submenu: [
                 ...(!isMac ? [
-                    { label: 'About Relay', click: showAboutDialog },
+                    { label: 'About Relay Studio', click: showAboutDialog },
                     { type: 'separator' as const },
                 ] : []),
                 {
@@ -189,7 +189,7 @@ export function buildAppMenu(): void {
                 },
                 { type: 'separator' },
                 {
-                    label: 'Relay on GitHub',
+                    label: 'Relay Studio on GitHub',
                     click: () => shell.openExternal('https://github.com/YoniRaviv/Relay'),
                 },
             ],

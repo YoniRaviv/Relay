@@ -610,7 +610,7 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
                     <SettingsSection title="About">
                         <SettingsRow
                             icon={<Info className="h-4 w-4" />}
-                            label={`Relay v${appVersion || '...'}`}
+                            label={`Relay Studio v${appVersion || '...'}`}
                             description="By Yoni Raviv"
                         />
                         <SettingsRow

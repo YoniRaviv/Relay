@@ -305,8 +305,8 @@ export function registerPrdHandlers(): void {
     const hasAttachments = !!attachments?.length;
     const prompt = buildClarifyPrompt(enrichedDescription, projectContext ?? undefined, hasAttachments);
     const systemPrompt = projectPath
-      ? 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent". You have access to the project directory — use tools silently to understand the codebase. Do NOT narrate your exploration. Return only valid JSON.'
-      : 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent". Return only valid JSON.';
+      ? 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Studio Agent". You have access to the project directory — use tools silently to understand the codebase. Do NOT narrate your exploration. Return only valid JSON.'
+      : 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Studio Agent". Return only valid JSON.';
     const contentBlocks = buildContentBlocks(prompt, attachments);
 
     if (hasAttachments) sendStatus(win, `Analyzing ${attachments!.length} attached image${attachments!.length > 1 ? 's' : ''}...`);
@@ -340,15 +340,15 @@ export function registerPrdHandlers(): void {
 
     if (getEngineMode() === 'claude-code') {
       const cliSystemPrompt = projectPath
-        ? 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent". You have access to the project directory — use Read/Glob/Grep tools to understand the codebase before writing. IMPORTANT: Do NOT narrate your exploration. Do NOT say "Let me look at..." or describe what you are doing. Use tools silently, then output ONLY the final specification document in markdown. Your entire text response must be the specification — no preamble, no commentary.'
-        : 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent".';
+        ? 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Studio Agent". You have access to the project directory — use Read/Glob/Grep tools to understand the codebase before writing. IMPORTANT: Do NOT narrate your exploration. Do NOT say "Let me look at..." or describe what you are doing. Use tools silently, then output ONLY the final specification document in markdown. Your entire text response must be the specification — no preamble, no commentary.'
+        : 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Studio Agent".';
       await cliStreamText(cliSystemPrompt, contentBlocks, win, 'prd:stream', projectPath);
     } else if (getEngineMode() === 'codex') {
       const textPrompt = typeof contentBlocks === 'string' ? contentBlocks : prompt;
-      await openaiStreamText('You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent".', textPrompt, win, 'prd:stream');
+      await openaiStreamText('You are a senior product manager. When signing or attributing the document, use the author name "Relay Studio Agent".', textPrompt, win, 'prd:stream');
     } else {
       const apiKey = getApiKey();
-      await streamText(apiKey, 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Agent".', contentBlocks, win, 'prd:stream');
+      await streamText(apiKey, 'You are a senior product manager. When signing or attributing the document, use the author name "Relay Studio Agent".', contentBlocks, win, 'prd:stream');
     }
     return { status: 'ok' };
   }));
@@ -652,7 +652,7 @@ export function registerPrdHandlers(): void {
           if (t.description) md += `  ${(t.description as string).split('\n')[0]}\n`;
         }
 
-        md += `\n---\n*Exported from Relay on ${new Date().toISOString().split('T')[0]}*\n`;
+        md += `\n---\n*Exported from Relay Studio on ${new Date().toISOString().split('T')[0]}*\n`;
         return { status: 'ok', markdown: md };
       } catch { continue; }
     }

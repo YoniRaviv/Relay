@@ -42,7 +42,7 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
         <div className="flex flex-col h-full p-4">
             {/* ── Header ── */}
             <div className="mb-5">
-                <h1 className="text-[19px] font-bold tracking-tight leading-tight">Relay</h1>
+                <h1 className="text-[19px] font-bold tracking-tight leading-tight">Relay Studio</h1>
                 <div className="flex items-center gap-1.5 mt-1">
                     <p className="text-[13px] text-muted-foreground truncate">{projectName}</p>
                     {onSwitchProject && (

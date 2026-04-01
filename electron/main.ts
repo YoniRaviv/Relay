@@ -24,18 +24,18 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 process.on('uncaughtException', (error) => {
   // Suppress EPIPE errors — these occur when writing to a closed pipe (e.g. during agent pause/stop)
   if (error.message?.includes('EPIPE') || (error as NodeJS.ErrnoException).code === 'EPIPE') {
-    console.warn('[Relay] Suppressed EPIPE error:', error.message)
+    console.warn('[Relay Studio] Suppressed EPIPE error:', error.message)
     return
   }
-  console.error('[Relay] Uncaught exception:', error)
+  console.error('[Relay Studio] Uncaught exception:', error)
   dialog.showErrorBox('Unexpected Error', `${error.message}\n\n${error.stack ?? ''}`)
 })
 
 process.on('unhandledRejection', (reason) => {
-  console.error('[Relay] Unhandled rejection:', reason)
+  console.error('[Relay Studio] Unhandled rejection:', reason)
 })
 
-app.setName('Relay')
+app.setName('Relay Studio')
 
 if (process.platform === 'darwin' && app.dock) {
   // Use nativeImage.createFromPath with the .icns for proper macOS dock icon sizing
@@ -53,7 +53,7 @@ function createWindow() {
     height: 800,
     minWidth: 900,
     minHeight: 600,
-    title: 'Relay',
+    title: 'Relay Studio',
     icon: path.join(process.env.VITE_PUBLIC!, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
@@ -88,7 +88,7 @@ function createWindow() {
         cancelId: 0,
         title: 'Build Loop Running',
         message: 'The build loop is still running. In-progress work may be lost.',
-        detail: 'Are you sure you want to close Relay?',
+        detail: 'Are you sure you want to close Relay Studio?',
       })
       if (choice === 0) {
         e.preventDefault()

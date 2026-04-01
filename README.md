@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="public/icon.png" alt="Relay" width="120" height="120" />
+  <img src="public/icon.png" alt="Relay Studio" width="120" height="120" />
 </p>
 
-<h1 align="center">Relay</h1>
+<h1 align="center">Relay Studio</h1>
 
 <p align="center">
   Turn AI coding agents into a visual Kanban build loop.<br/>
@@ -24,7 +24,7 @@
 
 > **macOS note:** If you see "app is damaged and should be moved to trash" after installing, run this in Terminal:
 > ```bash
-> xattr -cr /Applications/Relay.app
+> xattr -cr "/Applications/Relay Studio.app"
 > ```
 > This removes the macOS quarantine flag. The app is not signed with an Apple Developer certificate yet.
 
@@ -34,9 +34,9 @@
 
 ---
 
-## What is Relay?
+## What is Relay Studio?
 
-Relay is a desktop application that wraps AI coding agents into a structured, visual build workflow. Instead of manually prompting an AI and copy-pasting code, Relay automates the full cycle: planning, task decomposition, code generation, and review — all in a Kanban-style interface. Supports Claude Code and OpenAI Codex as execution engines.
+Relay Studio is a desktop application that wraps AI coding agents into a structured, visual build workflow. Instead of manually prompting an AI and copy-pasting code, Relay automates the full cycle: planning, task decomposition, code generation, and review — all in a Kanban-style interface. Supports Claude Code and OpenAI Codex as execution engines.
 
 ## How It Works
 
@@ -103,7 +103,7 @@ Relay is a desktop application that wraps AI coding agents into a structured, vi
 
 ## Engine Modes
 
-Relay supports three engine modes, selectable in Settings:
+Relay Studio supports three engine modes, selectable in Settings:
 
 | Engine | Auth | Best For |
 |--------|------|----------|
@@ -174,7 +174,7 @@ npm run lint
 
 ## Usage Guide
 
-1. **Launch Relay** and choose your engine in the setup screen
+1. **Launch Relay Studio** and choose your engine in the setup screen
 2. **Create or open a project** — point to any folder on your machine
 3. **Click "New Feature"** — describe what you want built, use `@filename` to reference code
 4. **Choose your path** — click "Generate Specification" for a direct spec, "Brainstorm" for an interactive design session, or "Skip" to add tasks manually

@@ -268,8 +268,8 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
         const { currentTaskId } = useRelayStore.getState()
         const task = tasks.find(t => t.id === currentTaskId)
         const suffix = task ? ` — Building ${task.storyId}` : ''
-        document.title = `Relay — ${activeProject?.name ?? ''}${suffix}`
-        return () => { document.title = 'Relay' }
+        document.title = `Relay Studio — ${activeProject?.name ?? ''}${suffix}`
+        return () => { document.title = 'Relay Studio' }
     }, [activeProject, tasks])
 
     if (!activeProject) return null
