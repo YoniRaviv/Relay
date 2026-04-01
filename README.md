@@ -6,7 +6,7 @@
 
 <p align="center">
   Turn AI coding agents into a visual Kanban build loop.<br/>
-  Describe a feature → AI generates a specification → decomposes into tasks → autonomous agent builds each task → you review via approve/reject gate.
+  Describe a feature → generate a specification or brainstorm interactively → decompose into tasks → autonomous agent builds each task → you review via approve/reject gate.
 </p>
 
 
@@ -42,8 +42,8 @@ Relay is a desktop application that wraps AI coding agents into a structured, vi
 
 1. **Setup** — Choose your engine (Claude Code CLI, OpenAI Codex CLI, or Anthropic API key) and open a project folder
 2. **Describe a feature** — Write what you want built in plain English, attach screenshots, reference project files with `@filename`
-3. **Review the specification** — The AI generates a feature specification document; edit and refine it
-4. **Task decomposition** — The spec is broken into 3-10 structured tasks on a Kanban board
+3. **Specification or Brainstorm** — Generate a spec directly, or brainstorm interactively with structured Q&A, approach proposals, and incremental design approval
+4. **Task decomposition** — The spec or design document is broken into 3-10 structured tasks on a Kanban board
 5. **Build loop** — Start the agent and watch it build each task, streaming progress in real time
 6. **Review gate** — For each completed task, review the diff — approve to commit, or reject with notes to retry
 7. **Run your project** — Click the Run button to preview your app with auto-detected run commands
@@ -54,6 +54,7 @@ Relay is a desktop application that wraps AI coding agents into a structured, vi
 
 ### Core Build Loop
 - **Specification Wizard** — AI-generated feature specs with streaming preview, clarification questions, `@file` tagging, image paste support, and manual editing
+- **Brainstorm Mode** — Interactive structured conversation: AI asks focused questions with multiple-choice options, proposes 2-3 approaches with trade-offs, presents design sections for incremental approval, then generates a design document
 - **Kanban Board** — Drag-and-drop task management across Pending, Building, Human Review, and Complete columns
 - **Agent Loop** — Autonomous code generation with play/pause/stop controls and three build modes:
   - **Pause for Review** — Pauses after each task for human approve/reject
@@ -176,30 +177,31 @@ npm run lint
 1. **Launch Relay** and choose your engine in the setup screen
 2. **Create or open a project** — point to any folder on your machine
 3. **Click "New Feature"** — describe what you want built, use `@filename` to reference code
+4. **Choose your path** — click "Generate Specification" for a direct spec, "Brainstorm" for an interactive design session, or "Skip" to add tasks manually
 
 <p align="center">
   <img src="public/screenshots/prd-creation.png" alt="Specification Creation" width="800" />
 </p>
 
-4. **Review the specification** — the AI generates a detailed spec; edit as needed, then approve
+5. **Review the specification** — the AI generates a detailed spec (or design document from brainstorming); edit as needed, then approve
 
-5. **Review tasks** — the spec is decomposed into ordered tasks grouped by priority
+6. **Review tasks** — the spec is decomposed into ordered tasks grouped by priority
 
 <p align="center">
   <img src="public/screenshots/generated-tasks.png" alt="Generated Tasks" width="800" />
 </p>
 
-6. **Select your model** and build mode, then click **Start**
-7. **Watch the agent work** — each task streams activity in the feed below the board
-8. **Approve or reject** — review diffs, commit approved work, reject with notes to retry
+7. **Select your model** and build mode, then click **Start**
+8. **Watch the agent work** — each task streams activity in the feed below the board
+9. **Approve or reject** — review diffs, commit approved work, reject with notes to retry
 
 <p align="center">
   <img src="public/screenshots/Kanban-build-loop.png" alt="Kanban Build Loop" width="800" />
 </p>
 
-9. **Run your project** — click the Run button to preview your app
-10. **Create a PR** — when all tasks are done, use the green button to add a remote or create a PR
-11. **Check the Summary** tab for cost and performance metrics
+10. **Run your project** — click the Run button to preview your app
+11. **Create a PR** — when all tasks are done, use the green button to add a remote or create a PR
+12. **Check the Summary** tab for cost and performance metrics
 
 <p align="center">
   <img src="public/screenshots/Project-summary.png" alt="Project Summary" width="800" />
@@ -217,7 +219,7 @@ electron/
   db/                  # SQLite connection and schema (8 migrations)
   git/                 # Git utilities (lock mutex, commit helper)
   runner/              # Project runner (auto-detect, spawn, stop)
-  ipc/                 # IPC handlers (settings, project, prd, tasks, agent, git, review, runner, metrics)
+  ipc/                 # IPC handlers (settings, project, prd, brainstorm, tasks, agent, git, review, runner, metrics)
 shared/
   types.ts             # Shared TypeScript interfaces (EngineMode, SessionMode, etc.)
   pricing.ts           # Model pricing table (Anthropic + OpenAI, engine-tagged)
@@ -227,7 +229,7 @@ src/
     board/             # KanbanBoard, TaskCard, TaskDetail, AddTaskButton, ArchiveView
     agent/             # LoopControls, AgentActivityFeed, RunProjectButton, RunOutputPanel
     review/            # ReviewPanel, DiffViewer, PrCreationDialog
-    prd/               # PRDPreview, PRDEditor, FeatureInput, FileAutocomplete, StreamingProgress
+    prd/               # PRDPreview, PRDEditor, FeatureInput, BrainstormChat, FileAutocomplete, StreamingProgress
     settings/          # SettingsView (3 engines), ModelPicker (engine-filtered)
     project/           # ProjectSelector, ProjectSidebar, GitHistoryPanel
     metrics/           # TaskMetricsTable, MetricCard

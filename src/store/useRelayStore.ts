@@ -9,6 +9,9 @@ import type {
   LoopState,
   BuildMode,
   ImageAttachment,
+  WizardMode,
+  BrainstormMessage,
+  BrainstormBlock,
 } from '../../shared/types';
 
 // ── Settings Slice ──
@@ -38,6 +41,7 @@ export interface FeatureSummary extends PRD {
 // ── PRD Slice ──
 interface PRDSlice {
   wizardStep: number;
+  wizardMode: WizardMode;
   featureName: string;
   featureDescription: string;
   prdMarkdown: string;
@@ -47,7 +51,10 @@ interface PRDSlice {
   decomposedTasks: Task[];
   featureAttachments: ImageAttachment[];
   includeTests: boolean;
+  brainstormSessionId: string | null;
+  brainstormMessages: BrainstormMessage[];
   setWizardStep: (step: number) => void;
+  setWizardMode: (mode: WizardMode) => void;
   setFeatureName: (name: string) => void;
   setIncludeTests: (include: boolean) => void;
   setFeatureDescription: (desc: string) => void;
@@ -61,6 +68,11 @@ interface PRDSlice {
   setFeatureAttachments: (attachments: ImageAttachment[]) => void;
   addFeatureAttachment: (attachment: ImageAttachment) => void;
   removeFeatureAttachment: (id: string) => void;
+  setBrainstormSessionId: (id: string | null) => void;
+  addBrainstormMessage: (msg: BrainstormMessage) => void;
+  updateLastBrainstormMessage: (content: string | ((prev: string) => string)) => void;
+  setLastBrainstormBlock: (block: BrainstormBlock) => void;
+  clearBrainstormState: () => void;
 }
 
 // ── Tasks Slice ──
@@ -129,6 +141,7 @@ export const useRelayStore = create<RelayStore>((set) => ({
 
   // PRD
   wizardStep: 0,
+  wizardMode: 'specification',
   featureName: '',
   featureDescription: '',
   prdMarkdown: '',
@@ -138,7 +151,10 @@ export const useRelayStore = create<RelayStore>((set) => ({
   decomposedTasks: [],
   featureAttachments: [],
   includeTests: false,
+  brainstormSessionId: null,
+  brainstormMessages: [],
   setWizardStep: (wizardStep) => set({ wizardStep }),
+  setWizardMode: (wizardMode) => set({ wizardMode }),
   setFeatureName: (featureName) => set({ featureName }),
   setIncludeTests: (includeTests) => set({ includeTests }),
   setFeatureDescription: (featureDescription) => set({ featureDescription }),
@@ -157,6 +173,32 @@ export const useRelayStore = create<RelayStore>((set) => ({
     set((state) => ({ featureAttachments: [...state.featureAttachments, attachment] })),
   removeFeatureAttachment: (id) =>
     set((state) => ({ featureAttachments: state.featureAttachments.filter((a) => a.id !== id) })),
+  setBrainstormSessionId: (brainstormSessionId) => set({ brainstormSessionId }),
+  addBrainstormMessage: (msg) =>
+    set((state) => ({ brainstormMessages: [...state.brainstormMessages, msg] })),
+  updateLastBrainstormMessage: (content) =>
+    set((state) => {
+      const msgs = [...state.brainstormMessages];
+      const last = msgs[msgs.length - 1];
+      if (!last) return state;
+      msgs[msgs.length - 1] = {
+        ...last,
+        content: typeof content === 'function' ? content(last.content) : content,
+      };
+      return { brainstormMessages: msgs };
+    }),
+  setLastBrainstormBlock: (block) =>
+    set((state) => {
+      const msgs = [...state.brainstormMessages];
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        if (msgs[i].role === 'assistant') {
+          msgs[i] = { ...msgs[i], block };
+          break;
+        }
+      }
+      return { brainstormMessages: msgs };
+    }),
+  clearBrainstormState: () => set({ brainstormSessionId: null, brainstormMessages: [], wizardMode: 'specification' }),
 
   // Tasks
   tasks: [],

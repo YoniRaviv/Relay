@@ -89,6 +89,48 @@ export interface TaskMetric {
   createdAt: string;
 }
 
+// ── Wizard / Brainstorm ──
+
+export type WizardMode = 'specification' | 'brainstorm' | 'manual';
+
+export interface BrainstormQuestion {
+  type: 'question';
+  question: string;
+  options?: string[];
+}
+
+export interface BrainstormApproaches {
+  type: 'approaches';
+  summary: string;
+  approaches: Array<{ title: string; description: string; tradeoffs: string }>;
+  recommendation: string;
+}
+
+export interface BrainstormDesignSection {
+  type: 'design-section';
+  title: string;
+  content: string;
+}
+
+export interface BrainstormReady {
+  type: 'ready';
+  summary: string;
+}
+
+export type BrainstormBlock =
+  | BrainstormQuestion
+  | BrainstormApproaches
+  | BrainstormDesignSection
+  | BrainstormReady;
+
+export interface BrainstormMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  block?: BrainstormBlock;
+  timestamp: number;
+}
+
 // ── Image Attachment ──
 
 export interface ImageAttachment {

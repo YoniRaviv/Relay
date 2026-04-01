@@ -54,6 +54,16 @@ const relayAPI = {
   unarchiveFeature: (prdId: string) => ipcRenderer.invoke('prd:unarchive', prdId),
   listArchivedFeatures: (projectId: string) => ipcRenderer.invoke('prd:listArchived', projectId),
 
+  // Brainstorm
+  brainstormStart: (projectId: string, description: string, projectContext?: string, attachments?: unknown[]) =>
+    ipcRenderer.invoke('brainstorm:start', projectId, description, projectContext, attachments),
+  brainstormRespond: (sessionId: string, message: string) =>
+    ipcRenderer.invoke('brainstorm:respond', sessionId, message),
+  brainstormFinalize: (sessionId: string) =>
+    ipcRenderer.invoke('brainstorm:finalize', sessionId),
+  brainstormCleanup: (sessionId: string) =>
+    ipcRenderer.invoke('brainstorm:cleanup', sessionId),
+
   // Tasks
   listTasks: (projectId: string, prdId?: string) => ipcRenderer.invoke('tasks:list', projectId, prdId),
   updateTask: (taskId: string, updates: unknown) => ipcRenderer.invoke('tasks:update', taskId, updates),

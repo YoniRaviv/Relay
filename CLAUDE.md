@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Relay is a desktop app that turns Claude Code (or OpenAI Codex) into a visual Kanban build loop. Built with Electron + Vite + React + TypeScript. The core flow: describe a feature → AI generates a specification document → decomposes into tasks → autonomous agent builds each task → human reviews via approve/reject gate. Supports three execution engines: Anthropic SDK (API key), Claude Code CLI, and OpenAI Codex CLI.
+Relay is a desktop app that turns Claude Code (or OpenAI Codex) into a visual Kanban build loop. Built with Electron + Vite + React + TypeScript. The core flow: describe a feature → AI generates a specification document (or brainstorm interactively) → decomposes into tasks → autonomous agent builds each task → human reviews via approve/reject gate. Supports three execution engines: Anthropic SDK (API key), Claude Code CLI, and OpenAI Codex CLI.
 
 ## Commands
 
@@ -34,7 +34,7 @@ Relay is a desktop app that turns Claude Code (or OpenAI Codex) into a visual Ka
 Single store in `src/store/useRelayStore.ts` with logical slices:
 - **SettingsSlice**: auth status, recent projects
 - **ProjectSlice**: active project
-- **PRDSlice**: wizard step, feature description, PRD markdown, decomposed tasks
+- **PRDSlice**: wizard step, wizard mode (`specification` | `brainstorm` | `manual`), feature description, PRD markdown, decomposed tasks, brainstorm session ID, brainstorm messages (with typed blocks)
 - **TasksSlice**: Kanban tasks, selected task
 - **AgentSlice**: loop state (`idle` | `running` | `paused` | `stopped`), current task, activity feed, loop PRD ID (per-feature tracking)
 - **GitSlice**: current branch, branches
@@ -56,6 +56,7 @@ Organized by domain in `electron/ipc/`:
 - **settings**: auth, API key (encrypted via `safeStorage`), engine mode, model selection, session mode, Codex CLI check
 - **project**: create, open, list, select folder, scan, listFiles (for @ file tagging)
 - **prd**: generate (streaming with project context), decompose (streaming), save, CRUD, rename, archive/unarchive, export
+- **brainstorm**: start (non-streaming, returns structured JSON blocks), respond (non-streaming), finalize (streaming design doc), cleanup. Session state in main-process Map.
 - **tasks**: list, update, reorder, create, delete, getLogs
 - **agent**: loop start/pause/resume/stop
 - **git**: diff, commit, log, status, branch, commitFiles (wraps simple-git)
@@ -63,7 +64,7 @@ Organized by domain in `electron/ipc/`:
 - **runner**: detect run command, start/stop project, isRunning
 - **metrics**: project aggregates, per-task stats, JSON export
 
-**Streaming events** (main → renderer): `prd:stream`, `prd:status`, `prd:decomposeStream`, `agent:activity`, `loop:stateChange`, `loop:taskChange`, `loop:tasksUpdated`, `project:stdout`, `project:stderr`, `project:processExit`
+**Streaming events** (main → renderer): `prd:stream`, `prd:status`, `prd:decomposeStream`, `brainstorm:message`, `brainstorm:stream`, `agent:activity`, `loop:stateChange`, `loop:taskChange`, `loop:tasksUpdated`, `project:stdout`, `project:stderr`, `project:processExit`
 
 ### AI Execution Engines
 
@@ -91,7 +92,7 @@ Engine mode is selectable in UI and persisted in settings. Model auto-resets to 
 ### Data Flow
 
 ```
-Setup (engine + project) → PRDWizard (5 steps: input → clarify → preview → tasks → save)
+Setup (engine + project) → PRDWizard (3 modes: Specification [5 steps], Brainstorm [6 steps], Manual [3 steps])
 → Board (Kanban: Pending | Building | Review | Complete) → Agent Loop → Review Gate → Summary
 ```
 
@@ -128,7 +129,7 @@ Components are organized into feature-based modules under `src/modules/`, each w
 - **`src/modules/board/`** — KanbanBoard, KanbanColumn, TaskCard, TaskDetail, AddTaskButton, CompletedTaskSummary, ArchiveView, FeatureDetail, FormattedDescription
 - **`src/modules/agent/`** — LoopControls, AgentActivityFeed, FeatureCompleteActions, RunProjectButton, RunOutputPanel, LinkifiedText, BuildTimer, ActionBlock, TextBlock
 - **`src/modules/review/`** — ReviewPanel, FileChangeList, DiffViewer, CommitDialog, PrCreationDialog
-- **`src/modules/prd/`** — PRDPreview, PRDEditor, FeatureInput, StepIndicator, TaskReview, TaskEditDialog, TaskReviewCard, FileAutocomplete, TextareaWithFileTag, StreamingProgress
+- **`src/modules/prd/`** — PRDPreview, PRDEditor, FeatureInput, BrainstormChat, StepIndicator, TaskReview, TaskEditDialog, TaskReviewCard, FileAutocomplete, TextareaWithFileTag, StreamingProgress
 - **`src/modules/settings/`** — SettingsView, ModelPicker, ThemeToggle
 - **`src/modules/project/`** — ProjectSelector, ProjectSidebar, GitHistoryPanel
 - **`src/modules/metrics/`** — TaskMetricsTable, MetricCard

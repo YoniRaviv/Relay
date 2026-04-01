@@ -66,6 +66,12 @@ interface RelayAPI {
   unarchiveFeature(prdId: string): Promise<{ status: string }>
   listArchivedFeatures(projectId: string): Promise<Array<import('../shared/types').PRD & { taskCount: number; doneCount: number }>>
 
+  // Brainstorm
+  brainstormStart(projectId: string, description: string, projectContext?: string, attachments?: import('../shared/types').ImageAttachment[]): Promise<{ status: string; sessionId: string }>
+  brainstormRespond(sessionId: string, message: string): Promise<{ status: string }>
+  brainstormFinalize(sessionId: string): Promise<{ status: string }>
+  brainstormCleanup(sessionId: string): Promise<{ status: string }>
+
   // Tasks
   listTasks(projectId: string, prdId?: string): Promise<import('../shared/types').Task[]>
   updateTask(taskId: string, updates: Partial<import('../shared/types').Task>): Promise<unknown>

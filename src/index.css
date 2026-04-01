@@ -17,6 +17,21 @@
   animation: view-fade-in 120ms ease-out both;
 }
 
+@keyframes stagger-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stagger-enter {
+  animation: stagger-in 250ms ease-out both;
+}
+
 /* Dialog animations */
 @keyframes dialog-fade {
   from { opacity: 0; }
