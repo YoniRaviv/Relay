@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react'
 import { ProjectSummary } from '@/modules/project'
 import { TaskMetricsTable } from '@/modules/metrics'
 import { Button } from '@/components/ui/button'
-import { Download, ChevronDown } from 'lucide-react'
+import { Download, ChevronDown, Search } from 'lucide-react'
 import { useRelayStore } from '@/store/useRelayStore'
 import type { ProjectMetrics, TaskMetricRow } from '@/shared/types/metrics'
+import type { ReviewSession } from '@shared/types'
+import { calculateCost, getModelLabel } from '@shared/pricing'
+import { formatDuration, formatCost } from '@/shared/formatters'
 
 interface SummaryProps {
     projectId: string
@@ -27,6 +30,7 @@ export function Summary({ projectId }: SummaryProps) {
     const [loading, setLoading] = useState(true)
     const [exporting, setExporting] = useState(false)
     const [showDropdown, setShowDropdown] = useState(false)
+    const [reviewSession, setReviewSession] = useState<ReviewSession | null>(null)
 
     const loadMetrics = async () => {
         setLoading(true)
@@ -46,6 +50,13 @@ export function Summary({ projectId }: SummaryProps) {
 
     useEffect(() => {
         loadMetrics()
+        if (selectedPrdId) {
+            window.relayAPI.reviewAgentGetSession(selectedPrdId)
+                .then(setReviewSession)
+                .catch(() => setReviewSession(null))
+        } else {
+            setReviewSession(null)
+        }
     }, [projectId, selectedPrdId]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // Sync with activePrdId when it changes externally
@@ -142,6 +153,39 @@ export function Summary({ projectId }: SummaryProps) {
             </div>
 
             <ProjectSummary metrics={projectMetrics} />
+
+            {reviewSession && reviewSession.status !== 'cancelled' && (
+                <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
+                        <Search className="h-3 w-3" />
+                        Code Review
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="rounded-lg border border-border bg-muted/30 p-3">
+                            <div className="text-[11px] text-muted-foreground">Critical</div>
+                            <div className="text-lg font-bold text-red-400">{reviewSession.findings.filter(f => f.severity === 'critical').length}</div>
+                        </div>
+                        <div className="rounded-lg border border-border bg-muted/30 p-3">
+                            <div className="text-[11px] text-muted-foreground">Warnings</div>
+                            <div className="text-lg font-bold text-yellow-400">{reviewSession.findings.filter(f => f.severity === 'warning').length}</div>
+                        </div>
+                        <div className="rounded-lg border border-border bg-muted/30 p-3">
+                            <div className="text-[11px] text-muted-foreground">Info</div>
+                            <div className="text-lg font-bold text-slate-400">{reviewSession.findings.filter(f => f.severity === 'info').length}</div>
+                        </div>
+                        <div className="rounded-lg border border-border bg-muted/30 p-3">
+                            <div className="text-[11px] text-muted-foreground">Fixed</div>
+                            <div className="text-lg font-bold text-emerald-400">{reviewSession.selectedIds.length}</div>
+                        </div>
+                    </div>
+                    <div className="flex gap-4 text-[11px] text-muted-foreground mt-2">
+                        <span>Tokens: {(reviewSession.tokensIn + reviewSession.tokensOut).toLocaleString()}</span>
+                        <span>Cost: {formatCost(calculateCost(reviewSession.tokensIn, reviewSession.tokensOut, reviewSession.model))}</span>
+                        <span>Duration: {formatDuration(reviewSession.durationMs)}</span>
+                        <span>{getModelLabel(reviewSession.model)}</span>
+                    </div>
+                </div>
+            )}
 
             <div>
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Per-Task Metrics</h3>
