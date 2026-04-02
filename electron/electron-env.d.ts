@@ -112,6 +112,12 @@ interface RelayAPI {
   reviewApprove(projectId: string, taskId: string, commitMessage: string): Promise<unknown>
   reviewReject(projectId: string, taskId: string, notes: string): Promise<unknown>
 
+  // Code Review Agent
+  reviewAgentAnalyze(prdId: string): Promise<import('../shared/types').ReviewSession>
+  reviewAgentFix(sessionId: string, selectedIds: string[]): Promise<import('../shared/types').ReviewSession>
+  reviewAgentCancel(): Promise<void>
+  reviewAgentGetSession(prdId: string): Promise<import('../shared/types').ReviewSession | null>
+
   // Metrics
   projectMetrics(projectId: string, prdId?: string): Promise<unknown>
   taskMetrics(projectId: string, prdId?: string): Promise<unknown>
