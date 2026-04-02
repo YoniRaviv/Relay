@@ -30,3 +30,7 @@ demo-project
 *.njsproj
 *.sln
 *.sw?
+
+# Worktrees & Superpowers
+.worktrees/
+.superpowers/
