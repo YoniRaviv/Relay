@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { ExternalLink, Globe, GitPullRequest, Loader2, FileDown, CheckCircle2, Clock, Zap, Archive } from 'lucide-react'
+import { ExternalLink, Globe, GitPullRequest, Loader2, FileDown, CheckCircle2, Clock, Zap, Archive, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRelayStore } from '@/store/useRelayStore'
 
@@ -10,9 +10,10 @@ interface FeatureCompleteActionsProps {
     prChecked: boolean
     onShowPrDialog: () => void
     onArchiveFeature?: () => void
+    onShowReview?: () => void
 }
 
-export function FeatureCompleteActions({ prUrl, hasRemote, prChecked, onShowPrDialog, onArchiveFeature }: FeatureCompleteActionsProps) {
+export function FeatureCompleteActions({ prUrl, hasRemote, prChecked, onShowPrDialog, onArchiveFeature, onShowReview }: FeatureCompleteActionsProps) {
     const activeProject = useRelayStore((s) => s.activeProject)
     const tasks = useRelayStore((s) => s.tasks)
     const activePrdId = useRelayStore((s) => s.activePrdId)
@@ -156,6 +157,19 @@ export function FeatureCompleteActions({ prUrl, hasRemote, prChecked, onShowPrDi
                     </Button>
                 )}
             </div>
+
+            {/* Code Review prompt */}
+            {onShowReview && !prUrl && (
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground ml-1">
+                    <Search className="h-3 w-3 text-emerald-500 shrink-0" />
+                    <button
+                        onClick={onShowReview}
+                        className="text-emerald-500 hover:text-emerald-400 font-medium hover:underline"
+                    >
+                        Review code
+                    </button>
+                </div>
+            )}
 
             {/* Summary popover */}
             {showSummary && (

@@ -391,7 +391,7 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                                     useRelayStore.getState().setActivePrdId(null)
                                 }
                                 toast.success('Feature archived')
-                            } : undefined} />
+                            } : undefined} onShowReview={() => setSidebarView('review')} />
                         </div>
                     </div>
                 )}
