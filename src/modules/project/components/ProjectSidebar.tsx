@@ -1,11 +1,11 @@
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, FileText, BarChart3, Settings, Plus, Check, FolderOpen, Trash2, Archive } from 'lucide-react'
+import { LayoutDashboard, FileText, BarChart3, Settings, Plus, Check, FolderOpen, Trash2, Archive, Search } from 'lucide-react'
 import { ThemeToggle } from '@/modules/settings'
 import { useRelayStore } from '@/store/useRelayStore'
 import { extractTitle } from '@/shared/formatters'
 import { GitHistoryPanel } from './GitHistoryPanel'
 
-export type SidebarView = 'board' | 'prd' | 'summary' | 'settings' | 'archive'
+export type SidebarView = 'board' | 'prd' | 'summary' | 'settings' | 'archive' | 'review'
 
 interface ProjectSidebarProps {
     projectName: string
@@ -176,6 +176,31 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                         {item.label}
                     </Button>
                 ))}
+                {(() => {
+                    const allDone = features.some(f => f.id === activePrdId && f.taskCount > 0 && f.doneCount === f.taskCount)
+                    return (
+                        <Button
+                            variant={activeView === 'review' ? 'secondary' : 'ghost'}
+                            className={`w-full justify-start gap-2 text-[13px] ${
+                                allDone
+                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                    : 'text-muted-foreground opacity-50'
+                            }`}
+                            size="sm"
+                            onClick={() => onViewChange('review')}
+                            disabled={!allDone}
+                            title={allDone ? 'Run code review' : 'Available after all tasks are done'}
+                        >
+                            <Search className="h-4 w-4" />
+                            Code Review
+                            {allDone && activeView !== 'review' && (
+                                <span className="ml-auto text-[9px] font-semibold bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded">
+                                    Ready
+                                </span>
+                            )}
+                        </Button>
+                    )
+                })()}
                 {archivedFeatures.length > 0 && (
                     <Button
                         variant={activeView === 'archive' ? 'secondary' : 'ghost'}
