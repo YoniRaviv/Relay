@@ -8,6 +8,7 @@ import { ProjectSidebar, type SidebarView } from '@/modules/project'
 import { KanbanBoard, TaskDetail, ArchiveView } from '@/modules/board'
 import { LoopControls, AgentActivityFeed, RunProjectButton, RunOutputPanel } from '@/modules/agent'
 import { ReviewPanel, PrCreationDialog } from '@/modules/review'
+import { ReviewAgentPanel } from '@/modules/reviewAgent'
 import { BranchIndicator } from '@/shared/components/BranchIndicator'
 import { ProjectContextBadge } from '@/shared/components/ProjectContextBadge'
 import { ModelPicker, SettingsView } from '@/modules/settings'
@@ -496,6 +497,10 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                                 refreshArchivedCount()
                                 toast.success('Feature restored')
                             }} />
+                        )}
+
+                        {sidebarView === 'review' && (
+                            <ReviewAgentPanel onShowPrDialog={() => setShowPrDialog(true)} />
                         )}
 
                         {sidebarView === 'settings' && (
