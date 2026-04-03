@@ -18,7 +18,6 @@ Sentry.init({
     enabled: app.isPackaged,
     release: `relay@${app.getVersion()}`,
     environment: app.isPackaged ? 'production' : 'development',
-    autoSessionTracking: true,
     sendDefaultPii: false,
     beforeSend(event) {
         const homeDir = os.homedir()
