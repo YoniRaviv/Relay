@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { useRelayStore } from '@/store/useRelayStore'
 import { useIpcListener } from '@/shared/hooks/useIpcListener'
 import { ReviewIdleState } from './ReviewIdleState'
@@ -72,7 +73,9 @@ export function ReviewAgentPanel({ onShowPrDialog }: ReviewAgentPanelProps) {
         setReviewProgress('Starting analysis...')
         try {
             await window.relayAPI.reviewAgentAnalyze(activePrdId)
-        } catch {
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Analysis failed'
+            toast.error('Review failed', { description: msg })
             setReviewAgentState('idle')
         }
     }
@@ -83,7 +86,9 @@ export function ReviewAgentPanel({ onShowPrDialog }: ReviewAgentPanelProps) {
         setReviewProgress('Starting fixes...')
         try {
             await window.relayAPI.reviewAgentFix(reviewSession.id, selectedIds)
-        } catch {
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Fix failed'
+            toast.error('Fix failed', { description: msg })
             setReviewAgentState('findings')
         }
     }

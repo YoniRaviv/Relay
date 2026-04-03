@@ -464,14 +464,22 @@ export async function runFix(
       throw new Error('Fix cancelled');
     }
 
-    // Stage and commit
+    // Stage and commit (handle "nothing to commit" gracefully —
+    // the CLI engine may have already committed, or fixes may be no-ops)
     const git = simpleGit(projectPath);
-    await git.add(['.', ':!.relay/']);
-
-    const fixDescriptions = selectedFindings.map(f => `- [${f.severity}] ${f.title} (${f.file}:${f.line})`).join('\n');
-    const commitMsg = `fix: code review fixes\n\n${fixDescriptions}`;
-    const commitResult = await git.commit(commitMsg);
-    const fixCommit = commitResult.commit || null;
+    let fixCommit: string | null = null;
+    try {
+      await git.add(['.', ':!.relay/']);
+      const status = await git.status();
+      if (status.staged.length > 0 || status.files.length > 0) {
+        const fixDescriptions = selectedFindings.map(f => `- [${f.severity}] ${f.title} (${f.file}:${f.line})`).join('\n');
+        const commitMsg = `fix: code review fixes\n\n${fixDescriptions}`;
+        const commitResult = await git.commit(commitMsg);
+        fixCommit = commitResult.commit || null;
+      }
+    } catch {
+      // Commit may fail if nothing changed — still treat as success
+    }
 
     const durationMs = Date.now() - startTime;
     const prevTokensIn = (row.tokens_in as number) || 0;
