@@ -19,8 +19,8 @@ export function ReviewIdleState({ onStart }: ReviewIdleStateProps) {
                 </p>
             </div>
 
-            <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-                <span>Model:</span>
+            <div className="flex flex-col items-center gap-1.5">
+                <span className="text-[11px] text-muted-foreground">Model</span>
                 <ModelSelect direction="up" align="center" />
             </div>
 
