@@ -47,8 +47,9 @@ Relay Studio is a desktop application that wraps AI coding agents into a structu
 5. **Build loop** — Start the agent and watch it build each task, streaming progress in real time
 6. **Review gate** — For each completed task, review the diff — approve to commit, or reject with notes to retry
 7. **Run your project** — Click the Run button to preview your app with auto-detected run commands
-8. **Create PR** — When all tasks complete, create a pull request directly from the app
-9. **Track progress** — Cost, tokens, build time, and first-pass success rate in the Summary view
+8. **Code Review** — Run the AI code review agent to scan for security issues, performance problems, race conditions, and convention violations — then selectively fix them
+9. **Create PR** — When all tasks complete, create a pull request directly from the app
+10. **Track progress** — Cost, tokens, build time, and first-pass success rate in the Summary view
 
 ## Features
 
@@ -62,6 +63,17 @@ Relay Studio is a desktop application that wraps AI coding agents into a structu
   - **Continuous** — Builds all tasks without pausing; review at your own pace
 - **Human Review Gate** — Syntax-highlighted diff viewer with file tree, approve/reject flow, and git integration
 - **Smart Review Detection** — Tasks with no file changes are auto-approved and skip the review gate
+
+### Code Review Agent
+- **Two-Phase Review** — Phase 1 analyzes the feature diff for issues (read-only); Phase 2 fixes selected issues in a single commit
+- **Stack-Aware** — Auto-detects your tech stack (React, Express, Go, Python, Rust, etc.) and applies stack-specific review rules
+- **Convention-Aware** — Reads `CLAUDE.md`, `.cursorrules`, and other convention files to enforce your project's actual rules
+- **7 Review Categories** — Security, Performance, Race Conditions, Error Handling, Best Practices, Conventions, Accessibility
+- **3 Severity Levels** — Critical, Warning, Info — with per-finding checkboxes and bulk select by severity
+- **Selective Fixing** — Choose which findings to fix; the agent applies all selected fixes in one engine call, one commit
+- **Model Selection** — Pick which model reviews your code before starting analysis
+- **Fresh Context** — Each review phase runs on a clean context window, independent of the build loop
+- **Works with All Engines** — Uses your selected engine (Claude Code, Codex, or API key) for both analysis and fixes
 
 ### Multi-Engine Support
 - **Claude Code CLI** (default) — Uses your existing Claude Code authentication via `@anthropic-ai/claude-agent-sdk`
@@ -200,8 +212,9 @@ npm run lint
 </p>
 
 10. **Run your project** — click the Run button to preview your app
-11. **Create a PR** — when all tasks are done, use the green button to add a remote or create a PR
-12. **Check the Summary** tab for cost and performance metrics
+11. **Run Code Review** — click "Code Review" in the sidebar (available when all tasks are done), select your model, and start the analysis. Review findings by severity, select which to fix, and apply fixes in one click
+12. **Create a PR** — use the green button to add a remote or create a PR
+13. **Check the Summary** tab for cost, performance, and code review metrics
 
 <p align="center">
   <img src="public/screenshots/Project-summary.png" alt="Project Summary" width="800" />
@@ -216,10 +229,13 @@ electron/
   agent/               # Agent runner, prompts, loop controller, engines
     engines/           # SDK engine, CLI engine, Codex engine
     openaiRunner.ts    # Codex text generation for PRD/clarify/decompose
-  db/                  # SQLite connection and schema (8 migrations)
+    reviewRunner.ts    # Code review agent (two-phase: analyze + fix)
+    stackDetector.ts   # Auto-detect project tech stack
+    reviewPrompts.ts   # Review prompt templates with stack-specific rules
+  db/                  # SQLite connection and schema (9 migrations)
   git/                 # Git utilities (lock mutex, commit helper)
   runner/              # Project runner (auto-detect, spawn, stop)
-  ipc/                 # IPC handlers (settings, project, prd, brainstorm, tasks, agent, git, review, runner, metrics)
+  ipc/                 # IPC handlers (settings, project, prd, brainstorm, tasks, agent, git, review, reviewAgent, runner, metrics)
 shared/
   types.ts             # Shared TypeScript interfaces (EngineMode, SessionMode, etc.)
   pricing.ts           # Model pricing table (Anthropic + OpenAI, engine-tagged)
@@ -229,6 +245,7 @@ src/
     board/             # KanbanBoard, TaskCard, TaskDetail, AddTaskButton, ArchiveView
     agent/             # LoopControls, AgentActivityFeed, RunProjectButton, RunOutputPanel
     review/            # ReviewPanel, DiffViewer, PrCreationDialog
+    reviewAgent/       # Code Review Agent panel (idle, analyzing, findings, fixing, complete)
     prd/               # PRDPreview, PRDEditor, FeatureInput, BrainstormChat, FileAutocomplete, StreamingProgress
     settings/          # SettingsView (3 engines), ModelPicker (engine-filtered)
     project/           # ProjectSelector, ProjectSidebar, GitHistoryPanel
