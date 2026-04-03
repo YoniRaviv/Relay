@@ -1,11 +1,11 @@
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, FileText, BarChart3, Settings, Plus, Check, FolderOpen, Trash2, Archive } from 'lucide-react'
+import { LayoutDashboard, FileText, BarChart3, Settings, Plus, Check, FolderOpen, Trash2, Archive, Search, CheckCircle2 } from 'lucide-react'
 import { ThemeToggle } from '@/modules/settings'
 import { useRelayStore } from '@/store/useRelayStore'
 import { extractTitle } from '@/shared/formatters'
 import { GitHistoryPanel } from './GitHistoryPanel'
 
-export type SidebarView = 'board' | 'prd' | 'summary' | 'settings' | 'archive'
+export type SidebarView = 'board' | 'prd' | 'summary' | 'settings' | 'archive' | 'review'
 
 interface ProjectSidebarProps {
     projectName: string
@@ -25,7 +25,7 @@ const navItems: { id: SidebarView; label: string; icon: React.ReactNode }[] = [
 ]
 
 export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFeature, onSelectFeature, onDeleteFeature, onArchiveFeature, onSwitchProject }: ProjectSidebarProps) {
-    const { features, activePrdId, archivedFeatures, loopState } = useRelayStore()
+    const { features, activePrdId, archivedFeatures, loopState, reviewAgentState } = useRelayStore()
 
     const handleSelectFeature = (prdId: string) => {
         if (prdId === activePrdId) return
@@ -176,6 +176,37 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                         {item.label}
                     </Button>
                 ))}
+                {(() => {
+                    const allDone = features.some(f => f.id === activePrdId && f.taskCount > 0 && f.doneCount === f.taskCount)
+                    const reviewDone = reviewAgentState === 'complete' || reviewAgentState === 'findings'
+                    return (
+                        <Button
+                            variant={activeView === 'review' ? 'secondary' : 'ghost'}
+                            className={`w-full justify-start gap-2 text-[13px] ${
+                                !allDone
+                                    ? 'text-muted-foreground opacity-50'
+                                    : reviewDone
+                                        ? ''
+                                        : 'text-emerald-600 dark:text-emerald-400'
+                            }`}
+                            size="sm"
+                            onClick={() => onViewChange('review')}
+                            disabled={!allDone}
+                            title={allDone ? 'Run code review' : 'Available after all tasks are done'}
+                        >
+                            {reviewDone
+                                ? <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                : <Search className="h-4 w-4" />
+                            }
+                            Code Review
+                            {allDone && !reviewDone && activeView !== 'review' && (
+                                <span className="ml-auto text-[9px] font-semibold bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded">
+                                    Ready
+                                </span>
+                            )}
+                        </Button>
+                    )
+                })()}
                 {archivedFeatures.length > 0 && (
                     <Button
                         variant={activeView === 'archive' ? 'secondary' : 'ghost'}

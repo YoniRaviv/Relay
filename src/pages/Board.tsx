@@ -8,6 +8,7 @@ import { ProjectSidebar, type SidebarView } from '@/modules/project'
 import { KanbanBoard, TaskDetail, ArchiveView } from '@/modules/board'
 import { LoopControls, AgentActivityFeed, RunProjectButton, RunOutputPanel } from '@/modules/agent'
 import { ReviewPanel, PrCreationDialog } from '@/modules/review'
+import { ReviewAgentPanel } from '@/modules/reviewAgent'
 import { BranchIndicator } from '@/shared/components/BranchIndicator'
 import { ProjectContextBadge } from '@/shared/components/ProjectContextBadge'
 import { ModelPicker, SettingsView } from '@/modules/settings'
@@ -46,6 +47,8 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
     const projectContext = useRelayStore((s) => s.projectContext)
     const scanningProject = useRelayStore((s) => s.scanningProject)
     const setArchivedFeatures = useRelayStore((s) => s.setArchivedFeatures)
+    const setReviewSession = useRelayStore((s) => s.setReviewSession)
+    const setReviewAgentState = useRelayStore((s) => s.setReviewAgentState)
 
     const activeFeature = features.find(f => f.id === activePrdId)
     const activeFeatureTitle = activeFeature
@@ -113,6 +116,28 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                 .catch(() => {})
         }
     }, [activeProject, setArchivedFeatures])
+
+    // Reset review agent state when switching features
+    useEffect(() => {
+        if (activePrdId) {
+            window.relayAPI.reviewAgentGetSession(activePrdId).then((session) => {
+                setReviewSession(session)
+                if (session) {
+                    if (session.status === 'findings') setReviewAgentState('findings')
+                    else if (session.status === 'complete') setReviewAgentState('complete')
+                    else setReviewAgentState('idle')
+                } else {
+                    setReviewAgentState('idle')
+                }
+            }).catch(() => {
+                setReviewSession(null)
+                setReviewAgentState('idle')
+            })
+        } else {
+            setReviewSession(null)
+            setReviewAgentState('idle')
+        }
+    }, [activePrdId, setReviewSession, setReviewAgentState])
 
     useEffect(() => {
         if (activeProject) {
@@ -390,7 +415,7 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                                     useRelayStore.getState().setActivePrdId(null)
                                 }
                                 toast.success('Feature archived')
-                            } : undefined} />
+                            } : undefined} onShowReview={() => setSidebarView('review')} />
                         </div>
                     </div>
                 )}
@@ -496,6 +521,10 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                                 refreshArchivedCount()
                                 toast.success('Feature restored')
                             }} />
+                        )}
+
+                        {sidebarView === 'review' && (
+                            <ReviewAgentPanel onShowPrDialog={() => setShowPrDialog(true)} />
                         )}
 
                         {sidebarView === 'settings' && (

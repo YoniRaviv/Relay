@@ -156,6 +156,36 @@ export function initializeDatabase(db: Database.Database): void {
         }
       },
     },
+    {
+      version: 9,
+      description: 'Add review_sessions table for code review agent',
+      up: () => {
+        const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='review_sessions'").all();
+        if (tables.length === 0) {
+          db.exec(`
+            CREATE TABLE review_sessions (
+              id            TEXT PRIMARY KEY,
+              prd_id        TEXT NOT NULL REFERENCES prd(id),
+              status        TEXT NOT NULL DEFAULT 'analyzing',
+              stack_profile TEXT,
+              diff_summary  TEXT,
+              findings      TEXT DEFAULT '[]',
+              selected_ids  TEXT DEFAULT '[]',
+              fix_commit    TEXT,
+              head_commit   TEXT,
+              tokens_in     INTEGER DEFAULT 0,
+              tokens_out    INTEGER DEFAULT 0,
+              duration_ms   INTEGER DEFAULT 0,
+              engine        TEXT,
+              model         TEXT,
+              created_at    TEXT NOT NULL,
+              updated_at    TEXT NOT NULL
+            );
+            CREATE INDEX idx_review_sessions_prd ON review_sessions(prd_id);
+          `);
+        }
+      },
+    },
   ];
 
   // Run pending migrations inside a transaction

@@ -8,6 +8,7 @@ import { registerGitHandlers } from './git';
 import { registerReviewHandlers } from './review';
 import { registerMetricsHandlers } from './metrics';
 import { registerRunnerHandlers } from './runner';
+import { registerReviewAgentHandlers } from './reviewAgent';
 
 export function registerAllHandlers(): void {
   registerSettingsHandlers();
@@ -20,4 +21,5 @@ export function registerAllHandlers(): void {
   registerReviewHandlers();
   registerMetricsHandlers();
   registerRunnerHandlers();
+  registerReviewAgentHandlers();
 }

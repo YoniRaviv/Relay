@@ -89,6 +89,49 @@ export interface TaskMetric {
   createdAt: string;
 }
 
+// ── Code Review Agent ──
+
+export type ReviewSeverity = 'critical' | 'warning' | 'info';
+export type ReviewCategory =
+  | 'Security'
+  | 'Performance'
+  | 'Race Condition'
+  | 'Error Handling'
+  | 'Best Practices'
+  | 'Conventions'
+  | 'Accessibility';
+export type ReviewSessionStatus = 'analyzing' | 'findings' | 'fixing' | 'complete' | 'cancelled';
+
+export interface ReviewFinding {
+  id: string;
+  severity: ReviewSeverity;
+  category: ReviewCategory;
+  file: string;
+  line: number;
+  title: string;
+  description: string;
+  suggestion: string;
+}
+
+export interface ReviewSession {
+  id: string;
+  prdId: string;
+  status: ReviewSessionStatus;
+  stackProfile: string;
+  diffSummary: string;
+  findings: ReviewFinding[];
+  selectedIds: string[];
+  fixCommit: string | null;
+  headCommit: string;
+  tokensIn: number;
+  tokensOut: number;
+  durationMs: number;
+  engine: string;
+  model: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ── Wizard / Brainstorm ──
 
 export type WizardMode = 'specification' | 'brainstorm' | 'manual';

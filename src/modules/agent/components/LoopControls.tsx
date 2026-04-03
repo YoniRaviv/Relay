@@ -14,9 +14,10 @@ import type { BuildMode, LoopState } from '@shared/types'
 
 interface LoopControlsProps {
     onArchiveFeature?: () => void
+    onShowReview?: () => void
 }
 
-export function LoopControls({ onArchiveFeature }: LoopControlsProps = {}) {
+export function LoopControls({ onArchiveFeature, onShowReview }: LoopControlsProps = {}) {
     const { loopState, loopPrdId, setLoopState, setLoopPrdId, activeProject, clearActivity, setFeatureBranch, setBaseBranch, setCurrentBranch, buildMode, setBuildMode, tasks, prUrl, setPrUrl, activePrdId } = useRelayStore()
     const [showUncommitted, setShowUncommitted] = useState(false)
     const [showBranchSetup, setShowBranchSetup] = useState(false)
@@ -317,6 +318,7 @@ export function LoopControls({ onArchiveFeature }: LoopControlsProps = {}) {
                             prChecked={prChecked}
                             onShowPrDialog={() => setShowPrDialog(true)}
                             onArchiveFeature={onArchiveFeature}
+                            onShowReview={onShowReview}
                         />
                     </>
                 ) : (

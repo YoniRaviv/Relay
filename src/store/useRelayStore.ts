@@ -12,6 +12,7 @@ import type {
   WizardMode,
   BrainstormMessage,
   BrainstormBlock,
+  ReviewSession,
 } from '../../shared/types';
 
 // ── Settings Slice ──
@@ -121,8 +122,18 @@ interface ReviewSlice {
   setReviewingTaskId: (id: string | null) => void;
 }
 
+// ── Review Agent Slice ──
+interface ReviewAgentSlice {
+  reviewSession: ReviewSession | null;
+  reviewAgentState: 'idle' | 'analyzing' | 'findings' | 'fixing' | 'complete';
+  reviewProgress: string;
+  setReviewSession: (session: ReviewSession | null) => void;
+  setReviewAgentState: (state: ReviewAgentSlice['reviewAgentState']) => void;
+  setReviewProgress: (text: string) => void;
+}
+
 // ── Combined Store ──
-export type RelayStore = SettingsSlice & ProjectSlice & PRDSlice & TasksSlice & AgentSlice & GitSlice & ReviewSlice;
+export type RelayStore = SettingsSlice & ProjectSlice & PRDSlice & TasksSlice & AgentSlice & GitSlice & ReviewSlice & ReviewAgentSlice;
 
 export const useRelayStore = create<RelayStore>((set) => ({
   // Settings
@@ -251,4 +262,12 @@ export const useRelayStore = create<RelayStore>((set) => ({
   // Review
   reviewingTaskId: null,
   setReviewingTaskId: (reviewingTaskId) => set({ reviewingTaskId }),
+
+  // Review Agent
+  reviewSession: null,
+  reviewAgentState: 'idle',
+  reviewProgress: '',
+  setReviewSession: (reviewSession) => set({ reviewSession }),
+  setReviewAgentState: (reviewAgentState) => set({ reviewAgentState }),
+  setReviewProgress: (reviewProgress) => set({ reviewProgress }),
 }));

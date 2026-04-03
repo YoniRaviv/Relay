@@ -104,6 +104,13 @@ const relayAPI = {
   reviewApprove: (projectId: string, taskId: string, commitMessage: string) => ipcRenderer.invoke('review:approve', projectId, taskId, commitMessage),
   reviewReject: (projectId: string, taskId: string, notes: string) => ipcRenderer.invoke('review:reject', projectId, taskId, notes),
 
+  // Code Review Agent
+  reviewAgentAnalyze: (prdId: string) => ipcRenderer.invoke('reviewAgent:analyze', prdId),
+  reviewAgentFix: (sessionId: string, selectedIds: string[]) =>
+    ipcRenderer.invoke('reviewAgent:fix', { sessionId, selectedIds }),
+  reviewAgentCancel: () => ipcRenderer.invoke('reviewAgent:cancel'),
+  reviewAgentGetSession: (prdId: string) => ipcRenderer.invoke('reviewAgent:getSession', prdId),
+
   // Metrics
   projectMetrics: (projectId: string, prdId?: string) => ipcRenderer.invoke('metrics:project', projectId, prdId),
   taskMetrics: (projectId: string, prdId?: string) => ipcRenderer.invoke('metrics:tasks', projectId, prdId),
