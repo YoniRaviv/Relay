@@ -25,7 +25,7 @@ const navItems: { id: SidebarView; label: string; icon: React.ReactNode }[] = [
 ]
 
 export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFeature, onSelectFeature, onDeleteFeature, onArchiveFeature, onSwitchProject }: ProjectSidebarProps) {
-    const { features, activePrdId, archivedFeatures, loopState } = useRelayStore()
+    const { features, activePrdId, archivedFeatures, loopState, reviewAgentState } = useRelayStore()
 
     const handleSelectFeature = (prdId: string) => {
         if (prdId === activePrdId) return
@@ -178,6 +178,7 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                 ))}
                 {(() => {
                     const allDone = features.some(f => f.id === activePrdId && f.taskCount > 0 && f.doneCount === f.taskCount)
+                    const reviewDone = reviewAgentState === 'complete' || reviewAgentState === 'findings'
                     return (
                         <Button
                             variant={activeView === 'review' ? 'secondary' : 'ghost'}
@@ -193,7 +194,7 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                         >
                             <Search className="h-4 w-4" />
                             Code Review
-                            {allDone && activeView !== 'review' && (
+                            {allDone && !reviewDone && activeView !== 'review' && (
                                 <span className="ml-auto text-[9px] font-semibold bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded">
                                     Ready
                                 </span>
