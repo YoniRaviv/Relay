@@ -32,7 +32,6 @@ export function ReviewAnalyzingState({ progress, streamedFindings, onCancel }: R
 
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Centered content when no findings yet */}
             {streamedFindings.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6">
                     {/* Animated scanner icon */}
@@ -40,30 +39,27 @@ export function ReviewAnalyzingState({ progress, streamedFindings, onCancel }: R
                         <div className="rounded-full bg-muted p-5">
                             <Search className="h-10 w-10 text-primary animate-pulse" />
                         </div>
-                        {/* Scanning ring animation */}
                         <div className="absolute inset-0 rounded-full border-2 border-primary/30 animate-ping" style={{ animationDuration: '2s' }} />
                     </div>
 
                     <div className="text-center">
                         <h3 className="text-[15px] font-semibold mb-2">Analyzing Code</h3>
-                        <p className="text-[13px] text-muted-foreground mb-4">{progress || 'Starting analysis...'}</p>
+                        <p className="text-[13px] text-muted-foreground mb-5">{progress || 'Starting analysis...'}</p>
 
-                        {/* Category checklist */}
-                        <div className="flex flex-col gap-1.5 text-left max-w-xs mx-auto">
+                        {/* Category list with sliding highlight */}
+                        <div className="flex flex-col gap-2 text-left max-w-xs mx-auto">
                             {REVIEW_CATEGORIES.map((cat, i) => (
                                 <div
                                     key={cat}
-                                    className={`flex items-center gap-2 text-[12px] transition-all duration-500 ${
-                                        i < activeCategory
-                                            ? 'text-emerald-500'
-                                            : i === activeCategory
-                                                ? 'text-foreground'
-                                                : 'text-muted-foreground/40'
+                                    className={`flex items-center gap-2.5 text-[12px] transition-all duration-700 ${
+                                        i === activeCategory
+                                            ? 'text-primary font-medium'
+                                            : 'text-muted-foreground/40'
                                     }`}
                                 >
-                                    <span className="w-4 text-center shrink-0">
-                                        {i < activeCategory ? '✓' : i === activeCategory ? '›' : '·'}
-                                    </span>
+                                    <div className={`h-1 w-1 rounded-full shrink-0 transition-all duration-700 ${
+                                        i === activeCategory ? 'bg-primary scale-150' : 'bg-muted-foreground/30'
+                                    }`} />
                                     {cat}
                                 </div>
                             ))}
@@ -75,7 +71,6 @@ export function ReviewAnalyzingState({ progress, streamedFindings, onCancel }: R
                     </Button>
                 </div>
             ) : (
-                /* Findings streaming in */
                 <>
                     <div className="flex items-center gap-3 px-5 py-3 border-b border-border/30">
                         <Search className="h-4 w-4 text-primary animate-pulse" />

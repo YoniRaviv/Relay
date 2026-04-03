@@ -55,11 +55,11 @@ export function ArchiveView({ onUnarchive }: ArchiveViewProps) {
                     <button
                         key={f.id}
                         onClick={() => setSelectedFeature(f)}
-                        className="text-left w-full rounded-lg border border-border/50 p-4 hover:bg-muted/30 hover:border-border transition-colors"
+                        className="text-left w-full rounded-lg border border-border/50 p-4 hover:bg-muted/30 hover:border-border transition-colors overflow-hidden"
                     >
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                                <h3 className="text-sm font-medium mb-1 truncate">{extractTitle(f.description, f.title)}</h3>
+                        <div className="flex items-start justify-between gap-3 overflow-hidden">
+                            <div className="min-w-0 flex-1 overflow-hidden">
+                                <h3 className="text-sm font-medium mb-1 truncate max-w-full">{extractTitle(f.description, f.title)}</h3>
                                 <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                                     <span className="flex items-center gap-1">
                                         <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />

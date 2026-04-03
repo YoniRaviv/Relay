@@ -47,6 +47,8 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
     const projectContext = useRelayStore((s) => s.projectContext)
     const scanningProject = useRelayStore((s) => s.scanningProject)
     const setArchivedFeatures = useRelayStore((s) => s.setArchivedFeatures)
+    const setReviewSession = useRelayStore((s) => s.setReviewSession)
+    const setReviewAgentState = useRelayStore((s) => s.setReviewAgentState)
 
     const activeFeature = features.find(f => f.id === activePrdId)
     const activeFeatureTitle = activeFeature
@@ -114,6 +116,28 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                 .catch(() => {})
         }
     }, [activeProject, setArchivedFeatures])
+
+    // Reset review agent state when switching features
+    useEffect(() => {
+        if (activePrdId) {
+            window.relayAPI.reviewAgentGetSession(activePrdId).then((session) => {
+                setReviewSession(session)
+                if (session) {
+                    if (session.status === 'findings') setReviewAgentState('findings')
+                    else if (session.status === 'complete') setReviewAgentState('complete')
+                    else setReviewAgentState('idle')
+                } else {
+                    setReviewAgentState('idle')
+                }
+            }).catch(() => {
+                setReviewSession(null)
+                setReviewAgentState('idle')
+            })
+        } else {
+            setReviewSession(null)
+            setReviewAgentState('idle')
+        }
+    }, [activePrdId, setReviewSession, setReviewAgentState])
 
     useEffect(() => {
         if (activeProject) {
