@@ -17,6 +17,7 @@ export function FeatureCompleteActions({ prUrl, hasRemote, prChecked, onShowPrDi
     const activeProject = useRelayStore((s) => s.activeProject)
     const tasks = useRelayStore((s) => s.tasks)
     const activePrdId = useRelayStore((s) => s.activePrdId)
+    const reviewAgentState = useRelayStore((s) => s.reviewAgentState)
     const [showRemoteInput, setShowRemoteInput] = useState(false)
     const [remoteUrl, setRemoteUrl] = useState('')
     const [addingRemote, setAddingRemote] = useState(false)
@@ -158,8 +159,8 @@ export function FeatureCompleteActions({ prUrl, hasRemote, prChecked, onShowPrDi
                 )}
             </div>
 
-            {/* Code Review prompt */}
-            {onShowReview && !prUrl && (
+            {/* Code Review prompt — only show if review hasn't been run yet */}
+            {onShowReview && !prUrl && reviewAgentState === 'idle' && (
                 <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground ml-1">
                     <Search className="h-3 w-3 text-emerald-500 shrink-0" />
                     <button

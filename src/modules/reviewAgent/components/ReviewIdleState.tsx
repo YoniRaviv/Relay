@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Search } from 'lucide-react'
+import { ModelPicker } from '@/modules/settings'
 
 interface ReviewIdleStateProps {
     onStart: () => void
@@ -17,10 +18,13 @@ export function ReviewIdleState({ onStart }: ReviewIdleStateProps) {
                     Analyzes your feature changes for security issues, performance problems, race conditions, and convention violations.
                 </p>
             </div>
-            <Button onClick={onStart} className="gap-2">
-                <Search className="h-4 w-4" />
-                Start Code Review
-            </Button>
+            <div className="flex items-center gap-3">
+                <ModelPicker />
+                <Button onClick={onStart} className="gap-2">
+                    <Search className="h-4 w-4" />
+                    Start Code Review
+                </Button>
+            </div>
         </div>
     )
 }

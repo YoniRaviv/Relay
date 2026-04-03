@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, FileText, BarChart3, Settings, Plus, Check, FolderOpen, Trash2, Archive, Search } from 'lucide-react'
+import { LayoutDashboard, FileText, BarChart3, Settings, Plus, Check, FolderOpen, Trash2, Archive, Search, CheckCircle2 } from 'lucide-react'
 import { ThemeToggle } from '@/modules/settings'
 import { useRelayStore } from '@/store/useRelayStore'
 import { extractTitle } from '@/shared/formatters'
@@ -183,16 +183,21 @@ export function ProjectSidebar({ projectName, activeView, onViewChange, onNewFea
                         <Button
                             variant={activeView === 'review' ? 'secondary' : 'ghost'}
                             className={`w-full justify-start gap-2 text-[13px] ${
-                                allDone
-                                    ? 'text-emerald-600 dark:text-emerald-400'
-                                    : 'text-muted-foreground opacity-50'
+                                !allDone
+                                    ? 'text-muted-foreground opacity-50'
+                                    : reviewDone
+                                        ? ''
+                                        : 'text-emerald-600 dark:text-emerald-400'
                             }`}
                             size="sm"
                             onClick={() => onViewChange('review')}
                             disabled={!allDone}
                             title={allDone ? 'Run code review' : 'Available after all tasks are done'}
                         >
-                            <Search className="h-4 w-4" />
+                            {reviewDone
+                                ? <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                : <Search className="h-4 w-4" />
+                            }
                             Code Review
                             {allDone && !reviewDone && activeView !== 'review' && (
                                 <span className="ml-auto text-[9px] font-semibold bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded">
