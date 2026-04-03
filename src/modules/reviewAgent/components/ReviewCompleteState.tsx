@@ -4,6 +4,12 @@ import type { ReviewSession } from '@shared/types'
 import { calculateCost, getModelLabel } from '@shared/pricing'
 import { formatDuration, formatCost } from '@/shared/formatters'
 
+const severityDots: Record<string, string> = {
+    critical: 'text-red-400',
+    warning: 'text-yellow-400',
+    info: 'text-slate-400',
+}
+
 interface ReviewCompleteStateProps {
     session: ReviewSession
     onRerun: () => void
@@ -12,13 +18,14 @@ interface ReviewCompleteStateProps {
 
 export function ReviewCompleteState({ session, onRerun, onCreatePr }: ReviewCompleteStateProps) {
     const hasFindings = session.findings.length > 0
-    const fixedCount = session.selectedIds.length
+    const fixedFindings = session.findings.filter(f => session.selectedIds.includes(f.id))
+    const fixedCount = fixedFindings.length
     const cost = calculateCost(session.tokensIn, session.tokensOut, session.model)
 
     return (
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-6">
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6">
             <CheckCircle2 className="h-10 w-10 text-emerald-500" />
-            <div>
+            <div className="text-center">
                 <h3 className="text-lg font-semibold mb-1">
                     {hasFindings
                         ? `${fixedCount} issue${fixedCount !== 1 ? 's' : ''} fixed`
@@ -31,6 +38,24 @@ export function ReviewCompleteState({ session, onRerun, onCreatePr }: ReviewComp
                 </p>
             </div>
 
+            {/* List of fixed issues */}
+            {fixedFindings.length > 0 && (
+                <div className="w-full max-w-md rounded-lg bg-muted/30 border border-border/50 p-3 max-h-48 overflow-auto">
+                    <div className="space-y-1.5">
+                        {fixedFindings.map(f => (
+                            <div key={f.id} className="flex items-start gap-2 text-[12px]">
+                                <span className={`shrink-0 mt-0.5 ${severityDots[f.severity]}`}>●</span>
+                                <div className="min-w-0">
+                                    <span className="text-foreground">{f.title}</span>
+                                    <span className="text-muted-foreground/50 ml-1.5">{f.file}:{f.line}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Stats */}
             <div className="flex gap-4 text-[11px] text-muted-foreground">
                 <span>{formatDuration(session.durationMs)}</span>
                 <span>{(session.tokensIn + session.tokensOut).toLocaleString()} tokens</span>

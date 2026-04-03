@@ -1,7 +1,18 @@
-import { Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { ReviewFinding } from '@shared/types'
 import { ReviewFindingCard } from './ReviewFindingCard'
+
+const REVIEW_CATEGORIES = [
+    'Security vulnerabilities',
+    'Performance issues',
+    'Race conditions',
+    'Error handling gaps',
+    'Convention violations',
+    'Best practice checks',
+    'Accessibility concerns',
+]
 
 interface ReviewAnalyzingStateProps {
     progress: string
@@ -10,24 +21,78 @@ interface ReviewAnalyzingStateProps {
 }
 
 export function ReviewAnalyzingState({ progress, streamedFindings, onCancel }: ReviewAnalyzingStateProps) {
+    const [activeCategory, setActiveCategory] = useState(0)
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setActiveCategory(prev => (prev + 1) % REVIEW_CATEGORIES.length)
+        }, 2000)
+        return () => clearInterval(interval)
+    }, [])
+
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-border/30">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <span className="text-[13px] text-muted-foreground">{progress || 'Analyzing...'}</span>
-                <Button size="sm" variant="ghost" className="ml-auto text-xs" onClick={onCancel}>
-                    Cancel
-                </Button>
-            </div>
-            {streamedFindings.length > 0 && (
-                <div className="flex-1 overflow-auto py-2">
-                    <p className="px-5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                        Findings so far ({streamedFindings.length})
-                    </p>
-                    {streamedFindings.map(f => (
-                        <ReviewFindingCard key={f.id} finding={f} checked={false} onToggle={() => {}} />
-                    ))}
+            {/* Centered content when no findings yet */}
+            {streamedFindings.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6">
+                    {/* Animated scanner icon */}
+                    <div className="relative">
+                        <div className="rounded-full bg-muted p-5">
+                            <Search className="h-10 w-10 text-primary animate-pulse" />
+                        </div>
+                        {/* Scanning ring animation */}
+                        <div className="absolute inset-0 rounded-full border-2 border-primary/30 animate-ping" style={{ animationDuration: '2s' }} />
+                    </div>
+
+                    <div className="text-center">
+                        <h3 className="text-[15px] font-semibold mb-2">Analyzing Code</h3>
+                        <p className="text-[13px] text-muted-foreground mb-4">{progress || 'Starting analysis...'}</p>
+
+                        {/* Category checklist */}
+                        <div className="flex flex-col gap-1.5 text-left max-w-xs mx-auto">
+                            {REVIEW_CATEGORIES.map((cat, i) => (
+                                <div
+                                    key={cat}
+                                    className={`flex items-center gap-2 text-[12px] transition-all duration-500 ${
+                                        i < activeCategory
+                                            ? 'text-emerald-500'
+                                            : i === activeCategory
+                                                ? 'text-foreground'
+                                                : 'text-muted-foreground/40'
+                                    }`}
+                                >
+                                    <span className="w-4 text-center shrink-0">
+                                        {i < activeCategory ? '✓' : i === activeCategory ? '›' : '·'}
+                                    </span>
+                                    {cat}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <Button size="sm" variant="outline" className="text-xs" onClick={onCancel}>
+                        Cancel
+                    </Button>
                 </div>
+            ) : (
+                /* Findings streaming in */
+                <>
+                    <div className="flex items-center gap-3 px-5 py-3 border-b border-border/30">
+                        <Search className="h-4 w-4 text-primary animate-pulse" />
+                        <span className="text-[13px] text-muted-foreground">{progress || 'Analyzing...'}</span>
+                        <Button size="sm" variant="ghost" className="ml-auto text-xs" onClick={onCancel}>
+                            Cancel
+                        </Button>
+                    </div>
+                    <div className="flex-1 overflow-auto py-2">
+                        <p className="px-5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                            Findings so far ({streamedFindings.length})
+                        </p>
+                        {streamedFindings.map(f => (
+                            <ReviewFindingCard key={f.id} finding={f} checked={false} onToggle={() => {}} />
+                        ))}
+                    </div>
+                </>
             )}
         </div>
     )
