@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { X, GitPullRequest, Loader2, ExternalLink, Check } from 'lucide-react'
+import { X, GitPullRequest, Loader2, ExternalLink, Check, AlertTriangle } from 'lucide-react'
 import { useRelayStore } from '@/store/useRelayStore'
 import type { Task } from '@shared/types'
 
@@ -26,6 +26,7 @@ export function PrCreationDialog({ onClose }: PrCreationDialogProps) {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [prUrl, setPrUrl] = useState<string | null>(null)
+    const [pushFailed, setPushFailed] = useState(false)
 
     const targetBase = baseBranch ?? 'main'
 
@@ -36,8 +37,9 @@ export function PrCreationDialog({ onClose }: PrCreationDialogProps) {
         try {
             const result = await window.relayAPI.gitCreatePr(activeProject.id, title, body, targetBase)
             setPrUrl(result.url)
+            if (result.pushFailed) setPushFailed(true)
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to create PR. Make sure `gh` CLI is installed and authenticated.')
+            setError(err instanceof Error ? err.message : 'Failed to create PR.')
             setLoading(false)
         }
     }
@@ -59,11 +61,24 @@ export function PrCreationDialog({ onClose }: PrCreationDialogProps) {
 
                 {prUrl ? (
                     <div className="p-5 space-y-4">
+                        {pushFailed && (
+                            <div className="flex items-start gap-3 p-4 rounded-md bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/20 dark:border-amber-500/30">
+                                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                                <div className="min-w-0">
+                                    <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                                        Could not push branch automatically.
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Push your branch manually first: <code className="text-[11px] bg-muted px-1 py-0.5 rounded">git push -u origin {featureBranch ?? 'HEAD'}</code>
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                         <div className="flex items-center gap-3 p-4 rounded-md bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/20 dark:border-emerald-500/30">
                             <Check className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                             <div className="min-w-0">
                                 <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                                    Pull request created successfully!
+                                    {pushFailed ? 'PR page opened in browser.' : 'Branch pushed \u2014 complete the PR in your browser.'}
                                 </p>
                                 <a
                                     href={prUrl}
@@ -75,7 +90,7 @@ export function PrCreationDialog({ onClose }: PrCreationDialogProps) {
                                         window.open(prUrl, '_blank')
                                     }}
                                 >
-                                    {prUrl}
+                                    Open PR page
                                     <ExternalLink className="h-3 w-3 shrink-0" />
                                 </a>
                             </div>

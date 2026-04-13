@@ -1,6 +1,4 @@
-import { ipcMain } from 'electron';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { ipcMain, shell } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import simpleGit from 'simple-git';
@@ -8,13 +6,64 @@ import { getProjectPath } from '../db/projectLookup';
 import { withGitLock } from '../git/lock';
 import { withSentry } from './withSentry';
 
-const execFileAsync = promisify(execFile);
-
 export interface FileChange {
   path: string;
   insertions: number;
   deletions: number;
   status: 'new' | 'modified' | 'deleted' | 'renamed';
+}
+
+/** Convert a git remote URL (SSH or HTTPS) to a web base URL like https://github.com/owner/repo */
+async function getRemoteWebUrl(git: ReturnType<typeof simpleGit>): Promise<string | null> {
+  try {
+    const remotes = await git.getRemotes(true);
+    const origin = remotes.find(r => r.name === 'origin');
+    const raw = origin?.refs?.push || origin?.refs?.fetch;
+    if (!raw) return null;
+
+    // SSH: git@github.com:owner/repo.git → https://github.com/owner/repo
+    const sshMatch = raw.match(/^git@([^:]+):(.+?)(?:\.git)?$/);
+    if (sshMatch) return `https://${sshMatch[1]}/${sshMatch[2]}`;
+
+    // HTTPS: https://github.com/owner/repo.git → https://github.com/owner/repo
+    // Also handles https://user:token@github.com/... by stripping credentials
+    const httpsMatch = raw.match(/^https?:\/\/(?:[^@]+@)?(.+?)(?:\.git)?$/);
+    if (httpsMatch) return `https://${httpsMatch[1]}`;
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Build a "new PR" URL for GitHub, GitLab, or Bitbucket */
+function buildPrCreationUrl(remoteWebUrl: string, base: string, head: string, title: string, body: string): string {
+  const params = new URLSearchParams();
+
+  if (remoteWebUrl.includes('github.com')) {
+    params.set('expand', '1');
+    params.set('title', title);
+    params.set('body', body);
+    return `${remoteWebUrl}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}?${params}`;
+  }
+
+  if (remoteWebUrl.includes('gitlab')) {
+    params.set('merge_request[source_branch]', head);
+    params.set('merge_request[target_branch]', base);
+    params.set('merge_request[title]', title);
+    params.set('merge_request[description]', body);
+    return `${remoteWebUrl}/-/merge_requests/new?${params}`;
+  }
+
+  if (remoteWebUrl.includes('bitbucket')) {
+    return `${remoteWebUrl}/pull-requests/new?source=${encodeURIComponent(head)}&dest=${encodeURIComponent(base)}&title=${encodeURIComponent(title)}`;
+  }
+
+  // Fallback: GitHub-style
+  params.set('expand', '1');
+  params.set('title', title);
+  params.set('body', body);
+  return `${remoteWebUrl}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}?${params}`;
 }
 
 export function registerGitHandlers(): void {
@@ -226,48 +275,33 @@ export function registerGitHandlers(): void {
 
   ipcMain.handle('git:createPr', withSentry('git:createPr', async (_event, projectId: string, title: string, body: string, baseBranch: string) => {
     const projectPath = getProjectPath(projectId);
+    const git = simpleGit(projectPath);
+
+    const branchSummary = await git.branch();
+    const currentBranch = branchSummary.current;
+
+    // Build the PR creation URL from the remote
+    const remoteUrl = await getRemoteWebUrl(git);
+    if (!remoteUrl) {
+      throw new Error('Could not determine remote repository URL.');
+    }
+
+    // Try pushing branch to remote
+    let pushFailed = false;
     try {
-      // Push branch to remote first
-      const git = simpleGit(projectPath);
-      const branchSummary = await git.branch();
-      await git.push('origin', branchSummary.current, ['--set-upstream']);
+      await git.push('origin', currentBranch, ['--set-upstream']);
     } catch (pushErr) {
       const msg = pushErr instanceof Error ? pushErr.message : String(pushErr);
       if (msg.includes('does not appear to be a git repository') || msg.includes('No configured push destination') || msg.includes("'origin' does not appear")) {
         throw new Error('No remote repository configured. Add one with: git remote add origin <url>');
       }
-      // Other push errors — let PR creation attempt anyway
+      // Auth/permission errors — don't block, let user push manually
+      pushFailed = true;
     }
-    try {
-      const { stdout } = await execFileAsync('gh', [
-        'pr', 'create',
-        '--title', title,
-        '--body', body,
-        '--base', baseBranch,
-      ], { cwd: projectPath });
-      const prUrl = stdout.trim();
-      return { url: prUrl };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      const stderr = (err as { stderr?: string }).stderr ?? '';
-      const detail = stderr || msg;
 
-      if (detail.includes('no git remotes found') || detail.includes('does not appear to be a git repository')) {
-        throw new Error('No remote repository configured. Add one with: git remote add origin <url>');
-      }
-      if (detail.includes('gh auth login') || detail.includes('not logged')) {
-        throw new Error('GitHub CLI not authenticated. Run: gh auth login');
-      }
-      if (detail.includes('could not find')) {
-        throw new Error(`Command 'gh' not found. Install it from https://cli.github.com`);
-      }
-      if (detail.includes('already exists')) {
-        throw new Error('A pull request already exists for this branch.');
-      }
-      // Fallback — truncate long messages
-      const short = detail.length > 200 ? detail.slice(0, 200) + '...' : detail;
-      throw new Error(`PR creation failed: ${short}`);
-    }
+    const prUrl = buildPrCreationUrl(remoteUrl, baseBranch, currentBranch, title, body);
+    shell.openExternal(prUrl);
+    return { url: prUrl, pushFailed };
   }));
 
   ipcMain.handle('git:addRemote', async (_event, projectId: string, url: string) => {
@@ -288,17 +322,10 @@ export function registerGitHandlers(): void {
     }
   });
 
-  ipcMain.handle('git:getPrUrl', async (_event, projectId: string) => {
-    const projectPath = getProjectPath(projectId);
-    try {
-      const { stdout } = await execFileAsync('gh', [
-        'pr', 'view', '--json', 'url,state', '--jq', '.url + "|" + .state',
-      ], { cwd: projectPath });
-      const [url, state] = stdout.trim().split('|');
-      return { url: url || null, state: (state || '').toLowerCase() };
-    } catch {
-      return { url: null, state: null };
-    }
+  ipcMain.handle('git:getPrUrl', async (_event, _projectId: string) => {
+    // Without gh CLI, we can't query PR status from the API.
+    // Return null — the UI handles this gracefully.
+    return { url: null, state: null };
   });
 
   ipcMain.handle('git:checkInit', async (_event, projectId: string) => {
