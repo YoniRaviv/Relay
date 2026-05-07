@@ -6,7 +6,7 @@ import { useClickOutside } from '@/shared/hooks/useClickOutside'
 import type { EngineMode } from '@shared/types'
 
 export function ModelPicker() {
-    const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-20250514')
+    const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-6')
     const [engineMode, setEngineMode] = useState<EngineMode>('claude-code')
     const [open, setOpen] = useState(false)
     const ref = useRef<HTMLDivElement>(null)

@@ -4,7 +4,7 @@ import {
     FolderSync, ChevronRight, Cpu, Terminal, Shield, Zap, Sparkles,
     Key, CheckCircle, Loader2, Sun, Moon, Bell, BellOff, GitCommitHorizontal,
     RotateCcw, Play, Pause, FastForward, Info, Database, Download,
-    RefreshCw, Scale, Link, Braces,
+    RefreshCw, Scale, Braces,
 } from 'lucide-react'
 import { AVAILABLE_MODELS } from '@shared/pricing'
 import { tierColors } from '@/shared/constants/statusMaps'
@@ -163,7 +163,7 @@ function EngineOption({
 export function SettingsView({ onSwitchProject }: SettingsViewProps) {
     const [engineMode, setEngineMode] = useState<EngineMode>('claude-code')
     const [toolsPreset, setToolsPreset] = useState<CliToolsPreset>('conservative')
-    const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-20250514')
+    const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-6')
     const [cliAvailable, setCliAvailable] = useState<{ available: boolean; error?: string } | null>(null)
     const [apiKeyInput, setApiKeyInput] = useState('')
     const [apiKeyStatus, setApiKeyStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -174,7 +174,6 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
     const [buildMode, setBuildMode] = useState<BuildMode>('review')
     const [commitPrefix, setCommitPrefix] = useState('feat')
     const [commitPrefixInput, setCommitPrefixInput] = useState('')
-    const [sessionMode, setSessionMode] = useState<'per-task' | 'persistent'>('per-task')
     const [notificationsEnabled, setNotificationsEnabled] = useState(true)
     const [appVersion, setAppVersion] = useState('')
     const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'up-to-date'>('idle')
@@ -211,7 +210,6 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
             setCommitPrefixInput(p)
         })
         window.relayAPI.getNotificationsEnabled().then(setNotificationsEnabled)
-        window.relayAPI.getSessionMode().then(setSessionMode)
         window.relayAPI.getAppInfo().then(info => setAppVersion(info.version))
     }, [])
 
@@ -226,10 +224,10 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
         // Auto-select a valid default model for the new engine
         const defaults: Record<string, string> = {
             'codex': 'gpt-5.4',
-            'claude-code': 'claude-sonnet-4-20250514',
-            'api-key': 'claude-sonnet-4-20250514',
+            'claude-code': 'claude-sonnet-4-6',
+            'api-key': 'claude-sonnet-4-6',
         }
-        const newDefault = defaults[mode] ?? 'claude-sonnet-4-20250514'
+        const newDefault = defaults[mode] ?? 'claude-sonnet-4-6'
         setSelectedModel(newDefault)
         await window.relayAPI.setSelectedModel(newDefault)
     }
@@ -293,11 +291,6 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
         const next = !notificationsEnabled
         setNotificationsEnabled(next)
         await window.relayAPI.setNotificationsEnabled(next)
-    }
-
-    const handleSessionModeChange = async (mode: 'per-task' | 'persistent') => {
-        setSessionMode(mode)
-        await window.relayAPI.setSessionMode(mode)
     }
 
     const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
@@ -461,25 +454,6 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
                             </div>
                         </div>
                     </SettingsSection>
-
-                    {engineMode === 'claude-code' && (
-                        <SettingsSection title="Session Mode">
-                            <EngineOption
-                                selected={sessionMode === 'per-task'}
-                                onSelect={() => handleSessionModeChange('per-task')}
-                                icon={<Database className="h-4 w-4" />}
-                                label="Fresh session per task"
-                                description="Each task starts with a clean context. Best for standard context windows."
-                            />
-                            <EngineOption
-                                selected={sessionMode === 'persistent'}
-                                onSelect={() => handleSessionModeChange('persistent')}
-                                icon={<Link className="h-4 w-4" />}
-                                label="Shared context across tasks"
-                                description="Tasks resume the previous session, sharing knowledge. Requires large context window (1M)."
-                            />
-                        </SettingsSection>
-                    )}
 
                     <SettingsSection title="Appearance">
                         <SettingsRow

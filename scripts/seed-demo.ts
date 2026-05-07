@@ -87,7 +87,7 @@ for (const t of taskDefs) {
 }
 
 // Metrics for approved task
-statements += `INSERT INTO task_metrics VALUES ('${randomUUID()}', '${taskIds[0]}', 45000, 12400, 8200, 15, 1, 'claude-sonnet-4-20250514', '${now}');\n`;
+statements += `INSERT INTO task_metrics VALUES ('${randomUUID()}', '${taskIds[0]}', 45000, 12400, 8200, 15, 1, 'claude-sonnet-4-6', '${now}');\n`;
 
 sqlMulti(statements);
 

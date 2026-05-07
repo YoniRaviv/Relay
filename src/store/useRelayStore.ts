@@ -122,6 +122,12 @@ interface ReviewSlice {
   setReviewingTaskId: (id: string | null) => void;
 }
 
+// ── Story Viewer Slice ──
+interface StoryViewerSlice {
+  viewingStory: { storyId: string; prdId: string } | null;
+  setViewingStory: (target: { storyId: string; prdId: string } | null) => void;
+}
+
 // ── Review Agent Slice ──
 interface ReviewAgentSlice {
   reviewSession: ReviewSession | null;
@@ -133,7 +139,7 @@ interface ReviewAgentSlice {
 }
 
 // ── Combined Store ──
-export type RelayStore = SettingsSlice & ProjectSlice & PRDSlice & TasksSlice & AgentSlice & GitSlice & ReviewSlice & ReviewAgentSlice;
+export type RelayStore = SettingsSlice & ProjectSlice & PRDSlice & TasksSlice & AgentSlice & GitSlice & ReviewSlice & ReviewAgentSlice & StoryViewerSlice;
 
 export const useRelayStore = create<RelayStore>((set) => ({
   // Settings
@@ -262,6 +268,10 @@ export const useRelayStore = create<RelayStore>((set) => ({
   // Review
   reviewingTaskId: null,
   setReviewingTaskId: (reviewingTaskId) => set({ reviewingTaskId }),
+
+  // Story viewer
+  viewingStory: null,
+  setViewingStory: (viewingStory) => set({ viewingStory }),
 
   // Review Agent
   reviewSession: null,

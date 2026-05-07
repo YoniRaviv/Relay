@@ -77,13 +77,13 @@ export function registerMetricsHandlers(): void {
     // Calculate cost per model for accurate pricing
     const modelGroups = db.prepare(`
       SELECT
-        COALESCE(m.model, 'claude-sonnet-4-20250514') as model,
+        COALESCE(m.model, 'claude-sonnet-4-6') as model,
         COALESCE(SUM(m.tokens_in), 0) as tokens_in,
         COALESCE(SUM(m.tokens_out), 0) as tokens_out
       FROM task_metrics m
       JOIN tasks t ON m.task_id = t.id
       WHERE t.project_id = ?${prdFilter}
-      GROUP BY COALESCE(m.model, 'claude-sonnet-4-20250514')
+      GROUP BY COALESCE(m.model, 'claude-sonnet-4-6')
     `).all(...prdParams) as Array<{ model: string; tokens_in: number; tokens_out: number }>;
 
     const modelBreakdown = modelGroups.map(g => ({

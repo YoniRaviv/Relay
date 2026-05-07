@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { AppShell } from '@/shared/components/AppShell'
 import { ProjectSidebar, type SidebarView } from '@/modules/project'
-import { KanbanBoard, TaskDetail, ArchiveView } from '@/modules/board'
+import { KanbanBoard, TaskDetail, ArchiveView, StoryViewer } from '@/modules/board'
 import { LoopControls, AgentActivityFeed, RunProjectButton, RunOutputPanel } from '@/modules/agent'
 import { ReviewPanel, PrCreationDialog } from '@/modules/review'
 import { ReviewAgentPanel } from '@/modules/reviewAgent'
@@ -553,6 +553,8 @@ export function Board({ onSwitchProject, onNewFeature, onSelectFeature }: BoardP
                     if (createdUrl) useRelayStore.getState().setPrUrl(createdUrl)
                 }} />
             )}
+
+            <StoryViewer />
         </AppShell>
     )
 }

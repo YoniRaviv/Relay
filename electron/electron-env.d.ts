@@ -39,8 +39,6 @@ interface RelayAPI {
   setCommitPrefix(prefix: string): Promise<void>
   getNotificationsEnabled(): Promise<boolean>
   setNotificationsEnabled(enabled: boolean): Promise<void>
-  getSessionMode(): Promise<import('../shared/types').SessionMode>
-  setSessionMode(mode: import('../shared/types').SessionMode): Promise<void>
 
   // Project
   createProject(params: { name: string; path: string }): Promise<import('../shared/types').Project>
