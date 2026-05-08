@@ -305,6 +305,12 @@ export const sdkEngine: TaskEngine = {
 
         tokensIn += response.usage.input_tokens;
         tokensOut += response.usage.output_tokens;
+        safeSend(win, 'agent:tokens', {
+          taskId: task.id,
+          inputTokens: response.usage.input_tokens,
+          outputTokens: response.usage.output_tokens,
+          contextWindow: 200_000,
+        });
 
         const assistantContent: Anthropic.ContentBlockParam[] = [];
         const toolResults: Anthropic.ToolResultBlockParam[] = [];

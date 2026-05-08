@@ -21,8 +21,6 @@ export type EngineMode = 'api-key' | 'claude-code' | 'codex';
 
 export type CliToolsPreset = 'conservative' | 'full';
 
-export type SessionMode = 'per-task' | 'persistent';
-
 // ── Data Interfaces ──
 
 export interface Project {

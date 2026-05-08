@@ -2,7 +2,7 @@ import { ipcMain, safeStorage, app } from 'electron';
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import Store from 'electron-store';
-import type { AuthStatus, EngineMode, CliToolsPreset, BuildMode, SessionMode } from '../../shared/types';
+import type { AuthStatus, EngineMode, CliToolsPreset, BuildMode } from '../../shared/types';
 
 const store = new Store<{
   apiKey?: string;
@@ -14,7 +14,6 @@ const store = new Store<{
   buildMode?: BuildMode;
   commitPrefix?: string;
   notificationsEnabled?: boolean;
-  sessionMode?: SessionMode;
 }>();
 
 const isDev = !app.isPackaged;
@@ -168,7 +167,7 @@ export function registerSettingsHandlers(): void {
 
   // Model selection
   ipcMain.handle('cc:getSelectedModel', async (): Promise<string> => {
-    return (store.get('selectedModel') ?? 'claude-sonnet-4-20250514') as string;
+    return (store.get('selectedModel') ?? 'claude-sonnet-4-6') as string;
   });
 
   ipcMain.handle('cc:setSelectedModel', async (_event, model: string): Promise<void> => {
@@ -230,15 +229,6 @@ export function registerSettingsHandlers(): void {
 
   ipcMain.handle('cc:setNotificationsEnabled', async (_event, enabled: boolean): Promise<void> => {
     store.set('notificationsEnabled', enabled);
-  });
-
-  // Session mode
-  ipcMain.handle('cc:getSessionMode', async (): Promise<SessionMode> => {
-    return (store.get('sessionMode') ?? 'per-task') as SessionMode;
-  });
-
-  ipcMain.handle('cc:setSessionMode', async (_event, mode: SessionMode): Promise<void> => {
-    store.set('sessionMode', mode);
   });
 }
 

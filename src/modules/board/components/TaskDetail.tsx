@@ -34,6 +34,7 @@ export function TaskDetail() {
     const activityFeed = useRelayStore((s) => s.activityFeed)
     const currentTaskId = useRelayStore((s) => s.currentTaskId)
     const setReviewingTaskId = useRelayStore((s) => s.setReviewingTaskId)
+    const setViewingStory = useRelayStore((s) => s.setViewingStory)
     const loopState = useRelayStore((s) => s.loopState)
     const task = tasks.find((t) => t.id === selectedTaskId)
     const activeProject = useRelayStore((s) => s.activeProject)
@@ -86,7 +87,13 @@ export function TaskDetail() {
                     <div className="min-w-0 flex-1">
                         {/* Status row */}
                         <div className="flex items-center gap-2 mb-2.5">
-                            <span className="text-[11px] font-mono text-muted-foreground">{task.storyId}</span>
+                            <button
+                                onClick={() => setViewingStory({ storyId: task.storyId, prdId: task.prdId })}
+                                className="text-[11px] font-mono text-muted-foreground hover:text-primary hover:underline transition-colors"
+                                title={`View ${task.storyId} in spec`}
+                            >
+                                {task.storyId}
+                            </button>
                             <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full ${
                                 isPausedInProgress
                                     ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'

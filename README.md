@@ -237,7 +237,7 @@ electron/
   runner/              # Project runner (auto-detect, spawn, stop)
   ipc/                 # IPC handlers (settings, project, prd, brainstorm, tasks, agent, git, review, reviewAgent, runner, metrics)
 shared/
-  types.ts             # Shared TypeScript interfaces (EngineMode, SessionMode, etc.)
+  types.ts             # Shared TypeScript interfaces (EngineMode, BuildMode, etc.)
   pricing.ts           # Model pricing table (Anthropic + OpenAI, engine-tagged)
 src/
   pages/               # Board, PRDWizard, Setup, Summary

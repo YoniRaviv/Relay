@@ -7,7 +7,7 @@ import { buildTaskPrompt, TASK_SYSTEM_PROMPT } from '../promptBuilder';
 import { buildCumulativeContext } from '../buildContext';
 import { store } from '../../ipc/settings';
 import { getDbForProject, getProjectPath } from '../../db/projectLookup';
-import type { Task, PRD, SessionMode } from '../../../shared/types';
+import type { Task, PRD } from '../../../shared/types';
 import { DEFAULT_MODEL } from '../../../shared/pricing';
 import type { TaskEngine, TaskRunResult, CliToolsPreset } from './types';
 
@@ -30,11 +30,6 @@ function getClaudePath(): string {
   }
   return _claudePath;
 }
-
-// Shared context across tasks within a single loop run.
-// The first task captures the sessionId from the result; subsequent tasks
-// pass `resume: loopSessionId` to continue the same conversation.
-let loopSessionId: string | null = null;
 
 const CONSERVATIVE_TOOLS = ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'MultiEdit'];
 const FULL_TOOLS = [...CONSERVATIVE_TOOLS, 'Bash', 'WebFetch', 'NotebookEdit'];
@@ -162,9 +157,6 @@ export const cliEngine: TaskEngine = {
             maxTurns: 50,
             systemPrompt: TASK_SYSTEM_PROMPT,
             persistSession: false,
-            // Resume previous session for shared context (only when persistent mode is enabled)
-            ...((store.get('sessionMode') as SessionMode ?? 'per-task') === 'persistent' && loopSessionId
-              ? { resume: loopSessionId } : {}),
             pathToClaudeCodeExecutable: getClaudePath(),
             env: cleanEnv,
             debug: true,
@@ -227,6 +219,12 @@ export const cliEngine: TaskEngine = {
             if (message.message.usage) {
               tokensIn += message.message.usage.input_tokens;
               tokensOut += message.message.usage.output_tokens;
+              safeSend(win, 'agent:tokens', {
+                taskId: task.id,
+                inputTokens: message.message.usage.input_tokens,
+                outputTokens: message.message.usage.output_tokens,
+                contextWindow: 200_000,
+              });
             }
           } else if (message.type === 'result') {
             // Result message has aggregated usage — prefer it over per-message accumulation
@@ -236,14 +234,6 @@ export const cliEngine: TaskEngine = {
             }
             if ((message as { model?: string }).model) {
               detectedModel = (message as { model?: string }).model;
-            }
-
-            // Capture session_id for shared context (only in persistent mode)
-            if ((store.get('sessionMode') as SessionMode ?? 'per-task') === 'persistent') {
-              const resultSessionId = (message as { session_id?: string }).session_id;
-              if (resultSessionId) {
-                loopSessionId = resultSessionId;
-              }
             }
 
             if (message.subtype !== 'success') {
@@ -326,7 +316,3 @@ export const cliEngine: TaskEngine = {
     }
   },
 };
-
-export function endCliSession(): void {
-  loopSessionId = null;
-}

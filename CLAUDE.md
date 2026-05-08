@@ -53,7 +53,7 @@ Schema defined in `electron/db/schema.ts`. 8 versioned migrations.
 ### IPC Handlers
 
 Organized by domain in `electron/ipc/`:
-- **settings**: auth, API key (encrypted via `safeStorage`), engine mode, model selection, session mode, Codex CLI check
+- **settings**: auth, API key (encrypted via `safeStorage`), engine mode, model selection, Codex CLI check
 - **project**: create, open, list, select folder, scan, listFiles (for @ file tagging)
 - **prd**: generate (streaming with project context), decompose (streaming), save, CRUD, rename, archive/unarchive, export
 - **brainstorm**: start (non-streaming, returns structured JSON blocks), respond (non-streaming), finalize (streaming design doc), cleanup. Session state in main-process Map.
@@ -72,7 +72,7 @@ Three pluggable engines implementing `TaskEngine` interface (`electron/agent/eng
 
 1. **SDK Engine** (`sdkEngine.ts`): Uses `@anthropic-ai/sdk` directly. Streams messages with built-in tools (read_file, write_file, list_files). Tools are bounded to project directory.
 
-2. **CLI Engine** (`cliEngine.ts`): Uses `@anthropic-ai/claude-agent-sdk` query function. Discovers `claude` CLI via `which`. Two tool presets: "conservative" (read/write/glob/grep/edit) and "full" (+ bash/web-fetch). Supports persistent sessions (`persistSession: true`) for 1M context across tasks.
+2. **CLI Engine** (`cliEngine.ts`): Uses `@anthropic-ai/claude-agent-sdk` query function. Discovers `claude` CLI via `which`. Two tool presets: "conservative" (read/write/glob/grep/edit) and "full" (+ bash/web-fetch). Each task runs in a fresh 200K context window — no cross-task session persistence.
 
 3. **Codex Engine** (`codexEngine.ts`): Uses `@openai/codex-sdk`. Discovers `codex` CLI via `which`. Thread-based execution with `runStreamed()`. Maps Codex ThreadItem events (agent_message, command_execution, file_change, mcp_tool_call, reasoning, todo_list, error) to Relay's activity feed format.
 

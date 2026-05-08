@@ -186,6 +186,12 @@ export const codexEngine: TaskEngine = {
             if (turnEvent.usage) {
               tokensIn = turnEvent.usage.input_tokens;
               tokensOut = turnEvent.usage.output_tokens;
+              safeSend(win, 'agent:tokens', {
+                taskId: task.id,
+                inputTokens: turnEvent.usage.input_tokens,
+                outputTokens: turnEvent.usage.output_tokens,
+                contextWindow: 200_000,
+              });
             }
           } else if (event.type === 'turn.failed') {
             const failedEvent = event as ThreadEvent & { error: { message: string } };

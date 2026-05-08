@@ -5,6 +5,7 @@ import { Eye, Pause } from 'lucide-react'
 import type { Task } from '@shared/types'
 import { priorityTextColors, statusDots } from '@/shared/constants/statusMaps'
 import { useRelayStore } from '@/store/useRelayStore'
+import { ContextRing } from '@/modules/agent'
 
 interface TaskCardProps {
     task: Task
@@ -16,15 +17,35 @@ interface TaskCardProps {
 }
 
 function TaskCardContent({ task, isPaused }: { task: Task; isPaused?: boolean }) {
+    const setViewingStory = useRelayStore((s) => s.setViewingStory)
+    const isLinkable = task.status === 'in_progress' || task.status === 'review'
+
     return (
         <>
             <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-xs font-mono text-muted-foreground">{task.storyId}</span>
+                {isLinkable ? (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            setViewingStory({ storyId: task.storyId, prdId: task.prdId })
+                        }}
+                        className="text-xs font-mono text-muted-foreground hover:text-primary hover:underline transition-colors"
+                        title={`View ${task.storyId} in spec`}
+                    >
+                        {task.storyId}
+                    </button>
+                ) : (
+                    <span className="text-xs font-mono text-muted-foreground">{task.storyId}</span>
+                )}
                 <span className={`text-[11px] font-medium uppercase tracking-wide ${priorityTextColors[task.priority]}`}>
                     {task.priority}
                 </span>
                 {isPaused ? (
                     <Pause className="ml-auto h-3 w-3 text-amber-500" />
+                ) : task.status === 'in_progress' ? (
+                    <span className="ml-auto flex items-center">
+                        <ContextRing taskId={task.id} size={14} />
+                    </span>
                 ) : (
                     <div className={`ml-auto w-2 h-2 rounded-full ${statusDots[task.status] || 'bg-stone-400'}`} />
                 )}

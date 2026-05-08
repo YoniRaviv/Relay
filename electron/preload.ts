@@ -27,8 +27,6 @@ const relayAPI = {
   setCommitPrefix: (prefix: string) => ipcRenderer.invoke('cc:setCommitPrefix', prefix),
   getNotificationsEnabled: () => ipcRenderer.invoke('cc:getNotificationsEnabled'),
   setNotificationsEnabled: (enabled: boolean) => ipcRenderer.invoke('cc:setNotificationsEnabled', enabled),
-  getSessionMode: () => ipcRenderer.invoke('cc:getSessionMode'),
-  setSessionMode: (mode: string) => ipcRenderer.invoke('cc:setSessionMode', mode),
 
   // Project
   createProject: (params: { name: string; path: string }) => ipcRenderer.invoke('project:create', params),

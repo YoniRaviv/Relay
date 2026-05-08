@@ -1,6 +1,6 @@
 import { store } from '../../ipc/settings';
 import { sdkEngine } from './sdkEngine';
-import { cliEngine, endCliSession } from './cliEngine';
+import { cliEngine } from './cliEngine';
 import { codexEngine } from './codexEngine';
 import type { TaskEngine, EngineMode } from './types';
 
@@ -11,7 +11,7 @@ export function getEngine(): TaskEngine {
 }
 
 export function cleanupEngine(): void {
-  endCliSession();
+  // No-op — kept for future per-engine cleanup needs
 }
 
 export type { TaskEngine, TaskRunResult, EngineMode, CliToolsPreset } from './types';
