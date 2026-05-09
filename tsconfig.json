@@ -27,6 +27,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "electron", "shared"],
+  "include": ["src", "electron", "shared", "evals"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
