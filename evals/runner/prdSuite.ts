@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..');
 const DATASET_PATH = path.join(ROOT, 'evals', 'datasets', 'prd.jsonl');
 
-const PATH_PATTERN = /\.(tsx?|jsx|py|rs|go|rb|java)\b|\bsrc\/|\belectron\/|\bshared\//;
+const PATH_PATTERN = /\b[a-z][\w-]*\.(tsx?|jsx?|py|rs|go|rb|java)\b|\bsrc\/|\belectron\/|\bshared\//;
 
 interface PrdCase {
     id: string;
