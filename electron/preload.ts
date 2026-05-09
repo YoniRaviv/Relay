@@ -39,8 +39,8 @@ const relayAPI = {
 
   // PRD
   clarifyPrd: (projectId: string, description: string, projectContext?: string, attachments?: unknown[]) => ipcRenderer.invoke('prd:clarify', projectId, description, projectContext, attachments),
-  generatePrd: (projectId: string, description: string, clarifications?: string, projectContext?: string, attachments?: unknown[]) => ipcRenderer.invoke('prd:generate', projectId, description, clarifications, projectContext, attachments),
-  decomposePrd: (projectId: string, prdMarkdown: string, projectContext?: string) => ipcRenderer.invoke('prd:decompose', projectId, prdMarkdown, projectContext),
+  generatePrd: (projectId: string, description: string, clarifications?: string, projectContext?: string, attachments?: unknown[], includeTests?: boolean) => ipcRenderer.invoke('prd:generate', projectId, description, clarifications, projectContext, attachments, includeTests),
+  decomposePrd: (projectId: string, prdMarkdown: string, projectContext?: string, includeTests?: boolean) => ipcRenderer.invoke('prd:decompose', projectId, prdMarkdown, projectContext, includeTests),
   savePrd: (prd: unknown) => ipcRenderer.invoke('prd:save', prd),
   renamePrd: (prdId: string, title: string) => ipcRenderer.invoke('prd:rename', prdId, title),
   getPrd: (projectId: string) => ipcRenderer.invoke('prd:get', projectId),

@@ -4,4 +4,5 @@ export interface DecomposedTask {
         description: string
         acceptanceCriteria: string
         priority: 'high' | 'medium' | 'low'
+        userStoriesCovered?: string[]
 }

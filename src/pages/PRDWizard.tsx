@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { StepIndicator, FeatureInput, PRDPreview, PRDEditor, TaskReview, BrainstormChat, ModeSelector } from '@/modules/prd'
 import type { FeatureInputPhase } from '@/modules/prd'
+import { StoryViewer } from '@/modules/board'
 import { useRelayStore } from '@/store/useRelayStore'
 import { useIpcListener } from '@/shared/hooks/useIpcListener'
 import { ArrowLeft } from 'lucide-react'
@@ -43,6 +44,10 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         setLastBrainstormBlock,
         clearBrainstormState,
     } = useRelayStore()
+    const setViewingStory = useRelayStore((s) => s.setViewingStory)
+    const handleStoryClick = useCallback((storyId: string) => {
+        setViewingStory({ storyId, markdown: prdMarkdown })
+    }, [setViewingStory, prdMarkdown])
 
     const [streaming, setStreaming] = useState(false)
     const [decomposing, setDecomposing] = useState(false)
@@ -250,17 +255,14 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
             setError('Specification generation timed out. Please try again.')
         }, 10 * 60 * 1000)
         try {
-            // Append test preference so PRD prompt picks it up naturally
             const { includeTests: wantTests } = useRelayStore.getState()
-            const enrichedDescription = wantTests
-                ? featureDescription + '\n\n[Include unit tests as part of the implementation requirements and acceptance criteria.]'
-                : featureDescription + '\n\n[Do NOT include unit tests, test files, or testing requirements in the specification or tasks.]'
             await window.relayAPI.generatePrd(
                 activeProject?.id ?? '',
-                enrichedDescription,
+                featureDescription,
                 clarifications,
                 projectContext ?? undefined,
                 featureAttachments.length > 0 ? featureAttachments : undefined,
+                wantTests,
             )
         } catch (err) {
             if (safetyTimeoutRef.current) { clearTimeout(safetyTimeoutRef.current); safetyTimeoutRef.current = null }
@@ -283,7 +285,8 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
         setEstimatedTaskCount(estimate)
 
         try {
-            await window.relayAPI.decomposePrd(activeProject?.id ?? '', prdMarkdown, projectContext ?? undefined)
+            const { includeTests: wantTests } = useRelayStore.getState()
+            await window.relayAPI.decomposePrd(activeProject?.id ?? '', prdMarkdown, projectContext ?? undefined, wantTests)
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to decompose specification')
             setDecomposing(false)
@@ -683,12 +686,14 @@ export function PRDWizard({ onComplete, onBack }: PRDWizardProps) {
                                     onAddTask={addTask}
                                     loading={saving}
                                     manualMode={manualMode}
+                                    onStoryClick={handleStoryClick}
                                 />
                             )
                         )}
                     </div>
                 </div>
             </main>
+            <StoryViewer />
         </div>
     )
 }

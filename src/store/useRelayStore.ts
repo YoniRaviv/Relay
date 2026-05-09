@@ -124,8 +124,8 @@ interface ReviewSlice {
 
 // ── Story Viewer Slice ──
 interface StoryViewerSlice {
-  viewingStory: { storyId: string; prdId: string } | null;
-  setViewingStory: (target: { storyId: string; prdId: string } | null) => void;
+  viewingStory: { storyId: string; prdId?: string; markdown?: string } | null;
+  setViewingStory: (target: { storyId: string; prdId?: string; markdown?: string } | null) => void;
 }
 
 // ── Review Agent Slice ──

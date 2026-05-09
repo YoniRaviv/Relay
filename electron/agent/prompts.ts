@@ -64,7 +64,9 @@ Return ONLY a JSON array, no other text:
 If the feature description is already very detailed and clear, return fewer questions. Never ask more than 5.`;
 }
 
-export function buildPrdPrompt(featureDescription: string, clarifications?: string, projectContext?: string, hasAttachments?: boolean): string {
+export const PRD_PROMPT_VERSION = '2026-05-v3';
+
+export function buildPrdPrompt(featureDescription: string, clarifications?: string, projectContext?: string, hasAttachments?: boolean, includeTests?: boolean): string {
   const clarificationBlock = clarifications
     ? `\n\n## Clarifications\nThe following questions were answered to refine the requirements:\n${clarifications}`
     : '';
@@ -73,41 +75,80 @@ export function buildPrdPrompt(featureDescription: string, clarifications?: stri
     ? '\n\nReference images are attached. Analyze the visual designs carefully — incorporate layout, component structure, colors, spacing, and interaction patterns you observe into your response.'
     : '';
 
+  const testingSection = includeTests
+    ? `\n## 5. Testing Decisions\nWhat tests we will write and why. Specify the testing layers (unit, integration, e2e), what each layer should cover, the testing framework/tools, and any acceptance criteria that depend on tests passing. Be specific — not "we'll write unit tests" but "Vitest unit tests for the parser covering malformed input, empty input, and the three documented edge cases".`
+    : '';
+
+  const sectionNumbering = includeTests
+    ? '5. Testing Decisions, 6. Out of Scope, 7. Further Notes'
+    : '5. Out of Scope, 6. Further Notes';
+
   return `You are a senior product manager. When signing or attributing the document, use the author name "Relay Studio Agent". Generate a detailed Product Requirements Document (PRD) for the following feature request.
 
 ## Feature Request
 ${featureDescription}${clarificationBlock}${projectContextBlock(projectContext)}${imageHint}
 
 ## Output Format
-Write the PRD in markdown with the following sections. IMPORTANT: The first heading MUST be a concise feature name (3-5 words, not a sentence), formatted as:
+Write the PRD in markdown. The first heading MUST be a concise feature name (3-5 words, not a sentence) formatted as \`# PRD: [Concise Feature Name]\`. Then sections in this exact order: 1. Problem Statement, 2. Solution, 3. User Stories, 4. Implementation Decisions, ${sectionNumbering}.
 
-# PRD: [Concise Feature Name]
+## 1. Problem Statement
+Describe the problem **from the user's perspective**. What pain are they experiencing today? Why does this matter? Frame it as the user would — not as a technical gap.
 
-## 1. Introduction
-Brief overview of the feature and its purpose.
-
-## 2. Goals & Objectives
-- List of specific, measurable goals
+## 2. Solution
+Describe the solution **from the user's perspective**. What changes for them? What new capability do they have? Keep this focused on user-facing behavior — not implementation.
 
 ## 3. User Stories
-Write user stories in the format: "As a [role], I want [capability] so that [benefit]"
-- US-001: ...
-- US-002: ...
+Write formal user stories, numbered \`US-001\` through \`US-NNN\`, each in the exact format: **"As a [role], I want [capability], so that [benefit]"**. Each story should be independently demoable. Aim for 3–8 stories that fully cover the feature.
+
+- US-001: As a [role], I want [capability], so that [benefit].
+- US-002: As a [role], I want [capability], so that [benefit].
 (etc.)
 
-## 4. Functional Requirements
-Detailed requirements organized by area.
+## 4. Implementation Decisions
+Describe the technical shape of the solution as a vertical tracer bullet — the layers an end-to-end implementation cuts through. Be concrete: vague decisions force the coding agent to make undocumented choices. Use the project context to follow existing patterns (ORM, naming conventions, folder layout, framework idioms) — do not invent new conventions when the project already has one.
 
-## 5. Non-Functional Requirements & Success Metrics
-Brief notes on performance, security, accessibility, and how to know the feature works correctly.
+### 4.1 Data Contract
+The concrete entities, fields, and relationships this feature introduces or extends. List:
+- **Entity/model names** (e.g., \`Post\`, \`Subscription\`, \`AuditLog\`) using the project's existing naming style
+- **Fields** — each field's name, type, nullability, and default
+- **Lifecycle / visibility state** explicitly — if records have any "active vs. inactive" notion, dictate the exact mechanism: a \`published: boolean\`, a \`status: 'draft' | 'live' | 'archived'\` enum, a soft-delete column, etc. State which values the feature treats as visible to end users — the agent must write the corresponding query gates.
+- **Relationships** to existing models, following the project's relationship conventions
 
-## 6. Technical Considerations
-Architecture notes, constraints, dependencies.
+### 4.2 Tracer Bullet Slices
+Enumerate the **vertical slices** that, taken together, deliver this feature. This is the most important section — it becomes the input for task decomposition.
 
-## 7. Out of Scope
-What is explicitly NOT included.
+**Each slice must:**
+- Describe **one demoable end-to-end behavior** — what the user does and what they see in response
+- Cut through every layer it needs in a single behavior — data + server + UI + wiring all shipped together
+- Stand on real persistence from day one (no mocks, fixtures, or static placeholder records)
+- Respect the lifecycle/visibility state from §4.1 (e.g. only show \`published\` rows)
+- Be independently shippable — you could pause development after any slice and the feature still works for the slices delivered so far
 
-Be thorough but practical. Focus on what needs to be built, not how to build it.`
+**Order slices as a tracer bullet:** the first slice is the thinnest possible end-to-end version (the bullet that hits the target, even if it's small). Later slices add richness, edit/delete, edge cases.
+
+**Format each slice like this:**
+> **Slice 1 — [Short behavior name]**
+> *Behavior:* [One sentence describing what the user does and what happens, end-to-end.]
+> *Cuts through:* [terse list of the data, server, and UI elements this slice touches — by entity/role, not by file path.]
+
+Aim for 3–6 slices. Do **not** describe the layers as separate numbered sections — every slice is itself a layer-cutting behavior, not a step in a layered sequence. If you find yourself listing "1. Schema 2. Server 3. UI" as separate items, you're writing a horizontal plan; rewrite as slices.
+
+### 4.3 Other Implementation Decisions
+Public contracts between modules, key dependencies, error and edge-case handling rules, performance constraints. Entity, field, and module names are encouraged — they are the data contract. **Do NOT reference file paths or directory locations** (e.g. \`src/...\`, \`electron/...\`, \`shared/...\`) — paths go stale fast. Describe components by their role (e.g. "the task store", "the agent runtime"), not by location.
+${testingSection}
+## ${includeTests ? '6' : '5'}. Out of Scope
+What is explicitly NOT included in this feature. Be specific about adjacent things people might assume are in scope but aren't, and briefly say why each is deferred.
+
+## ${includeTests ? '7' : '6'}. Further Notes
+Anything else that doesn't fit above: open questions, related work, future considerations, references to related features or docs.
+
+## Constraints
+- Be thorough but practical. Focus on what needs to be built and why, not how to build it line-by-line.
+- §4 must commit to a concrete data contract — entity names, field names, types, and lifecycle/visibility state. Vagueness here forces the coding agent to invent shapes that won't match existing conventions.
+- Do NOT reference file paths or directory locations (e.g. \`src/foo.ts\`, \`electron/bar/\`, \`shared/...\`). Entity names, field names, and module roles are encouraged — those are the contract — but file locations rot fast.
+- Do NOT include code snippets, function-body pseudocode, or "implementation hints" of more than a sentence. The agent has the codebase; the PRD is the contract, not the playbook.
+- Avoid mock data, hard-coded fixtures, or static placeholders in the production implementation. Every feature should plug into a real data lifecycle from day one.
+- Every user story must be in the formal "As a X, I want Y, so that Z" form — not bare bullet points.${includeTests ? '' : '\n- Do NOT include any testing requirements, test files, or testing sections — tests are explicitly out of scope for this PRD.'}`
 }
 
 export function buildBrainstormSystemPrompt(projectContext?: string): string {
@@ -195,37 +236,84 @@ Before producing the final document, verify:
 4. No ambiguous requirements — pick one interpretation and make it explicit`;
 }
 
-export function buildDecomposePrompt(prdMarkdown: string, projectContext?: string): string {
+export const DECOMPOSE_PROMPT_VERSION = '2026-05-v3';
+
+export function buildDecomposePrompt(prdMarkdown: string, projectContext?: string, includeTests?: boolean): string {
+  const testsRule = includeTests
+    ? '- Tests are part of each task — list specific test expectations in `acceptanceCriteria` for the slice they belong to. Do NOT create standalone "write tests" tasks.'
+    : '- Do NOT include tests, test files, or testing requirements in any task. Tests are explicitly out of scope for this feature.';
+
   return `You are a senior software architect. Decompose the following specification into implementation tasks.
 
 ## Specification
 ${prdMarkdown}${projectContextBlock(projectContext)}
 
 ## Instructions
-Break this specification into sequential implementation tasks. The document may be a formal PRD or a design document from a brainstorming session — either way, extract concrete buildable tasks from it. Each task will be executed by an autonomous AI coding agent with full file read/write access in a single session with limited context.
+Break this specification into vertical, end-to-end implementation slices. The document may be a formal PRD or a design document from a brainstorming session — either way, extract concrete buildable tasks. Each task will be executed by an autonomous AI coding agent in a fresh session with a limited 200K context window — so each task must be self-contained and small.
 
-Guidelines:
-- **Task sizing**: Each task must be completable in one agent session. If a task touches more than 5-8 files or requires more than 3 conceptual steps, split it. Aim for 5-12 tasks.
-- **Dependency order**: Schema/data changes first, then backend logic, then UI components, then integration/polish.
-- Every task must produce a visible, functional change.
-- Do NOT create separate tasks for: types/interfaces, error handling, tests, documentation, or validation. These belong as acceptance criteria within the task that implements the feature.
-- If the project directory is empty or has no source code, the first task should scaffold the project (stack, folder structure, dependencies, config). If the project already has code, work within the existing structure — no scaffolding tasks.
-- Acceptance criteria must be specific and verifiable — not vague ("works correctly"). Each criterion should be something the agent can check.
+### Vertical slicing (the core rule)
+Each task = one **demoable end-to-end behavior**. A user does something, and they see/get a result, all delivered together. The data, server, and UI changes the behavior needs ship in the same task — never as separate tasks.
+
+**If the PRD has a §4.2 "Tracer Bullet Slices" section, each slice listed there should map to roughly one task. That section is your starting point — refine, split, or merge slices as needed for sizing, but preserve the tracer-bullet ordering.**
+
+Do NOT decompose by layer. The following are antipatterns and must be avoided:
+- A task titled "Schema migration" or "Add database columns" with no UI or behavior
+- A task titled "Backend API endpoints" separate from the feature that consumes them
+- A task titled "Frontend UI" that depends on a backend task that hasn't shipped yet
+- Any task that says "set up types/interfaces" as its own unit
+- A task list that reads like \`1. Data → 2. Server → 3. UI → 4. Wiring\` — that is a layered sequence dressed as tasks; rewrite each item as a behavior that ships its own data + server + UI
+
+### Worked example — same feature, bad vs. good
+
+**Bad (horizontal, layer-scoped):**
+1. Schema: add \`comments\` table
+2. API: comment CRUD endpoints
+3. UI: comment thread component
+4. Wire UI to API
+
+**Bad (static placeholder — almost as bad as horizontal):**
+1. Render hard-coded mock comments beneath a post
+2. Replace mocks with real data later
+
+**Good (vertical, tracer-bullet, real data from day one):**
+1. Submit a comment from the form, persist it, query it back, and render the real list beneath the post (schema + insert + read + render — the simplest end-to-end pipeline). Use only the visibility state the user can see (e.g., only \`published\` rows).
+2. Edit and delete own comment (CRUD parity with permission check)
+3. Threaded replies (one level — feature complete for v1)
+
+Each "good" task touches data + server + UI together, runs against real persistence, can be demoed end-to-end, and stops at a coherent stopping point.
+
+### Definition of Done per slice
+- Every task's acceptance criteria must include at least one verifiable end-to-end check ("after this task, doing X in the UI causes Y to be persisted and Z to render on reload"). Layer-only checks ("the migration runs", "the endpoint returns 200") are insufficient on their own.
+- If the feature has a lifecycle/visibility state (e.g. \`published\`, \`status\`, soft-delete), every read path the slice introduces must respect that gate — call this out explicitly in acceptance criteria.
+
+### Sizing & coverage
+- Aim for 4–10 tasks. If a slice is too big to fit in one agent session (more than 5–8 files of net new/changed code, or more than 3 conceptual steps), split it into thinner slices.
+- Each task must reference the user stories it covers via \`userStoriesCovered: ["US-001", ...]\`. Every user story in the PRD must be covered by at least one task.
+- Order tasks as a tracer bullet — earliest tasks deliver the simplest end-to-end version; later tasks layer on richness.
+
+### Other rules
+- Every task must produce a visible, functional change at the end, against real data — not mocks or fixtures.
+- Do NOT create tasks that exist only to scaffold static/mock data, hard-coded fixtures, or placeholder records. The first slice should already wire real persistence. Mock tasks force a rewrite later and waste tokens.
+${testsRule}
+- Do NOT create separate tasks for: types/interfaces, error handling, documentation, validation, or refactoring. These are baked into the slice that needs them.
+- If the project directory is empty or has no source code, the first task should scaffold the minimum stack (folder structure, deps, config) needed for slice #2 to land. Otherwise, work within the existing structure — no scaffolding tasks.
+- Acceptance criteria must be specific and verifiable. Reject vague language like "works correctly", "as expected", "properly", "appropriately". Each criterion should be something the agent can check by inspecting the code or running it.
 
 ## Output Format
-Return a JSON array of tasks. ONLY output the JSON, no other text.
+Return a JSON array of tasks. ONLY output the JSON, no other text. Every task must include \`userStoriesCovered\`.
 
 \`\`\`json
 [
   {
     "storyId": "US-001",
-    "title": "Short descriptive title",
-    "description": "What needs to be built and how",
+    "title": "Short descriptive title (a slice, not a layer)",
+    "description": "What ships when this task lands and how — describe the end-to-end behavior, not which files to touch",
     "acceptanceCriteria": "- Criterion 1\\n- Criterion 2\\n- Criterion 3",
-    "priority": "high|medium|low"
+    "priority": "high|medium|low",
+    "userStoriesCovered": ["US-001", "US-003"]
   }
 ]
 \`\`\`
 
-Order tasks so each builds on the previous ones. Assign priority based on importance and dependency order.`
+Assign priority based on tracer-bullet order — the first slice is the highest priority. Do not output any other text outside the JSON array.`
 }

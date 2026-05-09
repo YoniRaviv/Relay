@@ -325,7 +325,7 @@ export function registerPrdHandlers(): void {
     return { status: 'ok', text: result };
   });
 
-  ipcMain.handle('prd:generate', withSentry('prd:generate', async (_event, projectId: string, description: string, clarifications?: string, projectContext?: string, attachments?: ImageAttachment[]) => {
+  ipcMain.handle('prd:generate', withSentry('prd:generate', async (_event, projectId: string, description: string, clarifications?: string, projectContext?: string, attachments?: ImageAttachment[], includeTests?: boolean) => {
     const win = BrowserWindow.getFocusedWindow();
     if (!win) throw new Error('No active window');
 
@@ -333,7 +333,7 @@ export function registerPrdHandlers(): void {
     const fileContext = projectPath ? resolveFileReferences(description, projectPath) : '';
     const enrichedDescription = description + fileContext;
     const hasAttachments = !!attachments?.length;
-    const prompt = buildPrdPrompt(enrichedDescription, clarifications, projectContext ?? undefined, hasAttachments);
+    const prompt = buildPrdPrompt(enrichedDescription, clarifications, projectContext ?? undefined, hasAttachments, includeTests);
     const contentBlocks = buildContentBlocks(prompt, attachments);
 
     if (hasAttachments) sendStatus(win, `Analyzing ${attachments!.length} attached image${attachments!.length > 1 ? 's' : ''}...`);
@@ -353,13 +353,13 @@ export function registerPrdHandlers(): void {
     return { status: 'ok' };
   }));
 
-  ipcMain.handle('prd:decompose', withSentry('prd:decompose', async (_event, projectId: string, prdMarkdown: string, _projectContext?: string) => {
+  ipcMain.handle('prd:decompose', withSentry('prd:decompose', async (_event, projectId: string, prdMarkdown: string, _projectContext?: string, includeTests?: boolean) => {
     const win = BrowserWindow.getFocusedWindow();
     if (!win) throw new Error('No active window');
 
     const projectPath = getProjectPathById(projectId);
     // Skip redundant projectContext — it's already encoded in the PRD markdown.
-    const prompt = buildDecomposePrompt(prdMarkdown);
+    const prompt = buildDecomposePrompt(prdMarkdown, undefined, includeTests);
 
     if (getEngineMode() === 'claude-code') {
       const result = await cliGenerateText('You are a senior software architect. Return only valid JSON.', prompt, win, projectPath);
@@ -386,6 +386,7 @@ export function registerPrdHandlers(): void {
       description: string;
       acceptanceCriteria: string;
       priority: string;
+      userStoriesCovered?: string[];
     }>;
   }) => {
     const project = store.get('recentProjects', []) as Array<{ path: string }>;
@@ -407,18 +408,19 @@ export function registerPrdHandlers(): void {
     );
 
     const insertTask = db.prepare(
-      `INSERT INTO tasks (id, project_id, prd_id, story_id, title, description, acceptance_criteria, priority, status, "order", passes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 0, ?, ?)`
+      `INSERT INTO tasks (id, project_id, prd_id, story_id, title, description, acceptance_criteria, priority, status, "order", passes, user_stories_covered, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 0, ?, ?, ?)`
     );
 
     // Wrap PRD + all tasks in a single transaction to prevent orphaned PRDs on crash
     const saveAll = db.transaction(() => {
       insertPrd.run(prdId, data.projectId, data.description, data.markdown, data.title ?? null, now, now);
       data.tasks.forEach((task, i) => {
+        const stories = task.userStoriesCovered?.length ? task.userStoriesCovered.join(',') : null;
         insertTask.run(
           randomUUID(), data.projectId, prdId, task.storyId,
           task.title, task.description, task.acceptanceCriteria,
-          task.priority, i, now, now
+          task.priority, i, stories, now, now
         );
       });
     });
