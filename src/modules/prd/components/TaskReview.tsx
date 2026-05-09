@@ -13,6 +13,7 @@ interface TaskReviewProps {
     onAddTask?: (task: DecomposedTask) => void
     loading: boolean
     manualMode?: boolean
+    onStoryClick?: (storyId: string) => void
 }
 
 const PRIORITY_ORDER = ['high', 'medium', 'low'] as const
@@ -22,7 +23,7 @@ const PRIORITY_LABELS: Record<string, string> = {
     low: 'Low',
 }
 
-export function TaskReview({ tasks, onRemove, onUpdate, onConfirm, onAddTask, loading, manualMode }: TaskReviewProps) {
+export function TaskReview({ tasks, onRemove, onUpdate, onConfirm, onAddTask, loading, manualMode, onStoryClick }: TaskReviewProps) {
     const [editingIndex, setEditingIndex] = useState<number | null>(null)
     const [addingPriority, setAddingPriority] = useState<'high' | 'medium' | 'low' | null>(null)
 
@@ -63,6 +64,7 @@ export function TaskReview({ tasks, onRemove, onUpdate, onConfirm, onAddTask, lo
                                         task={task}
                                         onEdit={() => setEditingIndex(originalIndex)}
                                         onRemove={() => onRemove(originalIndex)}
+                                        onStoryClick={onStoryClick}
                                     />
                                 ))
                             )}

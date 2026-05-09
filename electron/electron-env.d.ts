@@ -51,8 +51,8 @@ interface RelayAPI {
 
   // PRD
   clarifyPrd(projectId: string, description: string, projectContext?: string, attachments?: import('../shared/types').ImageAttachment[]): Promise<{ status: string; text: string }>
-  generatePrd(projectId: string, description: string, clarifications?: string, projectContext?: string, attachments?: import('../shared/types').ImageAttachment[]): Promise<unknown>
-  decomposePrd(projectId: string, prdMarkdown: string, projectContext?: string): Promise<unknown>
+  generatePrd(projectId: string, description: string, clarifications?: string, projectContext?: string, attachments?: import('../shared/types').ImageAttachment[], includeTests?: boolean): Promise<unknown>
+  decomposePrd(projectId: string, prdMarkdown: string, projectContext?: string, includeTests?: boolean): Promise<unknown>
   savePrd(prd: unknown): Promise<unknown>
   renamePrd(prdId: string, title: string): Promise<{ status: string }>
   getPrd(projectId: string): Promise<import('../shared/types').PRD | null>

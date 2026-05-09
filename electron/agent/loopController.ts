@@ -48,6 +48,7 @@ function rowToTask(row: Record<string, unknown>): Task {
     rejectionNotes: row.rejection_notes as string | null,
     commitHash: (row.commit_hash as string | null) ?? null,
     dependsOn: (row.depends_on as string | null) ?? null,
+    userStoriesCovered: (row.user_stories_covered as string | null) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };

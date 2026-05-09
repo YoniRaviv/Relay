@@ -186,6 +186,16 @@ export function initializeDatabase(db: Database.Database): void {
         }
       },
     },
+    {
+      version: 10,
+      description: 'Add user_stories_covered column to tasks (vertical slice coverage)',
+      up: () => {
+        const cols = db.pragma('table_info(tasks)') as Array<{ name: string }>;
+        if (!cols.some(c => c.name === 'user_stories_covered')) {
+          db.exec(`ALTER TABLE tasks ADD COLUMN user_stories_covered TEXT`); // comma-separated story IDs (e.g. "US-001,US-003")
+        }
+      },
+    },
   ];
 
   // Run pending migrations inside a transaction

@@ -59,6 +59,7 @@ export interface Task {
   rejectionNotes: string | null;
   commitHash: string | null;
   dependsOn: string | null;  // comma-separated task IDs
+  userStoriesCovered: string | null;  // comma-separated story IDs (e.g. "US-001,US-003")
   createdAt: string;
   updatedAt: string;
 }

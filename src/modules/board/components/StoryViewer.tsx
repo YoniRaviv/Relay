@@ -14,16 +14,27 @@ export function StoryViewer() {
     const containerRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
-        if (!viewingStory || !activeProject) return
+        if (!viewingStory) return
+        if (viewingStory.markdown !== undefined) {
+            setMarkdown(viewingStory.markdown)
+            setLoading(false)
+            return
+        }
+        if (!activeProject || !viewingStory.prdId) {
+            setMarkdown('')
+            setLoading(false)
+            return
+        }
         let cancelled = false
         setLoading(true)
         setMarkdown(null)
+        const targetPrdId = viewingStory.prdId
         window.relayAPI
             .listPrds(activeProject.id)
             .then((prds) => {
                 if (cancelled) return
                 const match = (prds as Array<{ id: string; markdown: string }>).find(
-                    (p) => p.id === viewingStory.prdId,
+                    (p) => p.id === targetPrdId,
                 )
                 setMarkdown(match?.markdown ?? '')
             })
