@@ -13,6 +13,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "seed-demo": "npx tsx scripts/seed-demo.ts",
+    "evals": "tsx evals/runner/run.ts",
     "postinstall": "electron-rebuild && bash scripts/patch-electron-name.sh"
   },
   "dependencies": {

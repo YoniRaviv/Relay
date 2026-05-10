@@ -22,7 +22,7 @@ const ANALYZING_MESSAGES = [
     'Preparing document structure...',
 ]
 
-const PATH_PATTERN = /\.(tsx?|jsx?|py|rs|go|rb|java)\b|\bsrc\/|\belectron\/|\bshared\//
+const PATH_PATTERN = /\b[a-z][\w-]*\.(tsx?|jsx?|py|rs|go|rb|java)\b|\bsrc\/|\belectron\/|\bshared\//
 
 function findPathLeaks(markdown: string): string[] {
     const offending: string[] = []
