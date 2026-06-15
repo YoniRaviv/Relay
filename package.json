@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "bash scripts/patch-electron-name.sh && vite",
     "build": "tsc && vite build && electron-builder",
+    "compile": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "seed-demo": "npx tsx scripts/seed-demo.ts",
