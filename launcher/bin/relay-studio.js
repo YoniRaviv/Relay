@@ -10,11 +10,11 @@ const { resolveTarget, assetName, assetUrl, cacheDir } = require('../lib');
 const { version } = require('../package.json');
 
 async function download(url, dest) {
-    process.stdout.write(`Downloading Relay Studio ${version}...\n`);
     const res = await fetch(url, { redirect: 'follow' });
     if (!res.ok) {
         throw new Error(`Download failed (${res.status} ${res.statusText})\n  ${url}`);
     }
+    process.stdout.write(`Downloading Relay Studio ${version}...\n`);
     await pipeline(Readable.fromWeb(res.body), fs.createWriteStream(dest));
 }
 
@@ -54,7 +54,9 @@ function locateLaunchTarget(dir, t) {
         if (!exe) throw new Error(`No .exe found in ${dir}`);
         return { kind: 'win', exePath: exe };
     }
-    return { kind: 'linux', appImage: path.join(dir, 'Relay-Studio.AppImage') };
+    const appImage = path.join(dir, 'Relay-Studio.AppImage');
+    if (!fs.existsSync(appImage)) throw new Error(`AppImage not found in ${dir}`);
+    return { kind: 'linux', appImage };
 }
 
 // Shallow + one-level search (electron-builder win zip may nest in a subfolder).
@@ -79,6 +81,10 @@ function launch(target) {
     } else {
         child = spawn(target.appImage, [], { detached: true, stdio: 'ignore' });
     }
+    child.on('error', (err) => {
+        process.stderr.write(`\nFailed to launch Relay Studio: ${err.message}\n`);
+        process.exitCode = 1;
+    });
     child.unref();
 }
 
