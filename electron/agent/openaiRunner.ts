@@ -3,7 +3,7 @@ import { Codex } from '@openai/codex-sdk';
 import type { ThreadEvent, ThreadItem } from '@openai/codex-sdk';
 import { store } from '../ipc/settings';
 
-const DEFAULT_CODEX_MODEL = 'gpt-5.4';
+const DEFAULT_CODEX_MODEL = 'gpt-5.5';
 
 function safeSend(win: BrowserWindow, channel: string, ...args: unknown[]): void {
   try {

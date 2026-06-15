@@ -120,7 +120,7 @@ Auto-detects run command from project config files (`.relay/run.json` override, 
 
 ### Cost Tracking
 
-Centralized pricing in `shared/pricing.ts` with per-model token costs, tagged by engine (`anthropic` | `openai`). Models: Haiku 4.5, Sonnet 4/4.6, Opus 4.6 (Anthropic) + GPT-5.4, GPT-5.4 Mini, GPT-5.3 Codex, GPT-5.3 Codex Spark (OpenAI). Aggregated via SQL joins on `task_metrics` table.
+Centralized pricing in `shared/pricing.ts` with per-model token costs, tagged by engine (`anthropic` | `openai`). Models: Haiku 4.5, Sonnet 4.6, Opus 4.6/4.7/4.8, Fable 5 (Anthropic) + GPT-5.5, GPT-5.3 Codex, GPT-5.4, GPT-5.4 Mini, GPT-5.1 Codex Mini (OpenAI). Retired IDs (dated Haiku, GPT-5.3 Codex Spark) live in `LEGACY_MODEL_PRICING` so historical `task_metrics` rows still cost-resolve. Aggregated via SQL joins on `task_metrics` table.
 
 ### Frontend Module Structure
 

@@ -88,7 +88,7 @@ function formatItemForActivity(item: ThreadItem, projectPath: string): { type: s
   }
 }
 
-const DEFAULT_CODEX_MODEL = 'gpt-5.4';
+const DEFAULT_CODEX_MODEL = 'gpt-5.5';
 
 export const codexEngine: TaskEngine = {
   async runTask(

@@ -223,7 +223,7 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
         await window.relayAPI.setEngineMode(mode)
         // Auto-select a valid default model for the new engine
         const defaults: Record<string, string> = {
-            'codex': 'gpt-5.4',
+            'codex': 'gpt-5.5',
             'claude-code': 'claude-sonnet-4-6',
             'api-key': 'claude-sonnet-4-6',
         }
@@ -503,7 +503,7 @@ export function SettingsView({ onSwitchProject }: SettingsViewProps) {
                             icon={<Braces className="h-4 w-4" />}
                             label="OpenAI Codex"
                             description="Uses your existing Codex CLI authentication"
-                            tooltip="Supports GPT-5.4, GPT-5.3 Codex, and other OpenAI models"
+                            tooltip="Supports GPT-5.5, GPT-5.3 Codex, and other OpenAI models"
                         />
                     </SettingsSection>
 

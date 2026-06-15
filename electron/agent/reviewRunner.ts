@@ -209,7 +209,7 @@ async function analyzeWithCodex(
   projectPath: string,
 ): Promise<{ text: string; tokensIn: number; tokensOut: number; model: string }> {
   const { Codex } = await import('@openai/codex-sdk');
-  const modelId = (store.get('selectedModel') ?? 'gpt-5.4') as string;
+  const modelId = (store.get('selectedModel') ?? 'gpt-5.5') as string;
   let tokensIn = 0, tokensOut = 0;
   let text = '';
 
@@ -729,7 +729,7 @@ async function fixWithCodex(
   win: BrowserWindow,
 ): Promise<{ tokensIn: number; tokensOut: number; model: string }> {
   const { Codex } = await import('@openai/codex-sdk');
-  const modelId = (store.get('selectedModel') ?? 'gpt-5.4') as string;
+  const modelId = (store.get('selectedModel') ?? 'gpt-5.5') as string;
   let tokensIn = 0, tokensOut = 0;
 
   const ac = new AbortController();
