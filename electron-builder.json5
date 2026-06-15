@@ -62,6 +62,7 @@
     "target": [
       "AppImage"
     ],
+    "artifactName": "Relay-Studio-linux-x64-${version}.${ext}",
     "icon": "public/icon.png"
   }
 }
