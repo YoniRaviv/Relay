@@ -6,8 +6,8 @@ test('resolveTarget maps macOS arm64', () => {
     assert.deepEqual(resolveTarget('darwin', 'arm64'), { os: 'mac', arch: 'arm64', ext: 'zip' });
 });
 
-test('resolveTarget maps macOS x64', () => {
-    assert.deepEqual(resolveTarget('darwin', 'x64'), { os: 'mac', arch: 'x64', ext: 'zip' });
+test('resolveTarget rejects Intel Macs with a guidance message', () => {
+    assert.throws(() => resolveTarget('darwin', 'x64'), /Intel Macs are not supported/);
 });
 
 test('resolveTarget maps Windows x64', () => {

@@ -6,7 +6,12 @@ const REPO = 'YoniRaviv/Relay';
 
 function resolveTarget(platform, arch) {
     if (platform === 'darwin') {
-        return { os: 'mac', arch: arch === 'arm64' ? 'arm64' : 'x64', ext: 'zip' };
+        if (arch !== 'arm64') {
+            throw new Error(
+                `Intel Macs are not supported via npm. Download the .dmg from https://github.com/${REPO}/releases/latest`
+            );
+        }
+        return { os: 'mac', arch: 'arm64', ext: 'zip' };
     }
     if (platform === 'win32') {
         return { os: 'win', arch: 'x64', ext: 'zip' };

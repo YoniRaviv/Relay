@@ -45,7 +45,9 @@ npm install -g relay-studio
 relay-studio
 ```
 
-The first run downloads the app for your platform (macOS arm64/x64, Windows x64, Linux x64) and caches it under `~/.relay-studio/`. Later runs launch instantly.
+The first run downloads the app for your platform (macOS Apple Silicon, Windows x64, Linux x64) and caches it under `~/.relay-studio/`. Later runs launch instantly.
+
+> Intel Macs: install via the `.dmg` from the [latest release](https://github.com/YoniRaviv/Relay/releases/latest) (npm distribution is Apple Silicon only).
 
 Prefer a classic installer? Grab the `.dmg`, `.exe`, or `.AppImage` from the [latest release](https://github.com/YoniRaviv/Relay/releases/latest).
 
