@@ -11,7 +11,7 @@
 
 
 <p align="center">
-  <img src="https://img.shields.io/badge/platform-macOS-black?logo=apple" alt="Platform" />
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-black" alt="Platform" />
   <img src="https://img.shields.io/badge/electron-30-teal" alt="Electron" />
   <img src="https://img.shields.io/badge/react-18-61dafb" alt="React" />
   <img src="https://img.shields.io/badge/typescript-strict-blue" alt="TypeScript" />
@@ -19,8 +19,13 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/YoniRaviv/Relay/releases/latest/download/Relay-Mac-Installer.dmg"><img src="https://img.shields.io/badge/Download-Mac%20(dmg)-000?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Mac" /></a>
+  <a href="https://www.npmjs.com/package/relay-studio"><img src="https://img.shields.io/badge/npx-relay--studio-cb3837?style=for-the-badge&logo=npm&logoColor=white" alt="npx relay-studio" /></a>
+  <a href="https://github.com/YoniRaviv/Relay/releases/latest"><img src="https://img.shields.io/badge/macOS-.dmg%20%2F%20.zip-000?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS (Apple Silicon)" /></a>
+  <a href="https://github.com/YoniRaviv/Relay/releases/latest"><img src="https://img.shields.io/badge/Windows-.exe%20%2F%20.zip-0078D6?style=for-the-badge&logo=gitforwindows&logoColor=white" alt="Download for Windows x64" /></a>
+  <a href="https://github.com/YoniRaviv/Relay/releases/latest"><img src="https://img.shields.io/badge/Linux-.AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Download for Linux x64" /></a>
 </p>
+
+<p align="center"><sub>All installers live on the <a href="https://github.com/YoniRaviv/Relay/releases/latest">latest release</a> page — or run instantly with <code>npx relay-studio</code> (no install).</sub></p>
 
 > **macOS note (manual download only):** Installing via npm avoids this. If you instead downloaded the `.dmg`/`.zip` and see "app is damaged and should be moved to trash", run this in Terminal:
 > ```bash
@@ -49,7 +54,17 @@ The first run downloads the app for your platform (macOS Apple Silicon, Windows 
 
 > Intel Macs: install via the `.dmg` from the [latest release](https://github.com/YoniRaviv/Relay/releases/latest) (npm distribution is Apple Silicon only).
 
-Prefer a classic installer? Grab the `.dmg`, `.exe`, or `.AppImage` from the [latest release](https://github.com/YoniRaviv/Relay/releases/latest).
+### Download a standalone installer
+
+Prefer a classic installer? Every platform build is attached to the [latest release](https://github.com/YoniRaviv/Relay/releases/latest):
+
+| Platform | Asset | Notes |
+|----------|-------|-------|
+| **macOS** (Apple Silicon) | `.dmg` installer · `.zip` | Run `xattr -cr "/Applications/Relay Studio.app"` after first launch (see note above) |
+| **Windows** (x64) | `.exe` (NSIS installer) · `.zip` | Choose install location during setup |
+| **Linux** (x64) | `.AppImage` | `chmod +x` then run |
+
+All assets are listed on the **[latest release](https://github.com/YoniRaviv/Relay/releases/latest)** page.
 
 ---
 
