@@ -22,7 +22,7 @@
   <a href="https://github.com/YoniRaviv/Relay/releases/latest/download/Relay-Mac-Installer.dmg"><img src="https://img.shields.io/badge/Download-Mac%20(dmg)-000?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Mac" /></a>
 </p>
 
-> **macOS note:** If you see "app is damaged and should be moved to trash" after installing, run this in Terminal:
+> **macOS note (manual download only):** Installing via npm avoids this. If you instead downloaded the `.dmg`/`.zip` and see "app is damaged and should be moved to trash", run this in Terminal:
 > ```bash
 > xattr -cr "/Applications/Relay Studio.app"
 > ```
@@ -31,6 +31,23 @@
 <p align="center">
   <video src="https://github.com/user-attachments/assets/ad634c2d-c016-4cb5-8ff8-5188a281df25" width="800" height="800" autoplay muted playsinline loop></video>
 </p>
+
+## Install
+
+Relay Studio is distributed via npm — no code-signing prompts, no quarantine command.
+
+```bash
+# Run it instantly (nothing installed permanently)
+npx relay-studio
+
+# Or install the launcher command globally
+npm install -g relay-studio
+relay-studio
+```
+
+The first run downloads the app for your platform (macOS arm64/x64, Windows x64, Linux x64) and caches it under `~/.relay-studio/`. Later runs launch instantly.
+
+Prefer a classic installer? Grab the `.dmg`, `.exe`, or `.AppImage` from the [latest release](https://github.com/YoniRaviv/Relay/releases/latest).
 
 ---
 
