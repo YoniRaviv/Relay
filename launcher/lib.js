@@ -12,6 +12,9 @@ function resolveTarget(platform, arch) {
         return { os: 'win', arch: 'x64', ext: 'zip' };
     }
     if (platform === 'linux') {
+        if (arch !== 'x64') {
+            throw new Error(`Unsupported platform: ${platform} (${arch})`);
+        }
         return { os: 'linux', arch: 'x64', ext: 'AppImage' };
     }
     throw new Error(`Unsupported platform: ${platform} (${arch})`);

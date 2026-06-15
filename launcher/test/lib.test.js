@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { resolveTarget, assetUrl, cacheDir } = require('../lib');
+const { resolveTarget, assetName, assetUrl, cacheDir } = require('../lib');
 
 test('resolveTarget maps macOS arm64', () => {
     assert.deepEqual(resolveTarget('darwin', 'arm64'), { os: 'mac', arch: 'arm64', ext: 'zip' });
@@ -28,6 +28,17 @@ test('assetUrl builds the GitHub release download URL', () => {
         assetUrl('0.9.7-alpha', t),
         'https://github.com/YoniRaviv/Relay/releases/download/0.9.7-alpha/Relay-Studio-mac-arm64-0.9.7-alpha.zip'
     );
+});
+
+test('assetName formats the filename correctly', () => {
+    assert.equal(
+        assetName('1.2.3', { os: 'mac', arch: 'arm64', ext: 'zip' }),
+        'Relay-Studio-mac-arm64-1.2.3.zip'
+    );
+});
+
+test('resolveTarget throws on Linux non-x64 arch', () => {
+    assert.throws(() => resolveTarget('linux', 'arm64'), /Unsupported platform/);
 });
 
 test('cacheDir is version-scoped under the home dir', () => {
