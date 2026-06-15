@@ -9,6 +9,7 @@
     "node_modules/@sentry/electron/**"
   ],
   "productName": "Relay Studio",
+  "artifactName": "Relay-Studio-${os}-${arch}-${version}.${ext}",
   "directories": {
     "output": "release/${version}"
   },
@@ -31,7 +32,7 @@
       "dmg",
       "zip"
     ],
-    "artifactName": "${productName}-Mac-${version}-Installer.${ext}",
+    "identity": "-",
     "icon": "public/icon.icns"
   },
   "win": {
@@ -41,9 +42,14 @@
         "arch": [
           "x64"
         ]
+      },
+      {
+        "target": "zip",
+        "arch": [
+          "x64"
+        ]
       }
     ],
-    "artifactName": "${productName}-Windows-${version}-Setup.${ext}",
     "icon": "public/icon.png"
   },
   "nsis": {
@@ -56,7 +62,6 @@
     "target": [
       "AppImage"
     ],
-    "artifactName": "${productName}-Linux-${version}.${ext}",
     "icon": "public/icon.png"
   }
 }

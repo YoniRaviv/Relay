@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  verify-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Ensure tag matches package.json version
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          if [ "$PKG" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag '$GITHUB_REF_NAME' does not match package.json version '$PKG'"
+            exit 1
+          fi
+          echo "Version OK: $PKG"
+
+  test-launcher:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install launcher deps
+        run: npm ci
+        working-directory: launcher
+      - name: Run launcher tests
+        run: npm test
+        working-directory: launcher
+
+  create-release:
+    needs: verify-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create draft GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --draft \
+            --title "Relay Studio $GITHUB_REF_NAME" \
+            --generate-notes || echo "Release already exists, continuing."
+
+  build:
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-14, args: "--mac --arm64" }
+          - { os: macos-13, args: "--mac --x64" }
+          - { os: windows-latest, args: "--win --x64" }
+          - { os: ubuntu-latest, args: "--linux --x64" }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm ci
+      - name: Compile renderer + main
+        run: npm run compile
+      - name: Build and publish to GitHub release
+        run: npx electron-builder ${{ matrix.args }} --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  finalize:
+    needs: [build, test-launcher]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+      - name: Publish the GitHub release (un-draft)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false
+      - name: Sync launcher version to tag
+        run: node scripts/sync-version.mjs
+      - name: Publish launcher to npm
+        run: npm publish --access public
+        working-directory: launcher
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

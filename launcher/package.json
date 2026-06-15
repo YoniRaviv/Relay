@@ -1,0 +1,28 @@
+{
+  "name": "relay-studio",
+  "version": "0.9.6-alpha",
+  "description": "Installer/launcher for Relay Studio — a visual Kanban build loop for Claude Code & Codex.",
+  "bin": {
+    "relay-studio": "bin/relay-studio.js"
+  },
+  "type": "commonjs",
+  "files": [
+    "bin",
+    "lib.js"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YoniRaviv/Relay.git"
+  },
+  "license": "GPL-3.0-or-later",
+  "author": "Yoni Raviv",
+  "dependencies": {
+    "extract-zip": "^2.0.1"
+  }
+}
