@@ -1,6 +1,6 @@
 {
   "name": "relay-studio",
-  "version": "0.9.6-alpha",
+  "version": "1.0.0",
   "description": "Installer/launcher for Relay Studio — a visual Kanban build loop for Claude Code & Codex.",
   "bin": {
     "relay-studio": "bin/relay-studio.js"

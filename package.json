@@ -2,7 +2,7 @@
   "name": "relay",
   "productName": "Relay Studio",
   "private": true,
-  "version": "0.9.6-alpha",
+  "version": "1.0.0",
   "description": "Relay Studio is a tool for managing your software development process autonomously.",
   "author": "Yoni Raviv",
   "license": "GPL-3.0-or-later",
