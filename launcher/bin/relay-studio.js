@@ -26,19 +26,24 @@ async function ensureInstalled() {
 
     if (!fs.existsSync(marker)) {
         fs.mkdirSync(dir, { recursive: true });
-        const url = assetUrl(version, t);
+        try {
+            const url = assetUrl(version, t);
 
-        if (t.ext === 'AppImage') {
-            const appImage = path.join(dir, 'Relay-Studio.AppImage');
-            await download(url, appImage);
-            fs.chmodSync(appImage, 0o755);
-        } else {
-            const zip = path.join(dir, assetName(version, t));
-            await download(url, zip);
-            await extract(zip, { dir });
-            fs.rmSync(zip, { force: true });
+            if (t.ext === 'AppImage') {
+                const appImage = path.join(dir, 'Relay-Studio.AppImage');
+                await download(url, appImage);
+                fs.chmodSync(appImage, 0o755);
+            } else {
+                const zip = path.join(dir, assetName(version, t));
+                await download(url, zip);
+                await extract(zip, { dir });
+                fs.rmSync(zip, { force: true });
+            }
+            fs.writeFileSync(marker, new Date().toISOString());
+        } catch (err) {
+            fs.rmSync(dir, { recursive: true, force: true });
+            throw err;
         }
-        fs.writeFileSync(marker, new Date().toISOString());
     }
     return locateLaunchTarget(dir, t);
 }
@@ -65,8 +70,9 @@ function findFile(dir, pred) {
         const full = path.join(dir, entry.name);
         if (entry.isFile() && pred(entry.name)) return full;
         if (entry.isDirectory()) {
-            const hit = fs.readdirSync(full).find(pred);
-            if (hit) return path.join(full, hit);
+            const nested = fs.readdirSync(full, { withFileTypes: true })
+                .find((e) => e.isFile() && pred(e.name));
+            if (nested) return path.join(full, nested.name);
         }
     }
     return null;
