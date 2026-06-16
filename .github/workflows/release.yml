@@ -72,6 +72,8 @@ jobs:
         run: npm ci
       - name: Compile renderer + main
         run: npm run compile
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       - name: Build and publish to GitHub release
         run: npx electron-builder ${{ matrix.args }} --publish always
         env:
