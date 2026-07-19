@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { initSchedulerSchema, createJob, getJob, listJobs, updateJob, deleteJob } from './db';
+import { rearmPatch } from './schedule';
 
 function freshDb() {
     const db = new Database(':memory:');
@@ -32,4 +33,23 @@ test('deleteJob removes the job and cascades events/runs', () => {
     const job = createJob(db, { name: 'x' });
     assert.equal(deleteJob(db, job.id), true);
     assert.equal(getJob(db, job.id), undefined);
+});
+
+test('recurring job re-arm round-trips through the DB', () => {
+  const db = freshDb();
+  const job = createJob(db, { name: 'nightly', instructions: 'x', scheduleCron: 'daily@09:00', scheduledFor: 1000 });
+  // Simulate the run lifecycle: queue → running → done, then apply the re-arm patch.
+  updateJob(db, job.id, { status: 'running', ccSessionId: 'sess-1', startedAt: 2000 });
+  updateJob(db, job.id, { status: 'done', finishedAt: 3000, resultRef: 'result.md' });
+  const now = new Date(2026, 6, 15, 10, 0).getTime();
+  const patch = rearmPatch(getJob(db, job.id)!, now);
+  assert.ok(patch, 'recurring done job must produce a re-arm patch');
+  const rearmed = updateJob(db, job.id, patch!);
+  assert.equal(rearmed.status, 'queue');
+  assert.equal(rearmed.scheduledFor, new Date(2026, 6, 16, 9, 0).getTime());
+  assert.equal(rearmed.ccSessionId, null);
+  assert.equal(rearmed.startedAt, null);
+  assert.equal(rearmed.finishedAt, null);
+  assert.equal(rearmed.resultRef, 'result.md'); // last result kept
+  assert.equal(rearmed.scheduleCron, 'daily@09:00'); // recurrence survives
 });
