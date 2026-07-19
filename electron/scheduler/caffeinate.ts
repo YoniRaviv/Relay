@@ -29,9 +29,11 @@ function apply(): void {
   if (child) { try { child.kill(); } catch { /* already gone */ } child = null; }
   const seconds = Math.ceil((target - Date.now()) / 1000);
   if (seconds <= 0) { spawnedUntil = null; return; }
-  child = spawn('caffeinate', ['-i', '-t', String(seconds)], { stdio: 'ignore' });
+  const c = spawn('caffeinate', ['-i', '-t', String(seconds)], { stdio: 'ignore' });
+  child = c;
   spawnedUntil = target;
-  child.on('exit', () => { child = null; spawnedUntil = null; });
+  // Identity guard: a killed predecessor's deferred 'exit' must not null the live child.
+  c.on('exit', () => { if (child === c) { child = null; spawnedUntil = null; } });
 }
 
 /** Manual/IPC hold: hold the Mac awake (idle sleep only) for `seconds`. macOS only. */
