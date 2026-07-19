@@ -7,7 +7,7 @@ import { openGlobalDb } from '../db/connection';
 import {
   listJobs, getJob, updateJob, addJobEvent, createRun, finishRun, failOpenRuns, type RunStatus,
 } from './db';
-import { selectToStart } from './schedule';
+import { selectToStart, rearmPatch } from './schedule';
 import { runLocalJob, type Sdk, type RunSink, type SdkMessage } from './runner';
 import { jobCwd } from './dispatch';
 import { POLL_INTERVAL_MS, LOCAL_CAP, WATCHDOG_TIMEOUT_MS, tasksRoot } from './config';
@@ -65,6 +65,21 @@ function notifyJob(j: ScheduledJob | undefined): void {
   else if (j.status === 'failed') notify(j.name, `✗ Failed: ${(j.failureReason ?? '').slice(0, 120)}`);
 }
 
+/**
+ * Terminal recurring jobs go back to queue armed at their next occurrence.
+ * Returns the re-armed row, or undefined for one-off jobs / non-terminal states
+ * (needs_approval keeps waiting for the gate; cancel bypasses the sinks on purpose —
+ * cancelling is the user's way to halt a recurring job without deleting it).
+ */
+function rearmIfRecurring(db: ReturnType<typeof openGlobalDb>, j: ScheduledJob | undefined): ScheduledJob | undefined {
+  if (!j || (j.status !== 'done' && j.status !== 'failed')) return undefined;
+  const patch = rearmPatch(j, Date.now());
+  if (!patch) return undefined;
+  const rearmed = updateJob(db, j.id, patch);
+  addJobEvent(db, j.id, 'text', `Re-armed (${j.status}) — next run ${new Date(rearmed.scheduledFor!).toLocaleString()}`, null);
+  return rearmed;
+}
+
 export function launchJob(job: ScheduledJob, extra?: { resume?: string; prompt?: string }): void {
   const db = openGlobalDb();
   const ac = new AbortController();
@@ -95,7 +110,7 @@ export function launchJob(job: ScheduledJob, extra?: { resume?: string; prompt?:
       });
       const done = getJob(db, id);
       notifyJob(done);
-      safeSend('scheduler:jobUpdated', done);
+      safeSend('scheduler:jobUpdated', rearmIfRecurring(db, done) ?? done);
     },
     fail: (id, reason) => {
       // Quitting: leave the job `running` in the DB so the next launch auto-resumes it.
@@ -106,7 +121,7 @@ export function launchJob(job: ScheduledJob, extra?: { resume?: string; prompt?:
       updateJob(db, id, { status: 'failed', failureReason: reason, finishedAt: Date.now() });
       const failed = getJob(db, id);
       notifyJob(failed);
-      safeSend('scheduler:jobUpdated', failed);
+      safeSend('scheduler:jobUpdated', rearmIfRecurring(db, failed) ?? failed);
     },
   };
   const withAbort: Sdk = ({ prompt, options }) => sdk({ prompt, options: { ...options, abortController: ac } });
@@ -177,7 +192,9 @@ function reconcileOrphan(db: ReturnType<typeof openGlobalDb>, j: ScheduledJob): 
   if (age >= WATCHDOG_TIMEOUT_MS) {
     failOpenRuns(db, j.id, 'failed', 'run lost (app restart)');
     updateJob(db, j.id, { status: 'failed', failureReason: 'run lost (app restart/crash); watchdog timeout', finishedAt: Date.now() });
-    notifyJob(getJob(db, j.id));
+    const lost = getJob(db, j.id);
+    notifyJob(lost);
+    safeSend('scheduler:jobUpdated', rearmIfRecurring(db, lost) ?? lost);
   }
 }
 
