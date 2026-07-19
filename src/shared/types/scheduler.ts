@@ -13,6 +13,7 @@ export interface ScheduledJob {
     model: string | null
     scheduledFor: number | null
     scheduleCron: string | null
+    requireApproval: boolean
     resultType: OutputType | null
     resultRef: string | null
     failureReason: string | null
@@ -23,7 +24,7 @@ export interface ScheduledJob {
     finishedAt: number | null
 }
 
-/** Board columns as returned by `scheduler:listJobs` (needs_approval hidden in Slice 1 UI). */
+/** Board columns as returned by `scheduler:listJobs`. */
 export interface JobColumns {
     backlog: ScheduledJob[]
     queue: ScheduledJob[]

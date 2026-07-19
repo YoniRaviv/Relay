@@ -5,6 +5,7 @@ import { useRelayStore } from '@/store/useRelayStore'
 import { formatCost, formatNumber } from '@/shared/formatters'
 import type { JobColumns } from '@/shared/types/scheduler'
 import { JobActivityFeed } from './JobActivityFeed'
+import { ApprovalActions } from './ApprovalActions'
 import { describeRecurrence } from '../utils/recurrence'
 
 function SectionLabel({ children }: { children: ReactNode }) {
@@ -106,6 +107,16 @@ export function JobDetail() {
             </div>
 
             <div className="flex-1 overflow-auto">
+                {job.status === 'needs_approval' && (
+                    <div className="px-5 py-4 border-b border-border/30 bg-amber-500/5">
+                        <SectionLabel>Awaiting Approval</SectionLabel>
+                        <p className="text-[13px] text-muted-foreground leading-relaxed mt-1.5 mb-3">
+                            The agent proposed a result (see Result below) and is paused until you decide.
+                        </p>
+                        <ApprovalActions jobId={job.id} onResolved={refreshBoard} />
+                    </div>
+                )}
+
                 <div className="px-5 py-4 border-b border-border/30">
                     <SectionLabel>Instructions</SectionLabel>
                     <p className="text-[13px] text-foreground leading-[1.7] mt-1.5 whitespace-pre-wrap">{job.instructions}</p>

@@ -32,6 +32,7 @@ export function NewJobModal({ onClose }: NewJobModalProps) {
     const [model, setModel] = useState('')
     const [scheduledFor, setScheduledFor] = useState('')
     const [scheduleCron, setScheduleCron] = useState<string | null>(null)
+    const [requireApproval, setRequireApproval] = useState(false)
     const [submitting, setSubmitting] = useState(false)
 
     const canSubmit = name.trim().length > 0 && instructions.trim().length > 0 && !submitting
@@ -53,6 +54,7 @@ export function NewJobModal({ onClose }: NewJobModalProps) {
                 model: model || null,
                 scheduledFor: scheduledFor ? new Date(scheduledFor).getTime() : null,
                 scheduleCron,
+                requireApproval,
             })
             onClose()
         } finally {
@@ -156,6 +158,17 @@ export function NewJobModal({ onClose }: NewJobModalProps) {
                         </label>
                         <RecurrencePicker value={scheduleCron} onChange={setScheduleCron} />
                     </div>
+
+                    <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            checked={requireApproval}
+                            onChange={(e) => setRequireApproval(e.target.checked)}
+                            className="h-4 w-4 rounded border-border accent-primary"
+                        />
+                        <span>Require approval before finalizing</span>
+                        <span className="text-xs text-muted-foreground">(agent proposes; you approve, amend, or reject)</span>
+                    </label>
                 </div>
 
                 <div className="flex justify-end gap-2 px-5 py-3 border-t border-border">
