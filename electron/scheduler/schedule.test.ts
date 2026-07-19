@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isDue, selectToStart } from './schedule';
+import { isDue, selectToStart, selectToUnblock, selectToFailBlocked } from './schedule';
 import type { ScheduledJob } from './types';
 
 const job = (over: Partial<ScheduledJob>): ScheduledJob => ({
@@ -80,4 +80,24 @@ test('rearmPatch: one-off job → null', () => {
 });
 test('rearmPatch: invalid spec → null (job stays terminal, no crash loop)', () => {
   assert.equal(rearmPatch(job({ status: 'failed', scheduleCron: 'garbage' }), 0), null);
+});
+
+test('selectToUnblock: promotes blocked steps whose predecessor is done', () => {
+  const prev = job({ id: 'p', status: 'done', resultRef: 'out.md', chainId: 'c', chainStep: 0 });
+  const next = job({ id: 'n', status: 'blocked', prevTaskId: 'p', chainId: 'c', chainStep: 1 });
+  const waiting = job({ id: 'w', status: 'blocked', prevTaskId: 'r', chainId: 'c2' });
+  const runningPrev = job({ id: 'r', status: 'running', chainId: 'c2', chainStep: 0 });
+  const out = selectToUnblock([prev, next, waiting, runningPrev]);
+  assert.deepEqual(out.map((x) => x.job.id), ['n']);
+  assert.equal(out[0].prev.id, 'p');
+});
+test('selectToFailBlocked: fails steps whose predecessor failed or is missing', () => {
+  const failedPrev = job({ id: 'p', status: 'failed', chainId: 'c', chainStep: 0 });
+  const next = job({ id: 'n', status: 'blocked', prevTaskId: 'p', chainId: 'c', chainStep: 1 });
+  const orphan = job({ id: 'o', status: 'blocked', prevTaskId: 'gone', chainId: 'c2', chainStep: 1 });
+  const out = selectToFailBlocked([failedPrev, next, orphan]);
+  assert.deepEqual(
+    out.map((x) => [x.job.id, x.reason]),
+    [['n', 'chain: step 1 failed'], ['o', 'chain: predecessor missing']],
+  );
 });

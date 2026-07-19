@@ -66,3 +66,28 @@ export function rearmPatch(j: ScheduledJob, now: number): Partial<ScheduledJob> 
     ccSessionId: null, failureReason: null, startedAt: null, finishedAt: null,
   };
 }
+
+/** Blocked chain steps whose predecessor finished — promote each, handing over the predecessor's result. */
+export function selectToUnblock(jobs: ScheduledJob[]): { job: ScheduledJob; prev: ScheduledJob }[] {
+  const byId = new Map(jobs.map((j) => [j.id, j]));
+  const out: { job: ScheduledJob; prev: ScheduledJob }[] = [];
+  for (const j of jobs) {
+    if (j.status !== 'blocked' || !j.prevTaskId) continue;
+    const prev = byId.get(j.prevTaskId);
+    if (prev?.status === 'done') out.push({ job: j, prev });
+  }
+  return out;
+}
+
+/** Blocked chain steps whose predecessor failed or no longer exists — the whole chain dies visibly. */
+export function selectToFailBlocked(jobs: ScheduledJob[]): { job: ScheduledJob; reason: string }[] {
+  const byId = new Map(jobs.map((j) => [j.id, j]));
+  const out: { job: ScheduledJob; reason: string }[] = [];
+  for (const j of jobs) {
+    if (j.status !== 'blocked') continue;
+    const prev = j.prevTaskId ? byId.get(j.prevTaskId) : undefined;
+    if (!prev) out.push({ job: j, reason: 'chain: predecessor missing' });
+    else if (prev.status === 'failed') out.push({ job: j, reason: `chain: step ${(prev.chainStep ?? 0) + 1} failed` });
+  }
+  return out;
+}
