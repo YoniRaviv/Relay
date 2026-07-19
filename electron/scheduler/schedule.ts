@@ -12,3 +12,41 @@ export function selectToStart(jobs: ScheduledJob[], cap: number, now: number): S
     .sort((a, b) => a.createdAt - b.createdAt)
     .slice(0, slots);
 }
+
+const DAILY_RE = /^daily@(\d{2}):(\d{2})$/;
+const WEEKLY_RE = /^weekly@([0-6]),(\d{2}):(\d{2})$/;
+
+/**
+ * Next fire time strictly after `after`, in local wall-clock time, or null for an
+ * invalid spec. Specs: 'hourly' | 'daily@HH:MM' | 'weekly@D,HH:MM' (D = Date.getDay()).
+ * Date#setDate/#setHours preserve wall-clock components across DST transitions, which is
+ * the behavior users expect from "daily at 09:00".
+ */
+export function nextOccurrence(spec: string, after: number): number | null {
+  if (spec === 'hourly') {
+    const d = new Date(after);
+    d.setMinutes(0, 0, 0);
+    d.setHours(d.getHours() + 1);
+    return d.getTime();
+  }
+  const daily = DAILY_RE.exec(spec);
+  if (daily) {
+    const h = Number(daily[1]), m = Number(daily[2]);
+    if (h > 23 || m > 59) return null;
+    const d = new Date(after);
+    d.setHours(h, m, 0, 0);
+    if (d.getTime() <= after) d.setDate(d.getDate() + 1);
+    return d.getTime();
+  }
+  const weekly = WEEKLY_RE.exec(spec);
+  if (weekly) {
+    const dow = Number(weekly[1]), h = Number(weekly[2]), m = Number(weekly[3]);
+    if (h > 23 || m > 59) return null;
+    const d = new Date(after);
+    d.setHours(h, m, 0, 0);
+    d.setDate(d.getDate() + ((dow - d.getDay() + 7) % 7));
+    if (d.getTime() <= after) d.setDate(d.getDate() + 7);
+    return d.getTime();
+  }
+  return null;
+}

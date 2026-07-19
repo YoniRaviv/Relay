@@ -25,3 +25,40 @@ test('selectToStart: fills open slots oldest-first, respects cap', () => {
   const picked = selectToStart(jobs, 2, 100);
   assert.deepEqual(picked.map((j) => j.id), ['b']); // cap 2 - 1 running = 1 slot, oldest first
 });
+
+import { nextOccurrence } from './schedule';
+
+const local = (day: number, h: number, m = 0) => new Date(2026, 6, day, h, m).getTime();
+
+test('nextOccurrence: hourly → next top of hour', () => {
+  assert.equal(nextOccurrence('hourly', local(15, 8, 30)), local(15, 9, 0));
+});
+test('nextOccurrence: hourly at an exact boundary is strictly after', () => {
+  assert.equal(nextOccurrence('hourly', local(15, 9, 0)), local(15, 10, 0));
+});
+test('nextOccurrence: daily before the time fires today', () => {
+  assert.equal(nextOccurrence('daily@09:00', local(15, 8, 30)), local(15, 9, 0));
+});
+test('nextOccurrence: daily at/after the time fires tomorrow (strictly after)', () => {
+  assert.equal(nextOccurrence('daily@09:00', local(15, 9, 0)), local(16, 9, 0));
+  assert.equal(nextOccurrence('daily@09:00', local(15, 14, 45)), local(16, 9, 0));
+});
+test('nextOccurrence: weekly later the same day fires today', () => {
+  const dow = new Date(2026, 6, 15).getDay();
+  assert.equal(nextOccurrence(`weekly@${dow},11:00`, local(15, 10, 0)), local(15, 11, 0));
+});
+test('nextOccurrence: weekly earlier the same day fires next week', () => {
+  const dow = new Date(2026, 6, 15).getDay();
+  assert.equal(nextOccurrence(`weekly@${dow},09:00`, local(15, 10, 0)), local(22, 9, 0));
+});
+test('nextOccurrence: coalescing — a 3-day-stale arm yields exactly one occurrence within 24h', () => {
+  const now = local(18, 14, 0); // armed for daily@09:00 back on the 15th; app was closed
+  const next = nextOccurrence('daily@09:00', now)!;
+  assert.ok(next > now && next - now <= 24 * 60 * 60 * 1000);
+  assert.equal(next, local(19, 9, 0));
+});
+test('nextOccurrence: invalid specs → null', () => {
+  for (const bad of ['nope', 'daily@25:00', 'daily@09:60', 'daily@9:00', 'weekly@7,09:00', 'weekly@1', '']) {
+    assert.equal(nextOccurrence(bad, local(15, 8)), null, bad);
+  }
+});
