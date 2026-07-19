@@ -9,6 +9,7 @@ import { stopProject } from './runner/projectRunner'
 import { buildAppMenu } from './menu'
 import { initAutoUpdater, registerUpdaterHandlers } from './updater'
 import { getLoopState } from './agent/loopController'
+import { startScheduler, stopScheduler } from './scheduler/service'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -122,6 +123,7 @@ app.on('activate', () => {
 
 app.on('before-quit', () => {
   stopProject()
+  stopScheduler()
   closeAllDbs()
 })
 
@@ -129,4 +131,5 @@ app.whenReady().then(() => {
   buildAppMenu()
   createWindow()
   initAutoUpdater()
+  startScheduler(() => win)
 })

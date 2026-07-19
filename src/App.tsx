@@ -1,13 +1,15 @@
 import { useEffect, useState, useRef, useCallback, type ReactNode } from 'react'
+import { CalendarClock, LayoutDashboard } from 'lucide-react'
 import { Setup } from '@/pages/Setup'
 import { PRDWizard } from '@/pages/PRDWizard'
 import { Board } from '@/pages/Board'
 import { BranchSetupDialog } from '@/modules/agent'
+import { SchedulerView } from '@/modules/scheduler'
 import { useRelayStore } from '@/store/useRelayStore'
 import { useIpcListener } from '@/shared/hooks/useIpcListener'
 import type { Project } from '@shared/types'
 
-type AppView = 'loading' | 'setup' | 'setup-key' | 'setup-project' | 'prd-wizard' | 'board'
+type AppView = 'loading' | 'setup' | 'setup-key' | 'setup-project' | 'prd-wizard' | 'board' | 'scheduler'
 
 function ViewTransition({ viewKey, children }: { viewKey: string; children: ReactNode }) {
   const [displayed, setDisplayed] = useState({ key: viewKey, children })
@@ -309,6 +311,8 @@ function App() {
         return <PRDWizard onComplete={handlePrdComplete} onBack={handleWizardBack} />
       case 'board':
         return <Board onSwitchProject={handleSwitchProject} onNewFeature={handleNewFeature} onSelectFeature={handleSelectFeature} />
+      case 'scheduler':
+        return <SchedulerView />
     }
   }
 
@@ -317,6 +321,24 @@ function App() {
       <ViewTransition viewKey={view}>
         {renderView()}
       </ViewTransition>
+      {(view === 'board' || view === 'scheduler') && (
+        <button
+          onClick={() => setView(view === 'scheduler' ? 'board' : 'scheduler')}
+          className="fixed bottom-4 right-4 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border shadow-lg text-xs font-medium text-foreground hover:bg-accent/50 transition-colors"
+        >
+          {view === 'scheduler' ? (
+            <>
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              Back to Project
+            </>
+          ) : (
+            <>
+              <CalendarClock className="h-3.5 w-3.5" />
+              Scheduler
+            </>
+          )}
+        </button>
+      )}
       {showBranchDialog && (
         <BranchSetupDialog
           onConfirm={handleBranchConfirm}

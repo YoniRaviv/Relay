@@ -127,6 +127,23 @@ interface RelayAPI {
   stopProject(): Promise<{ status: string }>
   isProjectRunning(): Promise<boolean>
 
+  // Scheduler
+  scheduler: {
+    listJobs(): Promise<Record<string, import('./scheduler/types').ScheduledJob[]>>
+    createJob(input: import('./scheduler/db').NewJobInput): Promise<import('./scheduler/types').ScheduledJob>
+    updateJob(id: string, patch: Record<string, unknown>): Promise<import('./scheduler/types').ScheduledJob | null>
+    deleteJob(id: string): Promise<boolean>
+    cancelJob(id: string): Promise<import('./scheduler/types').ScheduledJob | null>
+    getEvents(id: string, after?: number): Promise<import('./scheduler/db').JobEvent[]>
+    caffeinate: {
+      start(seconds: number): Promise<{ awakeUntil: number | null }>
+      stop(): Promise<{ awakeUntil: null }>
+      state(): Promise<{ awakeUntil: number | null }>
+    }
+  }
+  onSchedulerActivity(cb: (e: unknown) => void): () => void
+  onSchedulerJobUpdated(cb: (e: unknown) => void): () => void
+
   // Event listeners
   on(channel: string, callback: (...args: unknown[]) => void): () => void
 }
