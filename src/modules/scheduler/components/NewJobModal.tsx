@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { X, FolderOpen, Rocket } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { OutputType } from '@/shared/types/scheduler'
+import { RecurrencePicker } from './RecurrencePicker'
 
 interface NewJobModalProps {
     onClose: () => void
@@ -30,6 +31,7 @@ export function NewJobModal({ onClose }: NewJobModalProps) {
     const [outputType, setOutputType] = useState<OutputType>('md')
     const [model, setModel] = useState('')
     const [scheduledFor, setScheduledFor] = useState('')
+    const [scheduleCron, setScheduleCron] = useState<string | null>(null)
     const [submitting, setSubmitting] = useState(false)
 
     const canSubmit = name.trim().length > 0 && instructions.trim().length > 0 && !submitting
@@ -50,6 +52,7 @@ export function NewJobModal({ onClose }: NewJobModalProps) {
                 workingDir,
                 model: model || null,
                 scheduledFor: scheduledFor ? new Date(scheduledFor).getTime() : null,
+                scheduleCron,
             })
             onClose()
         } finally {
@@ -137,7 +140,7 @@ export function NewJobModal({ onClose }: NewJobModalProps) {
 
                     <div className="space-y-1.5">
                         <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                            Schedule For <span className="normal-case font-normal text-muted-foreground/70">(optional — empty runs now)</span>
+                            Schedule For <span className="normal-case font-normal text-muted-foreground/70">(optional — empty runs now; sets the first run when repeating)</span>
                         </label>
                         <input
                             type="datetime-local"
@@ -146,6 +149,13 @@ export function NewJobModal({ onClose }: NewJobModalProps) {
                             className="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                         />
                     </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Repeat <span className="normal-case font-normal text-muted-foreground/70">(re-arms after each run)</span>
+                        </label>
+                        <RecurrencePicker value={scheduleCron} onChange={setScheduleCron} />
+                    </div>
                 </div>
 
                 <div className="flex justify-end gap-2 px-5 py-3 border-t border-border">
@@ -153,7 +163,7 @@ export function NewJobModal({ onClose }: NewJobModalProps) {
                         Cancel
                     </Button>
                     <Button size="sm" onClick={handleSubmit} disabled={!canSubmit}>
-                        {scheduledFor ? 'Schedule' : 'Run Now'}
+                        {scheduledFor || scheduleCron ? 'Schedule' : 'Run Now'}
                     </Button>
                 </div>
             </div>

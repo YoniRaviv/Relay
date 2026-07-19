@@ -1,10 +1,11 @@
 import { useState, type ReactNode } from 'react'
-import { X, ExternalLink, Ban, Trash2, RotateCcw } from 'lucide-react'
+import { X, ExternalLink, Ban, Trash2, RotateCcw, Repeat } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRelayStore } from '@/store/useRelayStore'
 import { formatCost, formatNumber } from '@/shared/formatters'
 import type { JobColumns } from '@/shared/types/scheduler'
 import { JobActivityFeed } from './JobActivityFeed'
+import { describeRecurrence } from '../utils/recurrence'
 
 function SectionLabel({ children }: { children: ReactNode }) {
     return (
@@ -71,6 +72,15 @@ export function JobDetail() {
                         <span className="text-[11px] font-mono text-muted-foreground truncate">{job.workingDir}</span>
                     )}
                 </div>
+                {job.scheduleCron && (
+                    <div className="flex items-center gap-1.5 mt-2 text-[11px] text-muted-foreground">
+                        <Repeat className="h-3 w-3" />
+                        <span>{describeRecurrence(job.scheduleCron)}</span>
+                        {job.status === 'queue' && job.scheduledFor && (
+                            <span>· next {new Date(job.scheduledFor).toLocaleString()}</span>
+                        )}
+                    </div>
+                )}
                 <div className="flex items-center gap-2 mt-3">
                     {job.status === 'running' && (
                         <Button size="sm" variant="outline" className="text-[13px]" onClick={handleCancel} disabled={busy}>
