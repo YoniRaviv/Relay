@@ -6,6 +6,7 @@ import { formatCost, formatNumber } from '@/shared/formatters'
 import type { JobColumns } from '@/shared/types/scheduler'
 import { JobActivityFeed } from './JobActivityFeed'
 import { ApprovalActions } from './ApprovalActions'
+import { RunHistoryList } from './RunHistoryList'
 import { describeRecurrence } from '../utils/recurrence'
 
 function SectionLabel({ children }: { children: ReactNode }) {
@@ -154,6 +155,13 @@ export function JobDetail() {
                         {job.costUsd != null && <span>{formatCost(job.costUsd)}</span>}
                     </div>
                 )}
+
+                <div className="px-5 py-4 border-b border-border/30">
+                    <SectionLabel>Run History</SectionLabel>
+                    <div className="mt-2">
+                        <RunHistoryList jobId={job.id} jobStatus={job.status} />
+                    </div>
+                </div>
 
                 <div className="px-5 py-4">
                     <SectionLabel>Activity</SectionLabel>
