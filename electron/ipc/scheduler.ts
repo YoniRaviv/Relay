@@ -5,6 +5,7 @@ import {
   type NewJobInput,
 } from '../scheduler/db';
 import { abortJob, startCaffeinate, stopCaffeinate, caffeinateState } from '../scheduler/service';
+import { nextOccurrence } from '../scheduler/schedule';
 
 /**
  * Board columns for the renderer (Slice 1: no chains → blocked folds into queue,
@@ -26,8 +27,15 @@ export function registerSchedulerHandlers(): void {
   ipcMain.handle('scheduler:listJobs', () => columns());
   ipcMain.handle('scheduler:createJob', (_e, input: NewJobInput & { status?: string }) => {
     const db = openGlobalDb();
-    const job = createJob(db, input);
-    // Slice 1: creating a job queues it immediately (or arms it if scheduledFor is future).
+    // Recurring: arm at the next occurrence unless the caller set an explicit first run.
+    // An invalid spec is a renderer bug (the picker is the only producer) — reject loudly.
+    let scheduledFor = input.scheduledFor ?? null;
+    if (input.scheduleCron) {
+      const next = nextOccurrence(input.scheduleCron, Date.now());
+      if (next == null) throw new Error(`Invalid recurrence spec: ${input.scheduleCron}`);
+      if (scheduledFor == null) scheduledFor = next;
+    }
+    const job = createJob(db, { ...input, scheduledFor });
     return updateJob(db, job.id, { status: 'queue' });
   });
   ipcMain.handle('scheduler:updateJob', (_e, id: string, patch: Record<string, unknown>) => {
