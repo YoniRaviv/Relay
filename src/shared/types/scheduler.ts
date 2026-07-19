@@ -12,6 +12,7 @@ export interface ScheduledJob {
     workingDir: string | null
     model: string | null
     scheduledFor: number | null
+    scheduleCron: string | null
     resultType: OutputType | null
     resultRef: string | null
     failureReason: string | null
