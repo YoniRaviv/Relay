@@ -53,3 +53,11 @@ test('recurring job re-arm round-trips through the DB', () => {
   assert.equal(rearmed.resultRef, 'result.md'); // last result kept
   assert.equal(rearmed.scheduleCron, 'daily@09:00'); // recurrence survives
 });
+
+test('requireApproval round-trips and defaults to false', () => {
+  const db = freshDb();
+  const off = createJob(db, { name: 'plain' });
+  assert.equal(off.requireApproval, false);
+  const on = createJob(db, { name: 'gated', requireApproval: true });
+  assert.equal(getJob(db, on.id)!.requireApproval, true);
+});

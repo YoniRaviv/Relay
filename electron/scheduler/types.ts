@@ -19,6 +19,7 @@ export interface ScheduledJob extends RunProfile {
   prevTaskId: string | null;     // predecessor this step waits on while 'blocked'
   outputType: OutputType;
   dodCondition: string | null;
+  requireApproval: boolean;     // gate: agent must propose + return needs-approval before finalizing
   maxTurns: number | null;
   workingDir: string | null;     // cwd the job runs in
   scheduledFor: number | null;   // epoch ms; armed while > now (waits in queue)

@@ -9,7 +9,7 @@ const job = (over: Partial<ScheduledJob>): ScheduledJob => ({
   workingDir: null, scheduledFor: null, scheduleCron: null, status: 'queue', ccJobId: null,
   ccSessionId: null, workspacePath: null, resultType: null, resultRef: null, assumptions: [],
   totalTokens: null, costUsd: null, failureReason: null, skill: null, model: null,
-  allowedTools: null, permissionMode: null,
+  allowedTools: null, permissionMode: null, requireApproval: false,
   createdAt: over.createdAt ?? 0, updatedAt: 0, startedAt: null, finishedAt: null, ...over,
 });
 
