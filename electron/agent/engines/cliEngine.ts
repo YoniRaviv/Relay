@@ -158,6 +158,8 @@ export const cliEngine: TaskEngine = {
             systemPrompt: TASK_SYSTEM_PROMPT,
             pathToClaudeCodeExecutable: getClaudePath(),
             env: cleanEnv,
+            persistSession: false,
+            debug: true,
             stderr: (data: string) => {
               console.error('[cliEngine:stderr]', data);
               safeSend(win, 'agent:activity', {
