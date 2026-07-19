@@ -2,8 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X, BookOpen, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { Playbook, PlaybookStep } from '@/shared/types/scheduler'
-import type { OutputType } from '@/shared/types/scheduler'
+import type { OutputType, Playbook, PlaybookStep } from '@/shared/types/scheduler'
 import { MODEL_OPTIONS, OUTPUT_TYPES } from '../utils/options'
 
 interface PlaybookModalProps {
@@ -13,9 +12,16 @@ interface PlaybookModalProps {
 }
 
 interface StepDraft {
+    id: number
     name: string
     prompt: string
+    skill?: PlaybookStep['skill']
+    model?: PlaybookStep['model']
+    outputType?: PlaybookStep['outputType']
 }
+
+let stepDraftIdCounter = 0
+const newStepDraft = (): StepDraft => ({ id: ++stepDraftIdCounter, name: '', prompt: '' })
 
 const fieldClass =
     'w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring'
@@ -26,18 +32,32 @@ export function PlaybookModal({ playbook, onClose, onSaved }: PlaybookModalProps
     const [multiStep, setMultiStep] = useState((playbook?.steps?.length ?? 0) > 0)
     const [prompt, setPrompt] = useState(playbook?.prompt ?? '')
     const [steps, setSteps] = useState<StepDraft[]>(
-        playbook?.steps?.map((s) => ({ name: s.name, prompt: s.prompt })) ?? [{ name: '', prompt: '' }],
+        playbook?.steps?.map((s) => ({
+            id: ++stepDraftIdCounter,
+            name: s.name,
+            prompt: s.prompt,
+            skill: s.skill ?? null,
+            model: s.model ?? null,
+            outputType: s.outputType ?? null,
+        })) ?? [newStepDraft(), newStepDraft()],
     )
     const [model, setModel] = useState(playbook?.model ?? '')
     const [outputType, setOutputType] = useState<OutputType>(playbook?.outputType ?? 'md')
     const [skill, setSkill] = useState(playbook?.skill ?? '')
     const [saving, setSaving] = useState(false)
 
-    const stepsValid = steps.length > 0 && steps.every((s) => s.name.trim() && s.prompt.trim())
+    const stepsValid = steps.length >= 2 && steps.every((s) => s.name.trim() && s.prompt.trim())
     const canSave = name.trim().length > 0 && (multiStep ? stepsValid : prompt.trim().length > 0) && !saving
 
     const patchStep = (i: number, patch: Partial<StepDraft>) =>
         setSteps((all) => all.map((s, idx) => (idx === i ? { ...s, ...patch } : s)))
+
+    const handleMultiStepToggle = (checked: boolean) => {
+        setMultiStep(checked)
+        if (checked && steps.length < 2) {
+            setSteps((all) => [...all, ...Array.from({ length: 2 - all.length }, () => newStepDraft())])
+        }
+    }
 
     const handleSave = async () => {
         if (!canSave) return
@@ -47,7 +67,13 @@ export function PlaybookModal({ playbook, onClose, onSaved }: PlaybookModalProps
                 name: name.trim(),
                 prompt: multiStep ? null : prompt.trim(),
                 steps: multiStep
-                    ? steps.map((s): PlaybookStep => ({ name: s.name.trim(), prompt: s.prompt, skill: null, model: null, outputType: null }))
+                    ? steps.map((s): PlaybookStep => ({
+                          name: s.name.trim(),
+                          prompt: s.prompt,
+                          skill: s.skill ?? null,
+                          model: s.model ?? null,
+                          outputType: s.outputType ?? null,
+                      }))
                     : null,
                 model: model || null,
                 skill: skill.trim() || null,
@@ -84,7 +110,7 @@ export function PlaybookModal({ playbook, onClose, onSaved }: PlaybookModalProps
                         <input
                             type="checkbox"
                             checked={multiStep}
-                            onChange={(e) => setMultiStep(e.target.checked)}
+                            onChange={(e) => handleMultiStepToggle(e.target.checked)}
                             className="h-4 w-4 rounded border-border accent-primary"
                         />
                         <span>Multi-step (chain)</span>
@@ -104,8 +130,11 @@ export function PlaybookModal({ playbook, onClose, onSaved }: PlaybookModalProps
                     ) : (
                         <div className="space-y-3">
                             <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Steps</label>
+                            {steps.length < 2 && (
+                                <p className="text-xs text-muted-foreground">A chain needs at least 2 steps.</p>
+                            )}
                             {steps.map((s, i) => (
-                                <div key={i} className="p-3 rounded-md border border-border/60 space-y-2">
+                                <div key={s.id} className="p-3 rounded-md border border-border/60 space-y-2">
                                     <div className="flex items-center gap-2">
                                         <span className="text-[11px] font-mono text-muted-foreground shrink-0">{i + 1}.</span>
                                         <input
@@ -132,7 +161,7 @@ export function PlaybookModal({ playbook, onClose, onSaved }: PlaybookModalProps
                                     />
                                 </div>
                             ))}
-                            <Button size="sm" variant="outline" className="text-[12px]" onClick={() => setSteps((all) => [...all, { name: '', prompt: '' }])}>
+                            <Button size="sm" variant="outline" className="text-[12px]" onClick={() => setSteps((all) => [...all, newStepDraft()])}>
                                 <Plus className="h-3 w-3 mr-1" />
                                 Add step
                             </Button>

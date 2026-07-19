@@ -70,7 +70,7 @@ export function RunPlaybookModal({ playbook, onClose, onStarted }: RunPlaybookMo
                             <textarea
                                 value={instructions}
                                 onChange={(e) => setInstructions(e.target.value)}
-                                placeholder={playbook.prompt ?? ''}
+                                placeholder={playbook.prompt ?? playbook.steps?.[0]?.prompt ?? ''}
                                 className={`${fieldClass} h-20 resize-none`}
                             />
                         </div>
