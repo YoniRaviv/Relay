@@ -3,6 +3,7 @@ import { X, ExternalLink, Ban, Trash2, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRelayStore } from '@/store/useRelayStore'
 import { formatCost, formatNumber } from '@/shared/formatters'
+import type { JobColumns } from '@/shared/types/scheduler'
 import { JobActivityFeed } from './JobActivityFeed'
 
 function SectionLabel({ children }: { children: ReactNode }) {
@@ -15,6 +16,7 @@ function SectionLabel({ children }: { children: ReactNode }) {
 
 export function JobDetail() {
     const jobColumns = useRelayStore((s) => s.jobColumns)
+    const setJobColumns = useRelayStore((s) => s.setJobColumns)
     const selectedJobId = useRelayStore((s) => s.selectedJobId)
     const selectJob = useRelayStore((s) => s.selectJob)
     const [busy, setBusy] = useState(false)
@@ -22,10 +24,16 @@ export function JobDetail() {
     const job = Object.values(jobColumns).flat().find((j) => j.id === selectedJobId)
     if (!job) return null
 
+    const refreshBoard = async () => {
+        const columns = await window.relayAPI.scheduler.listJobs()
+        setJobColumns(columns as unknown as JobColumns)
+    }
+
     const handleCancel = async () => {
         setBusy(true)
         try {
             await window.relayAPI.scheduler.cancelJob(job.id)
+            await refreshBoard()
         } finally {
             setBusy(false)
         }
@@ -36,7 +44,8 @@ export function JobDetail() {
         setBusy(true)
         try {
             await window.relayAPI.scheduler.deleteJob(job.id)
-            selectJob(null)
+            await refreshBoard()
+            if (selectedJobId) selectJob(null)
         } finally {
             setBusy(false)
         }

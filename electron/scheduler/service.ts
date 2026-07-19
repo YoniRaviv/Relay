@@ -11,13 +11,14 @@ import { selectToStart } from './schedule';
 import { runLocalJob, type Sdk, type RunSink, type SdkMessage } from './runner';
 import { jobCwd } from './dispatch';
 import { POLL_INTERVAL_MS, LOCAL_CAP, WATCHDOG_TIMEOUT_MS, tasksRoot } from './config';
-import { startCaffeinate, stopCaffeinate } from './caffeinate';
+import { autoHold, autoRelease, stopAllCaffeinate } from './caffeinate';
 import { notify } from './notify';
 import type { ScheduledJob } from './types';
 
 let getWin: () => BrowserWindow | null = () => null;
 let timer: ReturnType<typeof setInterval> | null = null;
 const runs = new Map<string, AbortController>();
+let shuttingDown = false;
 
 function safeSend(channel: string, ...args: unknown[]): void {
   const win = getWin();
@@ -80,6 +81,9 @@ export function launchJob(job: ScheduledJob, extra?: { resume?: string; prompt?:
     },
     tokens: (id, total) => updateJob(db, id, { totalTokens: base + total }),
     finish: (id, r) => {
+      // Quitting: DB may already be closed by main's before-quit — leave the job `running`
+      // so the next launch (or reconcileOrphan on restart) auto-resumes it instead of throwing.
+      if (shuttingDown) return;
       const j = getJob(db, id);
       if (!j || j.status === 'failed') return;
       finishRun(db, run.id, { status: r.status as RunStatus, totalTokens: r.tokens, costUsd: r.costUsd ?? null, failureReason: r.failureReason ?? null });
@@ -94,6 +98,8 @@ export function launchJob(job: ScheduledJob, extra?: { resume?: string; prompt?:
       safeSend('scheduler:jobUpdated', done);
     },
     fail: (id, reason) => {
+      // Quitting: leave the job `running` in the DB so the next launch auto-resumes it.
+      if (shuttingDown) return;
       const j = getJob(db, id);
       if (!j || j.status === 'failed') return;
       finishRun(db, run.id, { status: 'failed', failureReason: reason });
@@ -117,8 +123,8 @@ export function abortJob(id: string): void {
 }
 
 /** Auto keep-awake: hold while anything runs; release when the run map drains. */
-function maybeHoldCaffeinate(): void { startCaffeinate(WATCHDOG_TIMEOUT_MS / 1000); }
-function maybeReleaseCaffeinate(): void { if (runs.size === 0) stopCaffeinate(); }
+function maybeHoldCaffeinate(): void { autoHold(WATCHDOG_TIMEOUT_MS / 1000); }
+function maybeReleaseCaffeinate(): void { if (runs.size === 0) autoRelease(); }
 
 let ticking = false;
 function tick(): void {
@@ -127,6 +133,9 @@ function tick(): void {
   try {
     const db = openGlobalDb();
     const jobs = listJobs(db);
+    // Refresh the auto hold every tick while anything is live — this is what keeps a
+    // job running past WATCHDOG_TIMEOUT_MS from losing its keep-awake.
+    if (runs.size > 0) autoHold(WATCHDOG_TIMEOUT_MS / 1000);
     const start = new Set(selectToStart(jobs, LOCAL_CAP, Date.now()).map((j) => j.id));
     for (const j of jobs) {
       try {
@@ -174,6 +183,7 @@ function reconcileOrphan(db: ReturnType<typeof openGlobalDb>, j: ScheduledJob): 
 
 export function startScheduler(win: () => BrowserWindow | null): void {
   getWin = win;
+  shuttingDown = false;            // reset for dev-mode restarts
   fs.mkdirSync(tasksRoot(), { recursive: true });
   openGlobalDb();                 // create/migrate on boot
   tick();                         // immediate catch-up for anything due while closed
@@ -181,10 +191,11 @@ export function startScheduler(win: () => BrowserWindow | null): void {
 }
 
 export function stopScheduler(): void {
+  shuttingDown = true;
   if (timer) { clearInterval(timer); timer = null; }
   for (const ac of runs.values()) { try { ac.abort(); } catch { /* ignore */ } }
   runs.clear();
-  stopCaffeinate();
+  stopAllCaffeinate();
 }
 
 export { startCaffeinate, stopCaffeinate, caffeinateState } from './caffeinate';

@@ -6,12 +6,17 @@ import {
 } from '../scheduler/db';
 import { abortJob, startCaffeinate, stopCaffeinate, caffeinateState } from '../scheduler/service';
 
-/** Board columns for the renderer (Slice 1: no chains → blocked folds into queue). */
+/**
+ * Board columns for the renderer (Slice 1: no chains → blocked folds into queue,
+ * needs_approval folds into done — jobs keep their own status, they just need a
+ * visible home in Slice 1's five columns).
+ */
 function columns(db = openGlobalDb()) {
   const cols = { backlog: [] as unknown[], queue: [] as unknown[], running: [] as unknown[], needs_approval: [] as unknown[], done: [] as unknown[], failed: [] as unknown[] };
   for (const j of listJobs(db)) {
     if (j.status === 'failed') cols.failed.push(j);
     else if (j.status === 'blocked') cols.queue.push(j);
+    else if (j.status === 'needs_approval') cols.done.push(j);
     else (cols as Record<string, unknown[]>)[j.status].push(j);
   }
   return cols;
@@ -32,6 +37,7 @@ export function registerSchedulerHandlers(): void {
   });
   ipcMain.handle('scheduler:deleteJob', (_e, id: string) => {
     const db = openGlobalDb();
+    abortJob(id);
     return deleteJob(db, id);
   });
   ipcMain.handle('scheduler:cancelJob', (_e, id: string) => {
