@@ -76,6 +76,8 @@ CREATE TABLE IF NOT EXISTS runs (
   failure_reason TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_runs_job ON runs(job_id, started_at DESC);
+
+CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
 `;
 
 // Additive columns introduced after the initial shipped schema (SQLite has no ADD COLUMN IF NOT EXISTS).
@@ -262,7 +264,7 @@ export function usageSummary(db: DB): UsageSummary {
     FROM runs r JOIN jobs j ON j.id = r.job_id JOIN playbooks p ON p.id = j.playbook_id
     GROUP BY j.playbook_id ORDER BY costUsd DESC`).all() as UsagePlaybookRow[];
   const daily = db.prepare(`
-    SELECT date(started_at/1000,'unixepoch') AS day, COUNT(*) AS runs,
+    SELECT date(started_at/1000,'unixepoch','localtime') AS day, COUNT(*) AS runs,
            COALESCE(SUM(total_tokens),0) AS tokens, COALESCE(SUM(cost_usd),0) AS costUsd
     FROM runs WHERE started_at > ? GROUP BY day ORDER BY day`).all(Date.now() - 14 * 86400_000) as UsageDailyRow[];
   return { jobs, playbooks, daily };
@@ -362,4 +364,15 @@ export function updatePlaybook(db: DB, id: string, patch: PlaybookInput): Playbo
 
 export function deletePlaybook(db: DB, id: string): boolean {
   return db.prepare('DELETE FROM playbooks WHERE id = ?').run(id).changes > 0;
+}
+
+// --- Meta ---------------------------------------------------------------
+
+export function getMeta(db: DB, key: string): string | null {
+  const row = db.prepare('SELECT value FROM meta WHERE key = ?').get(key) as { value: string } | undefined;
+  return row?.value ?? null;
+}
+
+export function setMeta(db: DB, key: string, value: string): void {
+  db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, value);
 }

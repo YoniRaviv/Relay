@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import { BrowserWindow } from 'electron';
@@ -64,6 +65,7 @@ function notifyJob(j: ScheduledJob | undefined): void {
   if (!j) return;
   if (j.status === 'done') notify(j.name, '✓ Done');
   else if (j.status === 'failed') notify(j.name, `✗ Failed: ${(j.failureReason ?? '').slice(0, 120)}`);
+  else if (j.status === 'needs_approval') notify(j.name, 'Awaiting your approval');
 }
 
 /**
@@ -130,7 +132,7 @@ export function launchJob(job: ScheduledJob, extra?: { resume?: string; prompt?:
 }
 
 export function resumeJob(job: ScheduledJob, message: string): void {
-  launchJob(job, { resume: job.ccSessionId ?? '', prompt: message });
+  launchJob(job, job.ccSessionId ? { resume: job.ccSessionId, prompt: message } : {});
 }
 
 /** Cancel a run in flight (Task 8's cancel handler). No-op if the job isn't currently running. */
@@ -153,9 +155,15 @@ function tick(): void {
     // step failed. Promoted jobs start on the NEXT tick (this tick's selections below were
     // computed before promotion).
     for (const { job: j, prev } of selectToUnblock(jobs)) {
+      const ref = prev.resultRef;
+      // md results are filenames relative to the predecessor's cwd — a successor step may
+      // run in a different scratch workspace, so hand it an absolute path.
+      const resolved = ref && !/^(\/|https?:\/\/)/.test(ref)
+        ? path.join(prev.workspacePath ?? jobCwd(prev), ref)
+        : ref ?? '(none)';
       const promoted = updateJob(db, j.id, {
         status: 'queue',
-        instructions: `${j.instructions}\n\nPrevious step result (${prev.resultType ?? 'md'}): ${prev.resultRef ?? '(none)'}`,
+        instructions: `${j.instructions}\n\nPrevious step result (${prev.resultType ?? 'md'}): ${resolved}`,
       });
       safeSend('scheduler:jobUpdated', promoted);
     }

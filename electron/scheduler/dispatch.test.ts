@@ -32,7 +32,7 @@ test('mapResult maps a done envelope', () => {
 
 test('buildPrompt: requireApproval injects the proposal gate', () => {
   const p = buildPrompt({ ...base, requireApproval: true });
-  assert.ok(p.includes('needs-approval'));
+  assert.ok(p.includes('PROPOSAL only'));
   assert.ok(/proposal/i.test(p));
 });
 test('buildPrompt: no requireApproval → no gate paragraph', () => {

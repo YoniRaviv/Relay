@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
-import { initSchedulerSchema, createJob, getJob, listJobs, updateJob, deleteJob, createRun, finishRun, createPlaybook, usageSummary } from './db';
+import { initSchedulerSchema, createJob, getJob, listJobs, updateJob, deleteJob, createRun, finishRun, createPlaybook, listPlaybooks, deletePlaybook, usageSummary } from './db';
 import { rearmPatch } from './schedule';
+import { seedPlaybooks } from './seed';
 
 function freshDb() {
     const db = new Database(':memory:');
@@ -83,4 +84,14 @@ test('usageSummary aggregates runs per job, per playbook, and per day', () => {
   assert.deepEqual(u.playbooks.map((p) => [p.playbookId, p.runs]), [[pb.id, 2]]);
   assert.equal(u.daily.length, 1); // all runs today
   assert.equal(u.daily[0].runs, 3);
+});
+
+test('deleted starter playbooks do not resurrect on reseed', () => {
+  const db = freshDb();
+  seedPlaybooks(db);
+  assert.equal(listPlaybooks(db).length, 3);
+  for (const pb of listPlaybooks(db)) deletePlaybook(db, pb.id);
+  assert.equal(listPlaybooks(db).length, 0);
+  seedPlaybooks(db);
+  assert.equal(listPlaybooks(db).length, 0);
 });

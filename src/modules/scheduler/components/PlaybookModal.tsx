@@ -147,7 +147,7 @@ export function PlaybookModal({ playbook, onClose, onSaved }: PlaybookModalProps
                                             size="sm"
                                             variant="ghost"
                                             className="h-7 w-7 p-0 shrink-0 text-destructive hover:text-destructive"
-                                            disabled={steps.length <= 1}
+                                            disabled={steps.length <= 2}
                                             onClick={() => setSteps((all) => all.filter((_, idx) => idx !== i))}
                                         >
                                             <Trash2 className="h-3 w-3" />

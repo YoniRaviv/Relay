@@ -1,5 +1,5 @@
 import type { DB } from './db';
-import { listPlaybooks, createPlaybook, type PlaybookInput } from './db';
+import { listPlaybooks, createPlaybook, getMeta, setMeta, type PlaybookInput } from './db';
 
 /** Starter playbooks — editable/deletable; seeded once when the table is empty. */
 const SEED: PlaybookInput[] = [
@@ -24,7 +24,14 @@ const SEED: PlaybookInput[] = [
   },
 ];
 
+const SEEDED_KEY = 'playbooks_seeded';
+
 export function seedPlaybooks(db: DB): void {
-  if (listPlaybooks(db).length > 0) return;
-  for (const pb of SEED) createPlaybook(db, pb);
+  if (getMeta(db, SEEDED_KEY) != null) return;
+  if (listPlaybooks(db).length === 0) {
+    for (const pb of SEED) createPlaybook(db, pb);
+  }
+  // Mark seeded whether or not we just seeded — legacy DBs that already have playbooks
+  // (or had the starters deleted before this marker existed) must not reseed either.
+  setMeta(db, SEEDED_KEY, '1');
 }
