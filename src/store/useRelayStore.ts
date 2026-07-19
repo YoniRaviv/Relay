@@ -14,6 +14,7 @@ import type {
   BrainstormBlock,
   ReviewSession,
 } from '../../shared/types';
+import type { JobColumns } from '../shared/types/scheduler';
 
 // ── Settings Slice ──
 interface SettingsSlice {
@@ -138,8 +139,20 @@ interface ReviewAgentSlice {
   setReviewProgress: (text: string) => void;
 }
 
+// ── Scheduler Slice ──
+const emptyJobColumns: JobColumns = { backlog: [], queue: [], running: [], needs_approval: [], done: [], failed: [] };
+
+interface SchedulerSlice {
+  jobColumns: JobColumns;
+  selectedJobId: string | null;
+  awakeUntil: number | null;
+  setJobColumns: (columns: JobColumns) => void;
+  selectJob: (id: string | null) => void;
+  setAwakeUntil: (until: number | null) => void;
+}
+
 // ── Combined Store ──
-export type RelayStore = SettingsSlice & ProjectSlice & PRDSlice & TasksSlice & AgentSlice & GitSlice & ReviewSlice & ReviewAgentSlice & StoryViewerSlice;
+export type RelayStore = SettingsSlice & ProjectSlice & PRDSlice & TasksSlice & AgentSlice & GitSlice & ReviewSlice & ReviewAgentSlice & StoryViewerSlice & SchedulerSlice;
 
 export const useRelayStore = create<RelayStore>((set) => ({
   // Settings
@@ -280,4 +293,12 @@ export const useRelayStore = create<RelayStore>((set) => ({
   setReviewSession: (reviewSession) => set({ reviewSession }),
   setReviewAgentState: (reviewAgentState) => set({ reviewAgentState }),
   setReviewProgress: (reviewProgress) => set({ reviewProgress }),
+
+  // Scheduler
+  jobColumns: emptyJobColumns,
+  selectedJobId: null,
+  awakeUntil: null,
+  setJobColumns: (jobColumns) => set({ jobColumns }),
+  selectJob: (selectedJobId) => set({ selectedJobId }),
+  setAwakeUntil: (awakeUntil) => set({ awakeUntil }),
 }));
