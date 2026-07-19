@@ -1,4 +1,4 @@
-import { Clock, Repeat } from 'lucide-react'
+import { Clock, Repeat, ListOrdered } from 'lucide-react'
 import { statusDots } from '@/shared/constants/statusMaps'
 import { formatCost, formatNumber } from '@/shared/formatters'
 import type { ScheduledJob } from '@/shared/types/scheduler'
@@ -55,6 +55,12 @@ export function JobCard({ job, onClick }: JobCardProps) {
                             scheduled
                         </span>
                     )
+                )}
+                {job.chainStep != null && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                        <ListOrdered className="h-2.5 w-2.5" />
+                        step {job.chainStep + 1}
+                    </span>
                 )}
             </div>
             {hasUsage && (

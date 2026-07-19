@@ -13,6 +13,7 @@ export interface ScheduledJob {
     model: string | null
     scheduledFor: number | null
     scheduleCron: string | null
+    chainStep: number | null
     requireApproval: boolean
     resultType: OutputType | null
     resultRef: string | null
@@ -42,4 +43,29 @@ export interface JobEvent {
     type: string
     text: string
     runId: string | null
+}
+
+/** Mirrors electron/scheduler/types.ts Playbook/PlaybookStep — fields the UI needs. */
+export interface PlaybookStep {
+    name: string
+    prompt: string
+    skill: string | null
+    model: string | null
+    outputType: OutputType | null
+}
+
+export interface Playbook {
+    id: string
+    name: string
+    prompt: string | null
+    steps: PlaybookStep[] | null
+    skill: string | null
+    model: string | null
+    allowedTools: string | null
+    permissionMode: string | null
+    outputType: OutputType
+    dodCondition: string | null
+    maxTurns: number | null
+    createdAt: number
+    updatedAt: number
 }

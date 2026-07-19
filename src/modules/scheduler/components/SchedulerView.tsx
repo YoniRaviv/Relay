@@ -8,6 +8,7 @@ import { JobBoard } from './JobBoard'
 import { JobDetail } from './JobDetail'
 import { NewJobModal } from './NewJobModal'
 import { KeepAwakeControl } from './KeepAwakeControl'
+import { PlaybooksBar } from './PlaybooksBar'
 
 export function SchedulerView() {
     const jobColumns = useRelayStore((s) => s.jobColumns)
@@ -35,6 +36,7 @@ export function SchedulerView() {
                     </Button>
                 </div>
             </header>
+            <PlaybooksBar onJobsChanged={refresh} />
             <JobBoard columns={jobColumns} />
             {selectedJobId && <JobDetail />}
             {showNew && (
