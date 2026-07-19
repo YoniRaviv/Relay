@@ -50,3 +50,19 @@ export function nextOccurrence(spec: string, after: number): number | null {
   }
   return null;
 }
+
+/**
+ * Patch that re-arms a terminal recurring job: back to queue at the next occurrence.
+ * ccSessionId MUST clear — the next occurrence is a fresh session, and a stale id would
+ * make reconcileOrphan resume the previous (finished) run after a restart. resultRef is
+ * kept so the last result stays visible until the next run replaces it.
+ */
+export function rearmPatch(j: ScheduledJob, now: number): Partial<ScheduledJob> | null {
+  if (!j.scheduleCron) return null;
+  const next = nextOccurrence(j.scheduleCron, now);
+  if (next == null) return null;
+  return {
+    status: 'queue', scheduledFor: next,
+    ccSessionId: null, failureReason: null, startedAt: null, finishedAt: null,
+  };
+}

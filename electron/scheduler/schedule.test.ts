@@ -62,3 +62,22 @@ test('nextOccurrence: invalid specs → null', () => {
     assert.equal(nextOccurrence(bad, local(15, 8)), null, bad);
   }
 });
+
+import { rearmPatch } from './schedule';
+
+test('rearmPatch: recurring done job re-queues at next occurrence with a fresh session', () => {
+  const now = local(15, 10, 0);
+  const p = rearmPatch(job({ status: 'done', scheduleCron: 'daily@09:00', ccSessionId: 'sess-old', failureReason: 'x' }), now)!;
+  assert.equal(p.status, 'queue');
+  assert.equal(p.scheduledFor, local(16, 9, 0));
+  assert.equal(p.ccSessionId, null);
+  assert.equal(p.failureReason, null);
+  assert.equal(p.startedAt, null);
+  assert.equal(p.finishedAt, null);
+});
+test('rearmPatch: one-off job → null', () => {
+  assert.equal(rearmPatch(job({ status: 'done', scheduleCron: null }), 0), null);
+});
+test('rearmPatch: invalid spec → null (job stays terminal, no crash loop)', () => {
+  assert.equal(rearmPatch(job({ status: 'failed', scheduleCron: 'garbage' }), 0), null);
+});
