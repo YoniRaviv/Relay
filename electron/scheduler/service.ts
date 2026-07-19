@@ -157,6 +157,7 @@ function tick(): void {
  */
 function reconcileOrphan(db: ReturnType<typeof openGlobalDb>, j: ScheduledJob): void {
   if (j.ccSessionId) {
+    failOpenRuns(db, j.id, 'failed', 'superseded by resume');
     const resumed = updateJob(db, j.id, { startedAt: Date.now() });
     addJobEvent(db, j.id, 'text', 'Resuming after restart…', null);
     maybeHoldCaffeinate();
