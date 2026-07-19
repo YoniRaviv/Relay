@@ -155,12 +155,12 @@ function tick(): void {
     // step failed. Promoted jobs start on the NEXT tick (this tick's selections below were
     // computed before promotion).
     for (const { job: j, prev } of selectToUnblock(jobs)) {
-      const ref = prev.resultRef;
+      const ref = prev.resultRef?.trim();
       // md results are filenames relative to the predecessor's cwd — a successor step may
       // run in a different scratch workspace, so hand it an absolute path.
-      const resolved = ref && !/^(\/|https?:\/\/)/.test(ref)
-        ? path.join(prev.workspacePath ?? jobCwd(prev), ref)
-        : ref ?? '(none)';
+      const resolved = !ref ? '(none)'
+        : /^(\/|https?:\/\/)/.test(ref) ? ref
+        : path.join(prev.workspacePath ?? jobCwd(prev), ref);
       const promoted = updateJob(db, j.id, {
         status: 'queue',
         instructions: `${j.instructions}\n\nPrevious step result (${prev.resultType ?? 'md'}): ${resolved}`,
