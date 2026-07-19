@@ -71,7 +71,7 @@ function notifyJob(j: ScheduledJob | undefined): void {
  * (needs_approval keeps waiting for the gate; cancel bypasses the sinks on purpose —
  * cancelling is the user's way to halt a recurring job without deleting it).
  */
-function rearmIfRecurring(db: ReturnType<typeof openGlobalDb>, j: ScheduledJob | undefined): ScheduledJob | undefined {
+export function rearmIfRecurring(db: ReturnType<typeof openGlobalDb>, j: ScheduledJob | undefined): ScheduledJob | undefined {
   if (!j || (j.status !== 'done' && j.status !== 'failed')) return undefined;
   const patch = rearmPatch(j, Date.now());
   if (!patch) return undefined;

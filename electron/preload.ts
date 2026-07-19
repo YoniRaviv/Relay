@@ -132,6 +132,9 @@ const relayAPI = {
     updateJob: (id: string, patch: unknown) => ipcRenderer.invoke('scheduler:updateJob', id, patch),
     deleteJob: (id: string) => ipcRenderer.invoke('scheduler:deleteJob', id),
     cancelJob: (id: string) => ipcRenderer.invoke('scheduler:cancelJob', id),
+    approve: (id: string) => ipcRenderer.invoke('scheduler:approveJob', id),
+    edit: (id: string, amendedProposal: string) => ipcRenderer.invoke('scheduler:editJob', id, amendedProposal),
+    reject: (id: string) => ipcRenderer.invoke('scheduler:rejectJob', id),
     getEvents: (id: string, after?: number) => ipcRenderer.invoke('scheduler:getEvents', id, after),
     caffeinate: {
       start: (seconds: number) => ipcRenderer.invoke('scheduler:caffeinateStart', seconds),

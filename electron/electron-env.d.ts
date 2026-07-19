@@ -134,6 +134,9 @@ interface RelayAPI {
     updateJob(id: string, patch: Record<string, unknown>): Promise<import('./scheduler/types').ScheduledJob | null>
     deleteJob(id: string): Promise<boolean>
     cancelJob(id: string): Promise<import('./scheduler/types').ScheduledJob | null>
+    approve(id: string): Promise<import('./scheduler/types').ScheduledJob | null>
+    edit(id: string, amendedProposal: string): Promise<import('./scheduler/types').ScheduledJob | null>
+    reject(id: string): Promise<import('./scheduler/types').ScheduledJob | null>
     getEvents(id: string, after?: number): Promise<import('./scheduler/db').JobEvent[]>
     caffeinate: {
       start(seconds: number): Promise<{ awakeUntil: number | null }>
