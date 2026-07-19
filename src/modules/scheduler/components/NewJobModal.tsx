@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { X, FolderOpen, Rocket } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { OutputType } from '@/shared/types/scheduler'
@@ -56,9 +57,11 @@ export function NewJobModal({ onClose }: NewJobModalProps) {
         }
     }
 
-    return (
+    // Portal to body: the ViewTransition wrapper keeps a filled transform animation,
+    // which would otherwise become the containing block for this fixed overlay.
+    return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-            <div className="bg-card border border-border rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[85vh] flex flex-col">
+            <div className="bg-card border border-border rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[85vh] flex flex-col overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-[var(--color-sidebar)]">
                     <div className="flex items-center gap-2">
                         <Rocket className="h-4 w-4 text-muted-foreground" />
@@ -69,7 +72,7 @@ export function NewJobModal({ onClose }: NewJobModalProps) {
                     </Button>
                 </div>
 
-                <div className="p-5 space-y-4 overflow-y-auto">
+                <div className="p-5 space-y-4 overflow-y-auto min-h-0">
                     <div className="space-y-1.5">
                         <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Name</label>
                         <input
@@ -154,6 +157,7 @@ export function NewJobModal({ onClose }: NewJobModalProps) {
                     </Button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body,
     )
 }
