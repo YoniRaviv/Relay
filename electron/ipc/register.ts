@@ -9,6 +9,7 @@ import { registerReviewHandlers } from './review';
 import { registerMetricsHandlers } from './metrics';
 import { registerRunnerHandlers } from './runner';
 import { registerReviewAgentHandlers } from './reviewAgent';
+import { registerSchedulerHandlers } from './scheduler';
 
 export function registerAllHandlers(): void {
   registerSettingsHandlers();
@@ -22,4 +23,5 @@ export function registerAllHandlers(): void {
   registerMetricsHandlers();
   registerRunnerHandlers();
   registerReviewAgentHandlers();
+  registerSchedulerHandlers();
 }

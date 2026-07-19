@@ -125,6 +125,31 @@ const relayAPI = {
   downloadUpdate: () => ipcRenderer.invoke('updater:download'),
   installUpdate: () => ipcRenderer.invoke('updater:install'),
 
+  // Scheduler
+  scheduler: {
+    listJobs: () => ipcRenderer.invoke('scheduler:listJobs'),
+    createJob: (input: unknown) => ipcRenderer.invoke('scheduler:createJob', input),
+    updateJob: (id: string, patch: unknown) => ipcRenderer.invoke('scheduler:updateJob', id, patch),
+    deleteJob: (id: string) => ipcRenderer.invoke('scheduler:deleteJob', id),
+    cancelJob: (id: string) => ipcRenderer.invoke('scheduler:cancelJob', id),
+    getEvents: (id: string, after?: number) => ipcRenderer.invoke('scheduler:getEvents', id, after),
+    caffeinate: {
+      start: (seconds: number) => ipcRenderer.invoke('scheduler:caffeinateStart', seconds),
+      stop: () => ipcRenderer.invoke('scheduler:caffeinateStop'),
+      state: () => ipcRenderer.invoke('scheduler:caffeinateState'),
+    },
+  },
+  onSchedulerActivity: (cb: (e: unknown) => void) => {
+    const h = (_: unknown, data: unknown) => cb(data);
+    ipcRenderer.on('scheduler:activity', h);
+    return () => ipcRenderer.removeListener('scheduler:activity', h);
+  },
+  onSchedulerJobUpdated: (cb: (e: unknown) => void) => {
+    const h = (_: unknown, data: unknown) => cb(data);
+    ipcRenderer.on('scheduler:jobUpdated', h);
+    return () => ipcRenderer.removeListener('scheduler:jobUpdated', h);
+  },
+
   // Event listeners
   on: (channel: string, callback: (...args: unknown[]) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => callback(...args);
