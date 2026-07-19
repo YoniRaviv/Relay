@@ -136,6 +136,14 @@ const relayAPI = {
     edit: (id: string, amendedProposal: string) => ipcRenderer.invoke('scheduler:editJob', id, amendedProposal),
     reject: (id: string) => ipcRenderer.invoke('scheduler:rejectJob', id),
     getEvents: (id: string, after?: number) => ipcRenderer.invoke('scheduler:getEvents', id, after),
+    listWorkingDirs: () => ipcRenderer.invoke('scheduler:listWorkingDirs'),
+    playbooks: {
+      list: () => ipcRenderer.invoke('scheduler:listPlaybooks'),
+      create: (input: unknown) => ipcRenderer.invoke('scheduler:createPlaybook', input),
+      update: (id: string, patch: unknown) => ipcRenderer.invoke('scheduler:updatePlaybook', id, patch),
+      remove: (id: string) => ipcRenderer.invoke('scheduler:deletePlaybook', id),
+      run: (id: string, opts?: unknown) => ipcRenderer.invoke('scheduler:runPlaybook', id, opts),
+    },
     caffeinate: {
       start: (seconds: number) => ipcRenderer.invoke('scheduler:caffeinateStart', seconds),
       stop: () => ipcRenderer.invoke('scheduler:caffeinateStop'),
