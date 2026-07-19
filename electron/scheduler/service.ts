@@ -7,12 +7,13 @@ import { openGlobalDb } from '../db/connection';
 import {
   listJobs, getJob, updateJob, addJobEvent, createRun, finishRun, failOpenRuns, type RunStatus,
 } from './db';
-import { selectToStart, rearmPatch } from './schedule';
+import { selectToStart, rearmPatch, selectToUnblock, selectToFailBlocked } from './schedule';
 import { runLocalJob, type Sdk, type RunSink, type SdkMessage } from './runner';
 import { jobCwd } from './dispatch';
 import { POLL_INTERVAL_MS, LOCAL_CAP, WATCHDOG_TIMEOUT_MS, tasksRoot } from './config';
 import { autoHold, autoRelease, stopAllCaffeinate } from './caffeinate';
 import { notify } from './notify';
+import { seedPlaybooks } from './seed';
 import type { ScheduledJob } from './types';
 
 let getWin: () => BrowserWindow | null = () => null;
@@ -148,6 +149,21 @@ function tick(): void {
   try {
     const db = openGlobalDb();
     const jobs = listJobs(db);
+    // Chain maintenance: hand a finished step's result to its successor; kill chains whose
+    // step failed. Promoted jobs start on the NEXT tick (this tick's selections below were
+    // computed before promotion).
+    for (const { job: j, prev } of selectToUnblock(jobs)) {
+      const promoted = updateJob(db, j.id, {
+        status: 'queue',
+        instructions: `${j.instructions}\n\nPrevious step result (${prev.resultType ?? 'md'}): ${prev.resultRef ?? '(none)'}`,
+      });
+      safeSend('scheduler:jobUpdated', promoted);
+    }
+    for (const { job: j, reason } of selectToFailBlocked(jobs)) {
+      const failed = updateJob(db, j.id, { status: 'failed', failureReason: reason, finishedAt: Date.now() });
+      notifyJob(failed);
+      safeSend('scheduler:jobUpdated', failed);
+    }
     // Refresh the auto hold every tick while anything is live — this is what keeps a
     // job running past WATCHDOG_TIMEOUT_MS from losing its keep-awake.
     if (runs.size > 0) autoHold(WATCHDOG_TIMEOUT_MS / 1000);
@@ -202,7 +218,7 @@ export function startScheduler(win: () => BrowserWindow | null): void {
   getWin = win;
   shuttingDown = false;            // reset for dev-mode restarts
   fs.mkdirSync(tasksRoot(), { recursive: true });
-  openGlobalDb();                 // create/migrate on boot
+  seedPlaybooks(openGlobalDb());  // create/migrate on boot + one-time starter playbooks
   tick();                         // immediate catch-up for anything due while closed
   timer = setInterval(tick, POLL_INTERVAL_MS);
 }
