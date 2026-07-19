@@ -136,6 +136,8 @@ const relayAPI = {
     edit: (id: string, amendedProposal: string) => ipcRenderer.invoke('scheduler:editJob', id, amendedProposal),
     reject: (id: string) => ipcRenderer.invoke('scheduler:rejectJob', id),
     getEvents: (id: string, after?: number) => ipcRenderer.invoke('scheduler:getEvents', id, after),
+    getRuns: (id: string) => ipcRenderer.invoke('scheduler:getRuns', id),
+    usage: () => ipcRenderer.invoke('scheduler:usage'),
     listWorkingDirs: () => ipcRenderer.invoke('scheduler:listWorkingDirs'),
     playbooks: {
       list: () => ipcRenderer.invoke('scheduler:listPlaybooks'),

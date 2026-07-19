@@ -4,6 +4,7 @@ import { openGlobalDb } from '../db/connection';
 import {
   listJobs, createJob, getJob, updateJob, deleteJob, listJobEvents, failOpenRuns,
   listWorkingDirs, listPlaybooks, getPlaybook, createPlaybook, updatePlaybook, deletePlaybook,
+  listRuns, usageSummary,
   type NewJobInput, type PlaybookInput,
 } from '../scheduler/db';
 import { abortJob, resumeJob, rearmIfRecurring, startCaffeinate, stopCaffeinate, caffeinateState } from '../scheduler/service';
@@ -111,6 +112,8 @@ export function registerSchedulerHandlers(): void {
     const db = openGlobalDb();
     return listJobEvents(db, id, after);
   });
+  ipcMain.handle('scheduler:getRuns', (_e, id: string) => listRuns(openGlobalDb(), id, 20));
+  ipcMain.handle('scheduler:usage', () => usageSummary(openGlobalDb()));
   ipcMain.handle('scheduler:caffeinateStart', (_e, seconds: number) => startCaffeinate(seconds));
   ipcMain.handle('scheduler:caffeinateStop', () => stopCaffeinate());
   ipcMain.handle('scheduler:caffeinateState', () => caffeinateState());

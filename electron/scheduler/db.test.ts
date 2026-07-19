@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
-import { initSchedulerSchema, createJob, getJob, listJobs, updateJob, deleteJob } from './db';
+import { initSchedulerSchema, createJob, getJob, listJobs, updateJob, deleteJob, createRun, finishRun, createPlaybook, usageSummary } from './db';
 import { rearmPatch } from './schedule';
 
 function freshDb() {
@@ -60,4 +60,27 @@ test('requireApproval round-trips and defaults to false', () => {
   assert.equal(off.requireApproval, false);
   const on = createJob(db, { name: 'gated', requireApproval: true });
   assert.equal(getJob(db, on.id)!.requireApproval, true);
+});
+
+test('usageSummary aggregates runs per job, per playbook, and per day', () => {
+  const db = freshDb();
+  const pb = createPlaybook(db, { name: 'Researcher' });
+  const a = createJob(db, { name: 'a', playbookId: pb.id });
+  const b = createJob(db, { name: 'b' });
+  const r1 = createRun(db, a.id);
+  finishRun(db, r1.id, { status: 'done', totalTokens: 100, costUsd: 0.5 });
+  const r2 = createRun(db, a.id);
+  finishRun(db, r2.id, { status: 'failed', totalTokens: 50, costUsd: 0.25 });
+  const r3 = createRun(db, b.id);
+  finishRun(db, r3.id, { status: 'done', totalTokens: 10, costUsd: 0.1 });
+
+  const u = usageSummary(db);
+  assert.equal(u.jobs.length, 2);
+  assert.equal(u.jobs[0].jobId, a.id); // ordered by cost desc
+  assert.equal(u.jobs[0].runs, 2);
+  assert.equal(u.jobs[0].tokens, 150);
+  assert.ok(Math.abs(u.jobs[0].costUsd - 0.75) < 1e-9);
+  assert.deepEqual(u.playbooks.map((p) => [p.playbookId, p.runs]), [[pb.id, 2]]);
+  assert.equal(u.daily.length, 1); // all runs today
+  assert.equal(u.daily[0].runs, 3);
 });

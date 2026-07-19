@@ -138,6 +138,8 @@ interface RelayAPI {
     edit(id: string, amendedProposal: string): Promise<import('./scheduler/types').ScheduledJob | null>
     reject(id: string): Promise<import('./scheduler/types').ScheduledJob | null>
     getEvents(id: string, after?: number): Promise<import('./scheduler/db').JobEvent[]>
+    getRuns(id: string): Promise<import('./scheduler/db').Run[]>
+    usage(): Promise<import('./scheduler/db').UsageSummary>
     listWorkingDirs(): Promise<string[]>
     playbooks: {
       list(): Promise<import('./scheduler/types').Playbook[]>

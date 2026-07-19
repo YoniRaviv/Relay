@@ -245,6 +245,29 @@ export function latestRun(db: DB, jobId: string): Run | undefined {
   return row ? rowToRun(row) : undefined;
 }
 
+export interface UsageJobRow { jobId: string; name: string; playbookId: string | null; runs: number; tokens: number; costUsd: number; lastRunAt: number | null }
+export interface UsagePlaybookRow { playbookId: string; name: string; runs: number; tokens: number; costUsd: number }
+export interface UsageDailyRow { day: string; runs: number; tokens: number; costUsd: number }
+export interface UsageSummary { jobs: UsageJobRow[]; playbooks: UsagePlaybookRow[]; daily: UsageDailyRow[] }
+
+/** Cost/usage aggregation over run history: per job, per playbook, and a 14-day daily trend. */
+export function usageSummary(db: DB): UsageSummary {
+  const jobs = db.prepare(`
+    SELECT j.id AS jobId, j.name, j.playbook_id AS playbookId, COUNT(r.id) AS runs,
+           COALESCE(SUM(r.total_tokens),0) AS tokens, COALESCE(SUM(r.cost_usd),0) AS costUsd, MAX(r.started_at) AS lastRunAt
+    FROM jobs j JOIN runs r ON r.job_id = j.id GROUP BY j.id ORDER BY costUsd DESC`).all() as UsageJobRow[];
+  const playbooks = db.prepare(`
+    SELECT j.playbook_id AS playbookId, p.name, COUNT(r.id) AS runs,
+           COALESCE(SUM(r.total_tokens),0) AS tokens, COALESCE(SUM(r.cost_usd),0) AS costUsd
+    FROM runs r JOIN jobs j ON j.id = r.job_id JOIN playbooks p ON p.id = j.playbook_id
+    GROUP BY j.playbook_id ORDER BY costUsd DESC`).all() as UsagePlaybookRow[];
+  const daily = db.prepare(`
+    SELECT date(started_at/1000,'unixepoch') AS day, COUNT(*) AS runs,
+           COALESCE(SUM(total_tokens),0) AS tokens, COALESCE(SUM(cost_usd),0) AS costUsd
+    FROM runs WHERE started_at > ? GROUP BY day ORDER BY day`).all(Date.now() - 14 * 86400_000) as UsageDailyRow[];
+  return { jobs, playbooks, daily };
+}
+
 const COLS: Record<string, string> = {
   status: 'status', instructions: 'instructions', ccJobId: 'cc_job_id', ccSessionId: 'cc_session_id',
   workspacePath: 'workspace_path', resultType: 'result_type',

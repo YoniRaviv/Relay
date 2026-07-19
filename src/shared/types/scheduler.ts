@@ -69,3 +69,22 @@ export interface Playbook {
     createdAt: number
     updatedAt: number
 }
+
+/** Mirrors electron/scheduler/db.ts Run — one execution of a job. */
+export interface JobRun {
+    id: string
+    jobId: string
+    status: 'running' | 'done' | 'needs_approval' | 'failed' | 'cancelled'
+    startedAt: number
+    finishedAt: number | null
+    totalTokens: number | null
+    costUsd: number | null
+    failureReason: string | null
+}
+
+/** Mirrors electron/scheduler/db.ts UsageSummary. */
+export interface UsageSummary {
+    jobs: Array<{ jobId: string; name: string; playbookId: string | null; runs: number; tokens: number; costUsd: number; lastRunAt: number | null }>
+    playbooks: Array<{ playbookId: string; name: string; runs: number; tokens: number; costUsd: number }>
+    daily: Array<{ day: string; runs: number; tokens: number; costUsd: number }>
+}
