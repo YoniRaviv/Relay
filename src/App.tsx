@@ -1,15 +1,15 @@
 import { useEffect, useState, useRef, useCallback, type ReactNode } from 'react'
-import { CalendarClock, LayoutDashboard } from 'lucide-react'
 import { Setup } from '@/pages/Setup'
 import { PRDWizard } from '@/pages/PRDWizard'
 import { Board } from '@/pages/Board'
 import { BranchSetupDialog } from '@/modules/agent'
 import { SchedulerView } from '@/modules/scheduler'
+import { AppRail, type AppSection } from '@/shared/components/AppRail'
 import { useRelayStore } from '@/store/useRelayStore'
 import { useIpcListener } from '@/shared/hooks/useIpcListener'
 import type { Project } from '@shared/types'
 
-type AppView = 'loading' | 'setup' | 'setup-key' | 'setup-project' | 'prd-wizard' | 'board' | 'scheduler'
+type AppView = 'loading' | 'setup' | 'setup-key' | 'setup-project' | 'prd-wizard' | 'board'
 
 function ViewTransition({ viewKey, children }: { viewKey: string; children: ReactNode }) {
   const [displayed, setDisplayed] = useState({ key: viewKey, children })
@@ -61,6 +61,7 @@ function ViewTransition({ viewKey, children }: { viewKey: string; children: Reac
 
 function App() {
   const [view, setView] = useState<AppView>('loading')
+  const [section, setSection] = useState<AppSection>('orchestrator')
   const [showBranchDialog, setShowBranchDialog] = useState(false)
   const {
     setAuthStatus, setActiveProject, setRecentProjects,
@@ -185,6 +186,7 @@ function App() {
     } catch (err) {
       console.error('Failed to load project data:', err)
     }
+    setSection('orchestrator')
     setView('board')
   }
 
@@ -249,10 +251,12 @@ function App() {
     useRelayStore.getState().setFeatureBranch(null)
     useRelayStore.getState().setBaseBranch(null)
     useRelayStore.getState().setPrUrl(null)
+    setSection('orchestrator')
     setView('setup-project')
   }
 
   const handleNewFeature = () => {
+    setSection('orchestrator')
     setTasks([])
     setPrd(null)
     setPrdMarkdown('')
@@ -268,6 +272,7 @@ function App() {
   const handleSelectFeature = async (prdId: string) => {
     const project = useRelayStore.getState().activeProject
     if (!project) return
+    setSection('orchestrator')
     await selectFeature(project.id, prdId)
   }
 
@@ -311,34 +316,28 @@ function App() {
         return <PRDWizard onComplete={handlePrdComplete} onBack={handleWizardBack} />
       case 'board':
         return <Board onSwitchProject={handleSwitchProject} onNewFeature={handleNewFeature} onSelectFeature={handleSelectFeature} />
-      case 'scheduler':
-        return <SchedulerView />
     }
   }
 
-  return (
-    <>
+  // Pre-auth screens are full-bleed — no rail until the user is set up.
+  const preAuth = view === 'loading' || view === 'setup' || view === 'setup-key'
+
+  if (preAuth) {
+    return (
       <ViewTransition viewKey={view}>
         {renderView()}
       </ViewTransition>
-      {(view === 'board' || view === 'scheduler') && (
-        <button
-          onClick={() => setView(view === 'scheduler' ? 'board' : 'scheduler')}
-          className="fixed bottom-4 right-4 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border shadow-lg text-xs font-medium text-foreground hover:bg-accent/50 transition-colors"
-        >
-          {view === 'scheduler' ? (
-            <>
-              <LayoutDashboard className="h-3.5 w-3.5" />
-              Back to Project
-            </>
-          ) : (
-            <>
-              <CalendarClock className="h-3.5 w-3.5" />
-              Scheduler
-            </>
-          )}
-        </button>
-      )}
+    )
+  }
+
+  return (
+    <div className="flex h-screen w-screen overflow-hidden">
+      <AppRail section={section} onSelect={setSection} />
+      <main className="relative flex-1 overflow-hidden">
+        <ViewTransition viewKey={section === 'scheduler' ? 'scheduler' : view}>
+          {section === 'scheduler' ? <SchedulerView /> : renderView()}
+        </ViewTransition>
+      </main>
       {showBranchDialog && (
         <BranchSetupDialog
           onConfirm={handleBranchConfirm}
@@ -346,7 +345,7 @@ function App() {
           confirmLabel="Create Branch"
         />
       )}
-    </>
+    </div>
   )
 }
 

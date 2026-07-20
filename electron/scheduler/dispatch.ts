@@ -48,6 +48,13 @@ export function buildPrompt(job: ScheduledJob): string {
     job.instructions.trim(),
     '',
     deliverable(job),
+    ...(job.requireApproval ? [
+      '',
+      'This job requires human approval: prepare the deliverable as a PROPOSAL only — do not finalize or '
+        + 'perform irreversible actions (no commits, no PRs, no publishing). Return structured status '
+        + '"needs-approval" with output pointing at the proposal. After approval you will be resumed in '
+        + 'this same session to finalize.',
+    ] : []),
     'Then return structured output: status ("done" | "needs-approval" | "failed"), output (as described above), '
       + 'and assumptions (array of any assumptions you made; empty array if none).',
   );

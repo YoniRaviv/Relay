@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Sparkles, ChevronDown, Check } from 'lucide-react'
-import { AVAILABLE_MODELS } from '@shared/pricing'
+import { AVAILABLE_MODELS, DEFAULT_MODEL } from '@shared/pricing'
 import { tierColors } from '@/shared/constants/statusMaps'
 import { useClickOutside } from '@/shared/hooks/useClickOutside'
 import type { EngineMode } from '@shared/types'
 
 export function ModelPicker() {
-    const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-6')
+    const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL)
     const [engineMode, setEngineMode] = useState<EngineMode>('claude-code')
     const [open, setOpen] = useState(false)
     const ref = useRef<HTMLDivElement>(null)

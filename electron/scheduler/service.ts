@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import { BrowserWindow } from 'electron';
@@ -7,12 +8,13 @@ import { openGlobalDb } from '../db/connection';
 import {
   listJobs, getJob, updateJob, addJobEvent, createRun, finishRun, failOpenRuns, type RunStatus,
 } from './db';
-import { selectToStart } from './schedule';
+import { selectToStart, rearmPatch, selectToUnblock, selectToFailBlocked } from './schedule';
 import { runLocalJob, type Sdk, type RunSink, type SdkMessage } from './runner';
 import { jobCwd } from './dispatch';
 import { POLL_INTERVAL_MS, LOCAL_CAP, WATCHDOG_TIMEOUT_MS, tasksRoot } from './config';
 import { autoHold, autoRelease, stopAllCaffeinate } from './caffeinate';
 import { notify } from './notify';
+import { seedPlaybooks } from './seed';
 import type { ScheduledJob } from './types';
 
 let getWin: () => BrowserWindow | null = () => null;
@@ -63,6 +65,22 @@ function notifyJob(j: ScheduledJob | undefined): void {
   if (!j) return;
   if (j.status === 'done') notify(j.name, '✓ Done');
   else if (j.status === 'failed') notify(j.name, `✗ Failed: ${(j.failureReason ?? '').slice(0, 120)}`);
+  else if (j.status === 'needs_approval') notify(j.name, 'Awaiting your approval');
+}
+
+/**
+ * Terminal recurring jobs go back to queue armed at their next occurrence.
+ * Returns the re-armed row, or undefined for one-off jobs / non-terminal states
+ * (needs_approval keeps waiting for the gate; cancel bypasses the sinks on purpose —
+ * cancelling is the user's way to halt a recurring job without deleting it).
+ */
+export function rearmIfRecurring(db: ReturnType<typeof openGlobalDb>, j: ScheduledJob | undefined): ScheduledJob | undefined {
+  if (!j || (j.status !== 'done' && j.status !== 'failed')) return undefined;
+  const patch = rearmPatch(j, Date.now());
+  if (!patch) return undefined;
+  const rearmed = updateJob(db, j.id, patch);
+  addJobEvent(db, j.id, 'text', `Re-armed (${j.status}) — next run ${new Date(rearmed.scheduledFor!).toLocaleString()}`, null);
+  return rearmed;
 }
 
 export function launchJob(job: ScheduledJob, extra?: { resume?: string; prompt?: string }): void {
@@ -95,7 +113,7 @@ export function launchJob(job: ScheduledJob, extra?: { resume?: string; prompt?:
       });
       const done = getJob(db, id);
       notifyJob(done);
-      safeSend('scheduler:jobUpdated', done);
+      safeSend('scheduler:jobUpdated', rearmIfRecurring(db, done) ?? done);
     },
     fail: (id, reason) => {
       // Quitting: leave the job `running` in the DB so the next launch auto-resumes it.
@@ -106,7 +124,7 @@ export function launchJob(job: ScheduledJob, extra?: { resume?: string; prompt?:
       updateJob(db, id, { status: 'failed', failureReason: reason, finishedAt: Date.now() });
       const failed = getJob(db, id);
       notifyJob(failed);
-      safeSend('scheduler:jobUpdated', failed);
+      safeSend('scheduler:jobUpdated', rearmIfRecurring(db, failed) ?? failed);
     },
   };
   const withAbort: Sdk = ({ prompt, options }) => sdk({ prompt, options: { ...options, abortController: ac } });
@@ -114,7 +132,7 @@ export function launchJob(job: ScheduledJob, extra?: { resume?: string; prompt?:
 }
 
 export function resumeJob(job: ScheduledJob, message: string): void {
-  launchJob(job, { resume: job.ccSessionId ?? '', prompt: message });
+  launchJob(job, job.ccSessionId ? { resume: job.ccSessionId, prompt: message } : {});
 }
 
 /** Cancel a run in flight (Task 8's cancel handler). No-op if the job isn't currently running. */
@@ -133,6 +151,27 @@ function tick(): void {
   try {
     const db = openGlobalDb();
     const jobs = listJobs(db);
+    // Chain maintenance: hand a finished step's result to its successor; kill chains whose
+    // step failed. Promoted jobs start on the NEXT tick (this tick's selections below were
+    // computed before promotion).
+    for (const { job: j, prev } of selectToUnblock(jobs)) {
+      const ref = prev.resultRef?.trim();
+      // md results are filenames relative to the predecessor's cwd — a successor step may
+      // run in a different scratch workspace, so hand it an absolute path.
+      const resolved = !ref ? '(none)'
+        : /^(\/|https?:\/\/)/.test(ref) ? ref
+        : path.join(prev.workspacePath ?? jobCwd(prev), ref);
+      const promoted = updateJob(db, j.id, {
+        status: 'queue',
+        instructions: `${j.instructions}\n\nPrevious step result (${prev.resultType ?? 'md'}): ${resolved}`,
+      });
+      safeSend('scheduler:jobUpdated', promoted);
+    }
+    for (const { job: j, reason } of selectToFailBlocked(jobs)) {
+      const failed = updateJob(db, j.id, { status: 'failed', failureReason: reason, finishedAt: Date.now() });
+      notifyJob(failed);
+      safeSend('scheduler:jobUpdated', failed);
+    }
     // Refresh the auto hold every tick while anything is live — this is what keeps a
     // job running past WATCHDOG_TIMEOUT_MS from losing its keep-awake.
     if (runs.size > 0) autoHold(WATCHDOG_TIMEOUT_MS / 1000);
@@ -177,7 +216,9 @@ function reconcileOrphan(db: ReturnType<typeof openGlobalDb>, j: ScheduledJob): 
   if (age >= WATCHDOG_TIMEOUT_MS) {
     failOpenRuns(db, j.id, 'failed', 'run lost (app restart)');
     updateJob(db, j.id, { status: 'failed', failureReason: 'run lost (app restart/crash); watchdog timeout', finishedAt: Date.now() });
-    notifyJob(getJob(db, j.id));
+    const lost = getJob(db, j.id);
+    notifyJob(lost);
+    safeSend('scheduler:jobUpdated', rearmIfRecurring(db, lost) ?? lost);
   }
 }
 
@@ -185,7 +226,7 @@ export function startScheduler(win: () => BrowserWindow | null): void {
   getWin = win;
   shuttingDown = false;            // reset for dev-mode restarts
   fs.mkdirSync(tasksRoot(), { recursive: true });
-  openGlobalDb();                 // create/migrate on boot
+  seedPlaybooks(openGlobalDb());  // create/migrate on boot + one-time starter playbooks
   tick();                         // immediate catch-up for anything due while closed
   timer = setInterval(tick, POLL_INTERVAL_MS);
 }

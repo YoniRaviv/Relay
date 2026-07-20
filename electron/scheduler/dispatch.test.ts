@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildQueryOptions, mapResult, RESULT_SCHEMA } from './dispatch';
+import { buildQueryOptions, buildPrompt, mapResult, RESULT_SCHEMA } from './dispatch';
 import type { ScheduledJob } from './types';
 
 const base: ScheduledJob = {
@@ -9,7 +9,7 @@ const base: ScheduledJob = {
   workingDir: '/tmp/wd', scheduledFor: null, scheduleCron: null, status: 'queue', ccJobId: null,
   ccSessionId: null, workspacePath: null, resultType: null, resultRef: null, assumptions: [],
   totalTokens: null, costUsd: null, failureReason: null, skill: null, model: null,
-  allowedTools: null, permissionMode: null,
+  allowedTools: null, permissionMode: null, requireApproval: false,
   createdAt: 0, updatedAt: 0, startedAt: null, finishedAt: null,
 };
 
@@ -28,4 +28,14 @@ test('mapResult maps a done envelope', () => {
   });
   assert.equal(r.status, 'done');
   assert.equal(r.tokens, 15);
+});
+
+test('buildPrompt: requireApproval injects the proposal gate', () => {
+  const p = buildPrompt({ ...base, requireApproval: true });
+  assert.ok(p.includes('PROPOSAL only'));
+  assert.ok(/proposal/i.test(p));
+});
+test('buildPrompt: no requireApproval → no gate paragraph', () => {
+  const p = buildPrompt({ ...base, requireApproval: false });
+  assert.ok(!/PROPOSAL only/.test(p));
 });

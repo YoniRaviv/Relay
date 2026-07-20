@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   playbook_id TEXT,
   output_type TEXT NOT NULL DEFAULT 'md',
   dod_condition TEXT,
+  require_approval INTEGER NOT NULL DEFAULT 0,
   max_turns INTEGER,
   working_dir TEXT,
   skill TEXT,
@@ -75,6 +76,8 @@ CREATE TABLE IF NOT EXISTS runs (
   failure_reason TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_runs_job ON runs(job_id, started_at DESC);
+
+CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
 `;
 
 // Additive columns introduced after the initial shipped schema (SQLite has no ADD COLUMN IF NOT EXISTS).
@@ -85,6 +88,7 @@ const ADDED_JOB_COLUMNS: [string, string][] = [
   ['scheduled_for', 'INTEGER'], ['schedule_cron', 'TEXT'],
   ['chain_id', 'TEXT'], ['chain_step', 'INTEGER'], ['prev_task_id', 'TEXT'],
   ['cost_usd', 'REAL'],
+  ['require_approval', 'INTEGER NOT NULL DEFAULT 0'],
 ];
 
 const ADDED_PLAYBOOK_COLUMNS: [string, string][] = [['steps', 'TEXT']];
@@ -106,7 +110,7 @@ export function initSchedulerSchema(db: DB): void {
 interface Row {
   id: string; name: string; instructions: string; playbook_id: string | null;
   chain_id: string | null; chain_step: number | null; prev_task_id: string | null;
-  output_type: string; dod_condition: string | null; max_turns: number | null;
+  output_type: string; dod_condition: string | null; require_approval: number; max_turns: number | null;
   working_dir: string | null; skill: string | null; model: string | null;
   allowed_tools: string | null; permission_mode: string | null;
   scheduled_for: number | null; schedule_cron: string | null;
@@ -122,7 +126,7 @@ function rowToJob(r: Row): ScheduledJob {
     id: r.id, name: r.name, instructions: r.instructions, playbookId: r.playbook_id,
     chainId: r.chain_id, chainStep: r.chain_step, prevTaskId: r.prev_task_id,
     outputType: r.output_type as OutputType,
-    dodCondition: r.dod_condition, maxTurns: r.max_turns, workingDir: r.working_dir,
+    dodCondition: r.dod_condition, requireApproval: !!r.require_approval, maxTurns: r.max_turns, workingDir: r.working_dir,
     skill: r.skill, model: r.model, allowedTools: r.allowed_tools, permissionMode: r.permission_mode,
     scheduledFor: r.scheduled_for, scheduleCron: r.schedule_cron,
     status: r.status as Status,
@@ -137,7 +141,7 @@ function rowToJob(r: Row): ScheduledJob {
 
 export interface NewJobInput {
   name: string; instructions?: string; outputType?: OutputType;
-  dodCondition?: string | null; maxTurns?: number | null;
+  dodCondition?: string | null; requireApproval?: boolean; maxTurns?: number | null;
   workingDir?: string | null;
   skill?: string | null; model?: string | null; allowedTools?: string | null; permissionMode?: string | null;
   scheduledFor?: number | null; scheduleCron?: string | null; playbookId?: string | null;
@@ -149,14 +153,14 @@ export function createJob(db: DB, input: NewJobInput): ScheduledJob {
   const id = randomUUID();
   db.prepare(
     `INSERT INTO jobs
-       (id, name, instructions, output_type, dod_condition, max_turns,
+       (id, name, instructions, output_type, dod_condition, require_approval, max_turns,
         working_dir, skill, model, allowed_tools, permission_mode,
         scheduled_for, schedule_cron, playbook_id, chain_id, chain_step, prev_task_id,
         status, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'backlog', ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'backlog', ?, ?)`,
   ).run(
     id, input.name, input.instructions ?? '', input.outputType ?? 'md',
-    input.dodCondition ?? null, input.maxTurns ?? null,
+    input.dodCondition ?? null, input.requireApproval ? 1 : 0, input.maxTurns ?? null,
     input.workingDir ?? null, input.skill ?? null, input.model ?? null,
     input.allowedTools ?? null, input.permissionMode ?? null,
     input.scheduledFor ?? null, input.scheduleCron ?? null, input.playbookId ?? null,
@@ -241,6 +245,29 @@ export function listRuns(db: DB, jobId: string, limit = 10): Run[] {
 export function latestRun(db: DB, jobId: string): Run | undefined {
   const row = db.prepare('SELECT * FROM runs WHERE job_id = ? ORDER BY started_at DESC, rowid DESC LIMIT 1').get(jobId) as RunRow | undefined;
   return row ? rowToRun(row) : undefined;
+}
+
+export interface UsageJobRow { jobId: string; name: string; playbookId: string | null; runs: number; tokens: number; costUsd: number; lastRunAt: number | null }
+export interface UsagePlaybookRow { playbookId: string; name: string; runs: number; tokens: number; costUsd: number }
+export interface UsageDailyRow { day: string; runs: number; tokens: number; costUsd: number }
+export interface UsageSummary { jobs: UsageJobRow[]; playbooks: UsagePlaybookRow[]; daily: UsageDailyRow[] }
+
+/** Cost/usage aggregation over run history: per job, per playbook, and a 14-day daily trend. */
+export function usageSummary(db: DB): UsageSummary {
+  const jobs = db.prepare(`
+    SELECT j.id AS jobId, j.name, j.playbook_id AS playbookId, COUNT(r.id) AS runs,
+           COALESCE(SUM(r.total_tokens),0) AS tokens, COALESCE(SUM(r.cost_usd),0) AS costUsd, MAX(r.started_at) AS lastRunAt
+    FROM jobs j JOIN runs r ON r.job_id = j.id GROUP BY j.id ORDER BY costUsd DESC`).all() as UsageJobRow[];
+  const playbooks = db.prepare(`
+    SELECT j.playbook_id AS playbookId, p.name, COUNT(r.id) AS runs,
+           COALESCE(SUM(r.total_tokens),0) AS tokens, COALESCE(SUM(r.cost_usd),0) AS costUsd
+    FROM runs r JOIN jobs j ON j.id = r.job_id JOIN playbooks p ON p.id = j.playbook_id
+    GROUP BY j.playbook_id ORDER BY costUsd DESC`).all() as UsagePlaybookRow[];
+  const daily = db.prepare(`
+    SELECT date(started_at/1000,'unixepoch','localtime') AS day, COUNT(*) AS runs,
+           COALESCE(SUM(total_tokens),0) AS tokens, COALESCE(SUM(cost_usd),0) AS costUsd
+    FROM runs WHERE started_at > ? GROUP BY day ORDER BY day`).all(Date.now() - 14 * 86400_000) as UsageDailyRow[];
+  return { jobs, playbooks, daily };
 }
 
 const COLS: Record<string, string> = {
@@ -337,4 +364,15 @@ export function updatePlaybook(db: DB, id: string, patch: PlaybookInput): Playbo
 
 export function deletePlaybook(db: DB, id: string): boolean {
   return db.prepare('DELETE FROM playbooks WHERE id = ?').run(id).changes > 0;
+}
+
+// --- Meta ---------------------------------------------------------------
+
+export function getMeta(db: DB, key: string): string | null {
+  const row = db.prepare('SELECT value FROM meta WHERE key = ?').get(key) as { value: string } | undefined;
+  return row?.value ?? null;
+}
+
+export function setMeta(db: DB, key: string, value: string): void {
+  db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, value);
 }

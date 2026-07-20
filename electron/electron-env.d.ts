@@ -134,7 +134,24 @@ interface RelayAPI {
     updateJob(id: string, patch: Record<string, unknown>): Promise<import('./scheduler/types').ScheduledJob | null>
     deleteJob(id: string): Promise<boolean>
     cancelJob(id: string): Promise<import('./scheduler/types').ScheduledJob | null>
+    approve(id: string): Promise<import('./scheduler/types').ScheduledJob | null>
+    edit(id: string, amendedProposal: string): Promise<import('./scheduler/types').ScheduledJob | null>
+    reject(id: string): Promise<import('./scheduler/types').ScheduledJob | null>
     getEvents(id: string, after?: number): Promise<import('./scheduler/db').JobEvent[]>
+    getRuns(id: string): Promise<import('./scheduler/db').Run[]>
+    usage(): Promise<import('./scheduler/db').UsageSummary>
+    listWorkingDirs(): Promise<string[]>
+    listSkills(): Promise<import('./scheduler/skills').SchedulerSkill[]>
+    playbooks: {
+      list(): Promise<import('./scheduler/types').Playbook[]>
+      create(input: import('./scheduler/db').PlaybookInput): Promise<import('./scheduler/types').Playbook>
+      update(id: string, patch: import('./scheduler/db').PlaybookInput): Promise<import('./scheduler/types').Playbook | null>
+      remove(id: string): Promise<boolean>
+      run(id: string, opts?: {
+        name?: string; instructions?: string; workingDir?: string | null;
+        scheduledFor?: number | null; scheduleCron?: string | null;
+      }): Promise<import('./scheduler/types').ScheduledJob | null>
+    }
     caffeinate: {
       start(seconds: number): Promise<{ awakeUntil: number | null }>
       stop(): Promise<{ awakeUntil: null }>

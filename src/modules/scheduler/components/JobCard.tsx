@@ -1,7 +1,8 @@
-import { Clock } from 'lucide-react'
+import { Clock, Repeat, ListOrdered } from 'lucide-react'
 import { statusDots } from '@/shared/constants/statusMaps'
 import { formatCost, formatNumber } from '@/shared/formatters'
 import type { ScheduledJob } from '@/shared/types/scheduler'
+import { describeRecurrence } from '../utils/recurrence'
 
 interface JobCardProps {
     job: ScheduledJob
@@ -42,10 +43,23 @@ export function JobCard({ job, onClick }: JobCardProps) {
                         {basename(job.workingDir)}
                     </span>
                 )}
-                {isScheduled && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                        <Clock className="h-2.5 w-2.5" />
-                        scheduled
+                {job.scheduleCron ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                        <Repeat className="h-2.5 w-2.5" />
+                        {describeRecurrence(job.scheduleCron)}
+                    </span>
+                ) : (
+                    isScheduled && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                            <Clock className="h-2.5 w-2.5" />
+                            scheduled
+                        </span>
+                    )
+                )}
+                {job.chainStep != null && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                        <ListOrdered className="h-2.5 w-2.5" />
+                        step {job.chainStep + 1}
                     </span>
                 )}
             </div>

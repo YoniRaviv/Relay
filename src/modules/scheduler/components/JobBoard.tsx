@@ -5,11 +5,11 @@ interface JobBoardProps {
     columns: JobColumns
 }
 
-// Slice 1: needs_approval column is hidden (no gate yet) — key stays in JobColumns for later.
-const COLUMN_DEFS: Array<{ key: keyof Omit<JobColumns, 'needs_approval'>; title: string }> = [
+const COLUMN_DEFS: Array<{ key: keyof JobColumns; title: string }> = [
     { key: 'backlog', title: 'Backlog' },
     { key: 'queue', title: 'Queued' },
     { key: 'running', title: 'Running' },
+    { key: 'needs_approval', title: 'Needs Approval' },
     { key: 'done', title: 'Done' },
     { key: 'failed', title: 'Failed' },
 ]
