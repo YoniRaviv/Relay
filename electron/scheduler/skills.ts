@@ -48,7 +48,9 @@ function skillDirs(root: string): string[] {
   if (!existsSync(root)) return [];
   try {
     return readdirSync(root, { withFileTypes: true })
-      .filter((e) => e.isDirectory() && existsSync(join(root, e.name, 'SKILL.md')))
+      // isDirectory() is false for symlinked skill dirs (e.g. ~/.claude/skills/foo -> ../../.agents/...),
+      // so accept symlinks too; existsSync follows the link to confirm it's a real skill.
+      .filter((e) => (e.isDirectory() || e.isSymbolicLink()) && existsSync(join(root, e.name, 'SKILL.md')))
       .map((e) => join(root, e.name));
   } catch {
     return [];
