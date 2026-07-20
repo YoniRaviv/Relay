@@ -2,8 +2,8 @@ import { useState, type ReactNode } from 'react'
 import { X, ExternalLink, Ban, Trash2, RotateCcw, Repeat } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRelayStore } from '@/store/useRelayStore'
-import { formatCost, formatNumber } from '@/shared/formatters'
-import type { JobColumns } from '@/shared/types/scheduler'
+import { formatCost, formatNumber, formatDuration } from '@/shared/formatters'
+import type { JobColumns, OutputType } from '@/shared/types/scheduler'
 import { JobActivityFeed } from './JobActivityFeed'
 import { ApprovalActions } from './ApprovalActions'
 import { RunHistoryList } from './RunHistoryList'
@@ -14,6 +14,15 @@ function SectionLabel({ children }: { children: ReactNode }) {
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             {children}
         </h3>
+    )
+}
+
+function MetaRow({ label, value }: { label: string; value: ReactNode }) {
+    return (
+        <div className="flex items-baseline justify-between gap-3 py-1.5 border-b border-border/20 last:border-0">
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground shrink-0">{label}</span>
+            <span className="text-[13px] text-foreground text-right min-w-0 truncate">{value}</span>
+        </div>
     )
 }
 
@@ -56,6 +65,16 @@ export function JobDetail() {
 
     const hasUsage = job.totalTokens != null || job.costUsd != null
     const isUrl = job.resultRef && /^https?:\/\//.test(job.resultRef)
+
+    const outputLabels: Record<OutputType, string> = { md: 'Markdown', pr: 'Pull Request', artifact: 'Artifact' }
+    const outputLabel = outputLabels[job.outputType as OutputType]
+    const duration = job.startedAt && job.finishedAt ? formatDuration(job.finishedAt - job.startedAt) : null
+    // Recurrence + its next-run are already surfaced in the header, so only show a one-off time here.
+    const scheduledLabel = job.scheduleCron
+        ? null
+        : job.scheduledFor
+            ? new Date(job.scheduledFor).toLocaleString()
+            : 'Immediate'
 
     return (
         <div className="absolute right-0 top-0 w-[420px] bg-[var(--color-sidebar)] flex flex-col h-full overflow-hidden border-l border-border/50 shadow-xl z-20">
@@ -123,6 +142,19 @@ export function JobDetail() {
                     <p className="text-[13px] text-foreground leading-[1.7] mt-1.5 whitespace-pre-wrap">{job.instructions}</p>
                 </div>
 
+                <div className="px-5 py-4 border-b border-border/30">
+                    <SectionLabel>Details</SectionLabel>
+                    <div className="mt-1.5">
+                        <MetaRow label="Model" value={job.model || 'Default'} />
+                        {job.skill && <MetaRow label="Skill" value={<span className="font-mono">{job.skill}</span>} />}
+                        <MetaRow label="Output" value={outputLabel} />
+                        {scheduledLabel && <MetaRow label="Scheduled" value={scheduledLabel} />}
+                        <MetaRow label="Created" value={new Date(job.createdAt).toLocaleString()} />
+                        {job.finishedAt && <MetaRow label="Last run" value={new Date(job.finishedAt).toLocaleString()} />}
+                        {duration && <MetaRow label="Duration" value={duration} />}
+                    </div>
+                </div>
+
                 {job.resultRef && (
                     <div className="px-5 py-4 border-b border-border/30">
                         <SectionLabel>Result</SectionLabel>
@@ -150,9 +182,18 @@ export function JobDetail() {
                 )}
 
                 {hasUsage && (
-                    <div className="px-5 py-4 border-b border-border/30 flex items-center gap-4 text-[13px] text-muted-foreground">
-                        {job.totalTokens != null && <span>{formatNumber(job.totalTokens)} tokens</span>}
-                        {job.costUsd != null && <span>{formatCost(job.costUsd)}</span>}
+                    <div className="px-5 py-4 border-b border-border/30">
+                        <SectionLabel>Usage</SectionLabel>
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                            <div className="rounded-md border border-border/40 bg-background/40 px-3 py-2">
+                                <div className="text-[16px] font-semibold text-foreground">{formatNumber(job.totalTokens ?? 0)}</div>
+                                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Tokens</div>
+                            </div>
+                            <div className="rounded-md border border-border/40 bg-background/40 px-3 py-2">
+                                <div className="text-[16px] font-semibold text-foreground">{formatCost(job.costUsd ?? 0)}</div>
+                                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Cost</div>
+                            </div>
+                        </div>
                     </div>
                 )}
 

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { X, BookOpen, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { OutputType, Playbook, PlaybookStep } from '@/shared/types/scheduler'
+import { SkillSelect } from './SkillSelect'
 import { MODEL_OPTIONS, OUTPUT_TYPES } from '../utils/options'
 
 interface PlaybookModalProps {
@@ -183,7 +184,7 @@ export function PlaybookModal({ playbook, onClose, onSaved }: PlaybookModalProps
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Skill</label>
-                            <input value={skill} onChange={(e) => setSkill(e.target.value)} placeholder="(optional)" className={fieldClass} />
+                            <SkillSelect value={skill} onChange={setSkill} className={fieldClass} />
                         </div>
                     </div>
                 </div>

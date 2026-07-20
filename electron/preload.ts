@@ -139,6 +139,7 @@ const relayAPI = {
     getRuns: (id: string) => ipcRenderer.invoke('scheduler:getRuns', id),
     usage: () => ipcRenderer.invoke('scheduler:usage'),
     listWorkingDirs: () => ipcRenderer.invoke('scheduler:listWorkingDirs'),
+    listSkills: () => ipcRenderer.invoke('scheduler:listSkills'),
     playbooks: {
       list: () => ipcRenderer.invoke('scheduler:listPlaybooks'),
       create: (input: unknown) => ipcRenderer.invoke('scheduler:createPlaybook', input),

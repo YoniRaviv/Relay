@@ -4,6 +4,7 @@ import { X, Play, FolderOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { Playbook } from '@/shared/types/scheduler'
 import { RecurrencePicker } from './RecurrencePicker'
+import { DateTimePicker } from './DateTimePicker'
 
 interface RunPlaybookModalProps {
     playbook: Playbook
@@ -20,7 +21,7 @@ export function RunPlaybookModal({ playbook, onClose, onStarted }: RunPlaybookMo
     const [instructions, setInstructions] = useState('')
     const [workingDir, setWorkingDir] = useState<string | null>(null)
     const [recentDirs, setRecentDirs] = useState<string[]>([])
-    const [scheduledFor, setScheduledFor] = useState('')
+    const [scheduledFor, setScheduledFor] = useState<number | null>(null)
     const [scheduleCron, setScheduleCron] = useState<string | null>(null)
     const [starting, setStarting] = useState(false)
 
@@ -39,7 +40,7 @@ export function RunPlaybookModal({ playbook, onClose, onStarted }: RunPlaybookMo
             await window.relayAPI.scheduler.playbooks.run(playbook.id, {
                 instructions: instructions.trim() || undefined,
                 workingDir,
-                scheduledFor: scheduledFor ? new Date(scheduledFor).getTime() : null,
+                scheduledFor,
                 scheduleCron,
             })
             await onStarted()
@@ -103,7 +104,7 @@ export function RunPlaybookModal({ playbook, onClose, onStarted }: RunPlaybookMo
                         <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Schedule For <span className="normal-case font-normal text-muted-foreground/70">(optional — empty runs now)</span>
                         </label>
-                        <input type="datetime-local" value={scheduledFor} onChange={(e) => setScheduledFor(e.target.value)} className={fieldClass} />
+                        <DateTimePicker value={scheduledFor} onChange={setScheduledFor} />
                     </div>
 
                     {!multiStep && (

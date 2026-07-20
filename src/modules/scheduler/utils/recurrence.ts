@@ -28,6 +28,30 @@ export function buildRecurrence(kind: RecurrenceKind, dow: number, time: string)
     return `weekly@${dow},${time}`
 }
 
+/** True for the every-hour spec, which the week view shows as an all-day pill rather than 168 blocks. */
+export function isHourly(cron: string | null): boolean {
+    return parseRecurrence(cron)?.kind === 'hourly'
+}
+
+/**
+ * Concrete fire times for a recurring spec within the week starting at `weekStart` (a Sunday 00:00).
+ * Hourly returns [] — it's surfaced separately. Mirrors electron/scheduler/schedule.ts's local-time math.
+ */
+export function recurrenceOccurrences(cron: string | null, weekStart: Date): number[] {
+    const r = parseRecurrence(cron)
+    if (!r || r.kind === 'hourly') return []
+    const [h, m] = r.time.split(':').map(Number)
+    const out: number[] = []
+    for (let i = 0; i < 7; i++) {
+        if (r.kind === 'weekly' && i !== r.dow) continue
+        const d = new Date(weekStart)
+        d.setDate(weekStart.getDate() + i)
+        d.setHours(h, m, 0, 0)
+        out.push(d.getTime())
+    }
+    return out
+}
+
 /** Short human label for badges/detail: 'hourly' · 'daily 09:00' · 'Mon 09:00'. */
 export function describeRecurrence(cron: string | null): string | null {
     const r = parseRecurrence(cron)

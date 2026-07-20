@@ -18,6 +18,18 @@ const store = new Store<{
 
 const isDev = !app.isPackaged;
 
+function getDecryptedKey(): string | null {
+  const encrypted = store.get('apiKey');
+  if (!encrypted) return null;
+  try {
+    return safeStorage.isEncryptionAvailable()
+      ? safeStorage.decryptString(Buffer.from(encrypted as string, 'base64'))
+      : (encrypted as string);
+  } catch {
+    return null;
+  }
+}
+
 function findClaudeBinary(): { found: boolean; path?: string; error?: string } {
   // Try `which claude` first
   try {
@@ -119,18 +131,7 @@ export function registerSettingsHandlers(): void {
     }
   });
 
-  ipcMain.handle('cc:getApiKey', async (): Promise<string | null> => {
-    const encrypted = store.get('apiKey');
-    if (!encrypted) return null;
-
-    try {
-      return safeStorage.isEncryptionAvailable()
-        ? safeStorage.decryptString(Buffer.from(encrypted as string, 'base64'))
-        : (encrypted as string);
-    } catch {
-      return null;
-    }
-  });
+  ipcMain.handle('cc:getApiKey', async (): Promise<string | null> => getDecryptedKey());
 
   ipcMain.handle('cc:getAppInfo', async () => {
     return {

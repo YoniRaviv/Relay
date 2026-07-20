@@ -11,6 +11,7 @@ export interface ScheduledJob {
     outputType: OutputType
     workingDir: string | null
     model: string | null
+    skill: string | null
     scheduledFor: number | null
     scheduleCron: string | null
     chainStep: number | null
@@ -87,4 +88,11 @@ export interface UsageSummary {
     jobs: Array<{ jobId: string; name: string; playbookId: string | null; runs: number; tokens: number; costUsd: number; lastRunAt: number | null }>
     playbooks: Array<{ playbookId: string; name: string; runs: number; tokens: number; costUsd: number }>
     daily: Array<{ day: string; runs: number; tokens: number; costUsd: number }>
+}
+
+/** Mirrors electron/scheduler/skills.ts SchedulerSkill — a discovered Claude library skill. */
+export interface SchedulerSkill {
+    name: string
+    description: string
+    group: string
 }

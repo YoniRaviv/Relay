@@ -4,19 +4,23 @@ import { X, FolderOpen, Rocket } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { OutputType } from '@/shared/types/scheduler'
 import { RecurrencePicker } from './RecurrencePicker'
+import { DateTimePicker } from './DateTimePicker'
+import { SkillSelect } from './SkillSelect'
 import { MODEL_OPTIONS, OUTPUT_TYPES } from '../utils/options'
 
 interface NewJobModalProps {
     onClose: () => void
+    initialScheduledFor?: number | null
 }
 
-export function NewJobModal({ onClose }: NewJobModalProps) {
+export function NewJobModal({ onClose, initialScheduledFor = null }: NewJobModalProps) {
     const [name, setName] = useState('')
     const [instructions, setInstructions] = useState('')
     const [workingDir, setWorkingDir] = useState<string | null>(null)
     const [outputType, setOutputType] = useState<OutputType>('md')
     const [model, setModel] = useState('')
-    const [scheduledFor, setScheduledFor] = useState('')
+    const [skill, setSkill] = useState('')
+    const [scheduledFor, setScheduledFor] = useState<number | null>(initialScheduledFor)
     const [scheduleCron, setScheduleCron] = useState<string | null>(null)
     const [requireApproval, setRequireApproval] = useState(false)
     const [submitting, setSubmitting] = useState(false)
@@ -38,7 +42,8 @@ export function NewJobModal({ onClose }: NewJobModalProps) {
                 outputType,
                 workingDir,
                 model: model || null,
-                scheduledFor: scheduledFor ? new Date(scheduledFor).getTime() : null,
+                skill: skill || null,
+                scheduledFor,
                 scheduleCron,
                 requireApproval,
             })
@@ -99,9 +104,9 @@ export function NewJobModal({ onClose }: NewJobModalProps) {
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Output Type</label>
+                            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Output</label>
                             <select
                                 value={outputType}
                                 onChange={(e) => setOutputType(e.target.value as OutputType)}
@@ -124,18 +129,21 @@ export function NewJobModal({ onClose }: NewJobModalProps) {
                                 ))}
                             </select>
                         </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Skill</label>
+                            <SkillSelect
+                                value={skill}
+                                onChange={setSkill}
+                                className="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                            />
+                        </div>
                     </div>
 
                     <div className="space-y-1.5">
                         <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Schedule For <span className="normal-case font-normal text-muted-foreground/70">(optional — empty runs now; sets the first run when repeating)</span>
                         </label>
-                        <input
-                            type="datetime-local"
-                            value={scheduledFor}
-                            onChange={(e) => setScheduledFor(e.target.value)}
-                            className="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                        />
+                        <DateTimePicker value={scheduledFor} onChange={setScheduledFor} />
                     </div>
 
                     <div className="space-y-1.5">

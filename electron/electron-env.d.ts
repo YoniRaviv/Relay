@@ -141,6 +141,7 @@ interface RelayAPI {
     getRuns(id: string): Promise<import('./scheduler/db').Run[]>
     usage(): Promise<import('./scheduler/db').UsageSummary>
     listWorkingDirs(): Promise<string[]>
+    listSkills(): Promise<import('./scheduler/skills').SchedulerSkill[]>
     playbooks: {
       list(): Promise<import('./scheduler/types').Playbook[]>
       create(input: import('./scheduler/db').PlaybookInput): Promise<import('./scheduler/types').Playbook>

@@ -8,6 +8,7 @@ import {
   type NewJobInput, type PlaybookInput,
 } from '../scheduler/db';
 import { abortJob, resumeJob, rearmIfRecurring, startCaffeinate, stopCaffeinate, caffeinateState } from '../scheduler/service';
+import { listAvailableSkills } from '../scheduler/skills';
 import { nextOccurrence } from '../scheduler/schedule';
 import type { PlaybookStep, ScheduledJob } from '../scheduler/types';
 
@@ -119,6 +120,7 @@ export function registerSchedulerHandlers(): void {
   ipcMain.handle('scheduler:caffeinateState', () => caffeinateState());
 
   ipcMain.handle('scheduler:listWorkingDirs', () => listWorkingDirs(openGlobalDb()));
+  ipcMain.handle('scheduler:listSkills', () => listAvailableSkills());
 
   ipcMain.handle('scheduler:listPlaybooks', () => listPlaybooks(openGlobalDb()));
   ipcMain.handle('scheduler:createPlaybook', (_e, input: PlaybookInput & { steps?: unknown }) => {
