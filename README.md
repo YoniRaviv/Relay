@@ -34,7 +34,7 @@
 > This removes the macOS quarantine flag. The app is not signed with an Apple Developer certificate yet.
 
 <p align="center">
-  <video src="https://github.com/user-attachments/assets/ad634c2d-c016-4cb5-8ff8-5188a281df25" width="800" height="800" autoplay muted playsinline loop></video>
+  <video src="https://github.com/user-attachments/assets/b0b9b686-df1c-448a-b895-8df474c10cee" width="960" height="540" autoplay muted playsinline loop></video>
 </p>
 
 ## Install
