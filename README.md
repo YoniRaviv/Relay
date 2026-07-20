@@ -72,6 +72,11 @@ All assets are listed on the **[latest release](https://github.com/YoniRaviv/Rel
 
 Relay Studio is a desktop application that wraps AI coding agents into a structured, visual build workflow. Instead of manually prompting an AI and copy-pasting code, Relay automates the full cycle: planning, task decomposition, code generation, and review — all in a Kanban-style interface. Supports Claude Code and OpenAI Codex as execution engines.
 
+Relay has two workspaces, switchable from the left rail:
+
+- **Build** — the feature-to-PR Kanban loop (spec → tasks → agent build → review gate).
+- **Schedule** — a scheduler that runs agent jobs on your machine one-off or on a recurring cadence, chains them into reusable playbooks, and gates results behind an optional approval step.
+
 ## How It Works
 
 1. **Setup** — Choose your engine (Claude Code CLI, OpenAI Codex CLI, or Anthropic API key) and open a project folder
@@ -108,6 +113,16 @@ Relay Studio is a desktop application that wraps AI coding agents into a structu
 - **Model Selection** — Pick which model reviews your code before starting analysis
 - **Fresh Context** — Each review phase runs on a clean context window, independent of the build loop
 - **Works with All Engines** — Uses your selected engine (Claude Code, Codex, or API key) for both analysis and fixes
+
+### Scheduler
+Run agent jobs on a schedule — the **Schedule** workspace in the left rail.
+- **One-off & recurring jobs** — Queue a job to run now, at a specific date/time, or on an hourly / daily / weekly cadence; recurring jobs auto-re-arm at their next occurrence when they finish
+- **Board & Week views** — Track jobs across Backlog, Queue, Running, Needs Approval, Done, and Failed columns, or see them laid out on a weekly calendar (click a slot to schedule there)
+- **Playbooks** — Save reusable job templates, including multi-step chains where each step's output hands off to the next; run a playbook against any working directory
+- **Approval gate** — Flag a job to require approval; it pauses in a Needs Approval column where you can approve, edit the result, or reject — chained jobs stay blocked until the prior step clears
+- **Skills** — Attach a Claude library skill (personal `~/.claude/skills` or installed plugin skills) to a job to shape how the agent works
+- **Usage & cost** — A usage panel with total tokens/cost, per-playbook and top-job breakdowns, and a daily trend
+- **Keep awake** — Optional keep-awake toggle so scheduled jobs still run when the machine would otherwise sleep
 
 ### Multi-Engine Support
 - **Claude Code CLI** (default) — Uses your existing Claude Code authentication via `@anthropic-ai/claude-agent-sdk`
@@ -269,7 +284,8 @@ electron/
   db/                  # SQLite connection and schema (9 migrations)
   git/                 # Git utilities (lock mutex, commit helper)
   runner/              # Project runner (auto-detect, spawn, stop)
-  ipc/                 # IPC handlers (settings, project, prd, brainstorm, tasks, agent, git, review, reviewAgent, runner, metrics)
+  scheduler/           # Job scheduler (service, schedule/recurrence, dispatch, playbook chains, skills, DB)
+  ipc/                 # IPC handlers (settings, project, prd, brainstorm, tasks, agent, git, review, reviewAgent, runner, metrics, scheduler)
 shared/
   types.ts             # Shared TypeScript interfaces (EngineMode, BuildMode, etc.)
   pricing.ts           # Model pricing table (Anthropic + OpenAI, engine-tagged)
@@ -281,6 +297,7 @@ src/
     review/            # ReviewPanel, DiffViewer, PrCreationDialog
     reviewAgent/       # Code Review Agent panel (idle, analyzing, findings, fixing, complete)
     prd/               # PRDPreview, PRDEditor, FeatureInput, BrainstormChat, FileAutocomplete, StreamingProgress
+    scheduler/         # SchedulerView, JobBoard, WeekView, JobDetail, NewJobModal, Playbooks, UsagePanel, RecurrencePicker
     settings/          # SettingsView (3 engines), ModelPicker (engine-filtered)
     project/           # ProjectSelector, ProjectSidebar, GitHistoryPanel
     metrics/           # TaskMetricsTable, MetricCard
