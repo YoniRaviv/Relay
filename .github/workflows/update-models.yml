@@ -1,0 +1,32 @@
+name: Update model catalog
+
+# Refreshes shared/models.generated.json from Anthropic's public docs so newly released
+# models appear in the app automatically. No API key or secret required.
+on:
+  schedule:
+    - cron: '0 6 * * 1' # every Monday 06:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Regenerate catalog
+        run: node scripts/update-models.mjs
+      - name: Commit if changed
+        run: |
+          if ! git diff --quiet -- shared/models.generated.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add shared/models.generated.json
+            git commit -m "chore(models): refresh catalog from Anthropic docs"
+            git push
+          else
+            echo "Catalog already current — nothing to commit."
+          fi

@@ -1,3 +1,4 @@
+import { AVAILABLE_MODELS } from '@shared/pricing'
 import type { OutputType } from '@/shared/types/scheduler'
 
 export const OUTPUT_TYPES: Array<{ value: OutputType; label: string }> = [
@@ -6,11 +7,10 @@ export const OUTPUT_TYPES: Array<{ value: OutputType; label: string }> = [
     { value: 'artifact', label: 'Artifact' },
 ]
 
-// Claude Code CLI model aliases (electron/scheduler/types.ts RunProfile.model) — not the
-// AVAILABLE_MODELS pricing ids used elsewhere in the app.
+// Sourced from the auto-updating catalog (shared/models.generated.json) so new Claude models
+// appear here without a manual edit. Values are full model ids, which Claude Code accepts via
+// --model; '' means the CLI's own default.
 export const MODEL_OPTIONS: Array<{ value: string; label: string }> = [
     { value: '', label: 'Default' },
-    { value: 'haiku', label: 'Haiku' },
-    { value: 'sonnet', label: 'Sonnet' },
-    { value: 'opus', label: 'Opus' },
+    ...AVAILABLE_MODELS.filter((m) => m.engine === 'anthropic').map((m) => ({ value: m.id, label: m.label })),
 ]
